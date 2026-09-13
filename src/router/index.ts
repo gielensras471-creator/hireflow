@@ -52,6 +52,15 @@ const routes: RouteRecordRaw[] = [
         }
       },
       {
+        path: 'candidates/:id',
+        name: 'candidate-detail',
+        component: () => import('@/views/candidates/detail.vue'),
+        meta: {
+          title: '候选人详情',
+          activeMenu: '/candidates'
+        }
+      },
+      {
         path: 'interviews',
         name: 'interviews',
         component: () => import('@/views/interviews/index.vue'),
