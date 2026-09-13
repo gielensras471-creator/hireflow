@@ -34,28 +34,40 @@ const routes: RouteRecordRaw[] = [
         meta: {
           title: '工作台'
         }
+      },
+      {
+        path: 'positions',
+        name: 'positions',
+        component: () => import('@/views/positions/index.vue'),
+        meta: {
+          title: '职位管理'
+        }
+      },
+      {
+        path: 'candidates',
+        name: 'candidates',
+        component: () => import('@/views/candidates/index.vue'),
+        meta: {
+          title: '候选人管理'
+        }
+      },
+      {
+        path: 'interviews',
+        name: 'interviews',
+        component: () => import('@/views/interviews/index.vue'),
+        meta: {
+          title: '面试管理'
+        }
+      },
+      {
+        path: 'profile',
+        name: 'profile',
+        component: () => import('@/views/profile/index.vue'),
+        meta: {
+          title: '个人中心'
+        }
       }
     ]
-  },
-
-  // 403
-  {
-    path: '/403',
-    name: '403',
-    component: () => import('@/components/ErrorMessage/403.vue'),
-    meta: {
-      title: '403'
-    }
-  },
-
-  // 404
-  {
-    path: '/404',
-    name: '404',
-    component: () => import('@/components/ErrorMessage/404.vue'),
-    meta: {
-      title: '404'
-    }
   },
 
   // 500

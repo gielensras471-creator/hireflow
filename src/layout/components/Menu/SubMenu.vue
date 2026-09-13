@@ -2,13 +2,24 @@
   <template v-for="subItem in menuList" :key="subItem.path">
     <el-sub-menu v-if="subItem.children?.length" :index="subItem.path">
       <template #title>
-        <i class="menu-icon iconfont" :class="'icon-' + subItem.meta.icon"></i>
+        <i
+          v-if="subItem.meta.icon"
+          class="menu-icon iconfont"
+          :class="'icon-' + subItem.meta.icon"
+        ></i>
         <span class="sle">{{ subItem.meta.title }}</span>
       </template>
+
       <SubMenu :menu-list="subItem.children" />
     </el-sub-menu>
+
     <el-menu-item v-else :index="subItem.path" @click="handleClickMenu(subItem)">
-      <i class="menu-icon iconfont" :class="'icon-' + subItem.meta.icon"></i>
+      <i
+        v-if="subItem.meta.icon"
+        class="menu-icon iconfont"
+        :class="'icon-' + subItem.meta.icon"
+      ></i>
+
       <template #title>
         <span class="sle">{{ subItem.meta.title }}</span>
       </template>
@@ -17,15 +28,20 @@
 </template>
 
 <script setup lang="ts">
-import { Menu } from '@/api/interface/system'
 import { useRouter } from 'vue-router'
+import type { AppMenuItem } from '@/types/navigation'
 
-defineProps<{ menuList: Menu[] }>()
+defineProps<{
+  menuList: AppMenuItem[]
+}>()
 
 const router = useRouter()
-const handleClickMenu = (subItem: Menu) => {
-  // 是链接时 path为https://
-  if (subItem.meta.isLink) return window.open(subItem.path, '_blank')
+
+const handleClickMenu = (subItem: AppMenuItem) => {
+  if (subItem.meta.isLink) {
+    return window.open(subItem.path, '_blank')
+  }
+
   router.push(subItem.path)
 }
 </script>
