@@ -1,60 +1,77 @@
 import { HOME_URL, LOGIN_URL } from '@/config'
-import { useAuthStore } from '@/store/modules/auth'
-import { useUserStore } from '@/store/modules/user'
-import { createRouter, createWebHistory, RouteRecordRaw } from 'vue-router'
-import { initDynamicRouter } from './dynamicRouter'
+import { createRouter, createWebHistory } from 'vue-router'
+import type { RouteRecordRaw } from 'vue-router'
 import NProgress from '@/utils/nprogress'
+
+const TOKEN_KEY = 'hireflow_token'
 
 const routes: RouteRecordRaw[] = [
   {
     path: '/',
     redirect: HOME_URL
   },
+
+  // 登录页
   {
-    path: '/login',
+    path: LOGIN_URL,
     name: 'login',
-    component: () => import('@/views/login/index.vue')
+    component: () => import('@/views/login/index.vue'),
+    meta: {
+      title: '登录'
+    }
   },
+
+  // HireFlow 主体页面
   {
-    path: '/layout',
-    redirect: HOME_URL, // 重定向主页
+    path: '/',
     name: 'layout',
     component: () => import('@/layout/index.vue'),
     children: [
-      // -----非全屏页面动态引入-----
+      {
+        path: 'dashboard',
+        name: 'dashboard',
+        component: () => import('@/views/dashboard/index.vue'),
+        meta: {
+          title: '工作台'
+        }
+      }
     ]
   },
 
-  // -----全屏页面引入-----
-
-  // 错误页面
+  // 403
   {
     path: '/403',
     name: '403',
     component: () => import('@/components/ErrorMessage/403.vue'),
     meta: {
-      title: '403页面'
+      title: '403'
     }
   },
+
+  // 404
   {
     path: '/404',
     name: '404',
     component: () => import('@/components/ErrorMessage/404.vue'),
     meta: {
-      title: '404页面'
+      title: '404'
     }
   },
+
+  // 500
   {
     path: '/500',
     name: '500',
     component: () => import('@/components/ErrorMessage/500.vue'),
     meta: {
-      title: '500页面'
+      title: '500'
     }
   },
+
+  // 所有不存在的地址进入 404
   {
     path: '/:pathMatch(.*)*',
-    component: () => import('@/components/ErrorMessage/404.vue')
+    redirect: '/404'
   }
 ]
 
@@ -64,71 +81,31 @@ const router = createRouter({
 })
 
 /**
- * @description 路由拦截 beforeEach
- * */
-router.beforeEach(async (to, from, next) => {
-  const userStore = useUserStore()
-  const authStore = useAuthStore()
-  // nprogress 启动
+ * 简化后的 HireFlow 登录守卫
+ */
+router.beforeEach((to) => {
   NProgress.start()
 
-  // 判断是访问登陆页，有 Token 就在当前页面，没有 Token 重置路由到登陆页
-  if (to.path.toLocaleLowerCase() === LOGIN_URL) {
-    if (userStore.token && isTokenValid(userStore.expires)) return next(from.fullPath) // 保持原页面
-    resetRouter() // 清除已加载动态路由
-    return next()
+  const token = localStorage.getItem(TOKEN_KEY)
+
+  // 已登录时再次访问登录页，回到工作台
+  if (to.path === LOGIN_URL && token) {
+    return HOME_URL
   }
 
-  // 判断是否有 Token，没有或者token过期 重定向到 login 页面
-  if (!userStore.token || !isTokenValid(userStore.expires))
-    return next({ path: LOGIN_URL, replace: true })
-
-  // 如果没有菜单列表，就重新请求菜单列表并添加动态路由
-  if (!authStore.authMenuListGet.length) {
-    const flag = await authStore.getAuthMenuList()
-    if (flag) {
-      // 动态加载路由
-      await initDynamicRouter()
-      return next({ ...to, replace: true })
-    } else {
-      return next({ path: LOGIN_URL, replace: true })
-    }
+  // 未登录访问业务页面，跳转登录页
+  if (to.path !== LOGIN_URL && !token) {
+    return LOGIN_URL
   }
 
-  next()
+  return true
 })
 
-/**
- * @description 重置路由（全部清除）
- * */
-export const resetRouter = () => {
-  const authStore = useAuthStore()
-  authStore.flatMenuListGet.forEach((route) => {
-    const { name } = route
-    if (name && router.hasRoute(name)) router.removeRoute(name)
-  })
-}
-
-/**
- * token 是否有效
- * @param time token 过期时间
- * @returns boolean true:有效 / false:无效
- */
-export const isTokenValid = (time: number) => {
-  return time * 1000 > Date.now()
-}
-
-/**
- * @description 路由跳转错误
- * */
 router.onError((error) => {
   NProgress.done()
-  console.warn('路由错误', error.message)
+  console.warn('路由错误：', error.message)
 })
 
-/**
- * @description 路由跳转结束
- * */
 router.afterEach(() => {
   NProgress.done()
 })

@@ -10,6 +10,7 @@
           <img class="login-icon" src="@/assets/images/logo.svg" alt="logo" />
           <h2 class="logo-text">YM-Admin</h2>
         </div>
+        <!-- 页面里放了一个 LoginForm 子组件，并且通过 ref="loginRef" 拿到这个子组件实例。 -->
         <LoginForm ref="loginRef"></LoginForm>
         <div class="login-btns">
           <el-button class="login-btn" size="large" @click="handleResetClick"> 重置 </el-button>

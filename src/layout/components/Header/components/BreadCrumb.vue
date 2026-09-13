@@ -1,35 +1,45 @@
 <template>
   <el-breadcrumb separator="/">
-    <template v-for="item in breadcrumbList" :key="item.path">
-      <el-breadcrumb-item :to="{ path: item.path }" @click="onBreadcrumbClick(item.path)">{{
-        item.meta.title
-      }}</el-breadcrumb-item>
-    </template>
+    <el-breadcrumb-item
+      v-for="item in breadcrumbList"
+      :key="item.path"
+      :to="{ path: item.path }"
+    >
+      {{ item.title }}
+    </el-breadcrumb-item>
   </el-breadcrumb>
 </template>
 
 <script setup lang="ts">
-import { HOME_URL } from '@/config'
-import router from '@/router'
-import { useAuthStore } from '@/store/modules/auth'
 import { computed } from 'vue'
 import { useRoute } from 'vue-router'
-
-const authStore = useAuthStore()
+import { HOME_URL } from '@/config'
 
 const route = useRoute()
 
-const breadcrumbList = computed(() => {
-  let breadcrumbData = authStore.breadcrumbListGet[route.matched[route.matched.length - 1].path]
-  if (breadcrumbData[0].path !== HOME_URL) {
-    breadcrumbData = [{ path: HOME_URL, meta: { title: '主面板' } }, ...breadcrumbData]
-  }
-  return breadcrumbData
-})
-
-const onBreadcrumbClick = (path: string) => {
-  router.push(path)
+interface BreadcrumbItem {
+  path: string
+  title: string
 }
+
+const breadcrumbList = computed<BreadcrumbItem[]>(() => {
+  const list: BreadcrumbItem[] = route.matched
+    .filter((item) => item.meta?.title)
+    .map((item) => ({
+      path: item.path,
+      title: item.meta.title as string
+    }))
+
+  // 当前不是 Dashboard 时，在最前面补一个“工作台”
+  if (route.path !== HOME_URL) {
+    list.unshift({
+      path: HOME_URL,
+      title: '工作台'
+    })
+  }
+
+  return list
+})
 </script>
 
 <style scoped lang="scss"></style>
