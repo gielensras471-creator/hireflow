@@ -158,10 +158,14 @@ const handleInterview = (candidate: Candidate) => {
 }
 
 const handleSubmitInterview = (data: InterviewFormData) => {
-  interviewStore.addInterview(data)
+  const success = interviewStore.addInterview(data)
 
-  // 如果候选人原本还处于筛选阶段，
-  // 安排面试以后自动进入初面阶段
+  if (!success) {
+    ElMessage.warning('该候选人已经存在待面试安排')
+
+    return
+  }
+
   if (interviewCandidate.value && interviewCandidate.value.stage === 'screening') {
     interviewCandidate.value.stage = 'first_interview'
   }
