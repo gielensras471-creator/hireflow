@@ -1,12 +1,12 @@
 <template>
-  <el-dialog :model-value="modelValue" title="安排面试" width="560px" @close="handleClose">
+  <el-dialog :model-value="modelValue" :title="dialogTitle" width="560px" @close="handleClose">
     <el-form ref="formRef" :model="formData" :rules="rules" label-width="90px">
       <el-form-item label="候选人">
-        <el-input :model-value="candidate?.name" disabled />
+        <el-input :model-value="candidateName" disabled />
       </el-form-item>
 
       <el-form-item label="应聘职位">
-        <el-input :model-value="candidate?.position" disabled />
+        <el-input :model-value="positionName" disabled />
       </el-form-item>
 
       <el-form-item label="面试日期" prop="date">
@@ -33,7 +33,9 @@
       <el-form-item label="面试轮次" prop="type">
         <el-select v-model="formData.type" placeholder="请选择面试轮次" style="width: 100%">
           <el-option label="初面" value="初面" />
+
           <el-option label="复面" value="复面" />
+
           <el-option label="HR 面" value="HR 面" />
         </el-select>
       </el-form-item>
@@ -50,22 +52,26 @@
     <template #footer>
       <el-button @click="handleClose"> 取消 </el-button>
 
-      <el-button type="primary" @click="handleSubmit"> 确认安排 </el-button>
+      <el-button type="primary" @click="handleSubmit">
+        {{ interview ? '保存修改' : '确认安排' }}
+      </el-button>
     </template>
   </el-dialog>
 </template>
 
 <script setup lang="ts">
-import { nextTick, reactive, ref, watch } from 'vue'
+import { computed, nextTick, reactive, ref, watch } from 'vue'
 
 import type { FormInstance, FormRules } from 'element-plus'
 
 import type { Candidate } from '@/types/candidate'
-import type { InterviewFormData } from '@/types/interview'
+
+import type { Interview, InterviewFormData } from '@/types/interview'
 
 const props = defineProps<{
   modelValue: boolean
-  candidate: Candidate | null
+  candidate?: Candidate | null
+  interview?: Interview | null
 }>()
 
 const emit = defineEmits<{
@@ -89,6 +95,18 @@ const formData = reactive<InterviewForm>({
   interviewer: '',
   type: '初面',
   note: ''
+})
+
+const dialogTitle = computed(() => {
+  return props.interview ? '编辑面试安排' : '安排面试'
+})
+
+const candidateName = computed(() => {
+  return props.interview?.candidateName ?? props.candidate?.name ?? ''
+})
+
+const positionName = computed(() => {
+  return props.interview?.position ?? props.candidate?.position ?? ''
 })
 
 const rules: FormRules<InterviewForm> = {
@@ -140,7 +158,17 @@ watch(
   async (visible) => {
     if (!visible) return
 
-    resetForm()
+    if (props.interview) {
+      Object.assign(formData, {
+        date: props.interview.date,
+        time: props.interview.time,
+        interviewer: props.interview.interviewer,
+        type: props.interview.type,
+        note: props.interview.note
+      })
+    } else {
+      resetForm()
+    }
 
     await nextTick()
     formRef.value?.clearValidate()
@@ -152,17 +180,19 @@ const handleClose = () => {
 }
 
 const handleSubmit = async () => {
-  if (!formRef.value || !props.candidate) {
-    return
-  }
+  if (!formRef.value) return
+
+  const candidateId = props.interview?.candidateId ?? props.candidate?.id
+
+  if (!candidateId) return
 
   await formRef.value.validate((valid) => {
-    if (!valid || !props.candidate) return
+    if (!valid) return
 
     emit('submit', {
-      candidateId: props.candidate.id,
-      candidateName: props.candidate.name,
-      position: props.candidate.position,
+      candidateId,
+      candidateName: candidateName.value,
+      position: positionName.value,
       date: formData.date,
       time: formData.time,
       interviewer: formData.interviewer,
