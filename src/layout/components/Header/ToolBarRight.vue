@@ -1,37 +1,48 @@
 <template>
   <div class="tool-bar-rt">
-    <FullScreen class="tb-item" />
-    <ThemeSetting class="tb-item" />
-    <div class="tb-item username">{{ username }}</div>
+    <FullScreen />
+
+    <span class="toolbar-divider"></span>
+
     <Avatar />
   </div>
 </template>
 
 <script setup lang="ts">
-import { computed } from 'vue'
-import { useUserStore } from '@/store/modules/user'
 import FullScreen from './components/Fullscreen.vue'
-import ThemeSetting from './components/ThemeSetting.vue'
 import Avatar from './components/Avatar.vue'
-
-const userStore = useUserStore()
-const username = computed(() => userStore.userInfo.username)
 </script>
 
 <style scoped lang="scss">
 .tool-bar-rt {
   display: flex;
   align-items: center;
-  justify-content: center;
-  padding-right: 25px;
+  justify-content: flex-end;
+  gap: 10px;
 
-  .tb-item {
-    margin-right: 14px;
+  .toolbar-divider {
+    width: 1px;
+    height: 22px;
+    margin: 0 2px;
+    background: var(--el-border-color-lighter);
   }
 
-  .username {
-    font-size: 15px;
-    color: var(--el-header-text-color);
+  :deep(.fullscreen) {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 36px;
+    height: 36px;
+    color: var(--el-text-color-regular);
+    border-radius: 9px;
+    transition:
+      background 0.2s ease,
+      color 0.2s ease;
+
+    &:hover {
+      color: var(--el-color-primary);
+      background: var(--el-fill-color-light);
+    }
   }
 }
 </style>

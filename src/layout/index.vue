@@ -1,11 +1,25 @@
 <template>
   <el-container class="layout">
     <el-aside>
-      <div class="aside" :style="{ width: isCollapse ? '65px' : '210px' }">
-        <div class="logo">
-          <img class="logo-img" src="@/assets/images/logo.svg" alt="logo" />
-          <span v-show="!isCollapse" class="logo-text">HireFlow</span>
-        </div>
+      <div
+        class="aside"
+        :class="{
+          'is-collapsed': isCollapse
+        }"
+        :style="{
+          width: isCollapse ? '72px' : '228px'
+        }"
+      >
+        <button class="brand" type="button" @click="goDashboard">
+          <span class="brand-mark"> HF </span>
+
+          <span v-show="!isCollapse" class="brand-copy">
+            <strong> HireFlow </strong>
+
+            <small> 招聘流程协作平台 </small>
+          </span>
+        </button>
+
         <el-scrollbar>
           <el-menu
             :router="false"
@@ -19,30 +33,34 @@
         </el-scrollbar>
       </div>
     </el-aside>
+
     <el-container>
       <el-header>
         <ToolBarLeft />
         <ToolBarRight />
       </el-header>
+
       <Main />
     </el-container>
   </el-container>
-  <ThemeDrawer />
 </template>
 
 <script setup lang="ts">
 import { computed } from 'vue'
-import { useRoute } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
+
 import { useGlobalStore } from '@/store/modules/global'
+
 import type { AppMenuItem } from '@/types/navigation'
 
 import SubMenu from './components/Menu/SubMenu.vue'
 import ToolBarLeft from './components/Header/ToolBarLeft.vue'
 import ToolBarRight from './components/Header/ToolBarRight.vue'
 import Main from './components/Main/index.vue'
-import ThemeDrawer from './components/ThemeDrawer/index.vue'
 
 const route = useRoute()
+const router = useRouter()
+
 const globalStore = useGlobalStore()
 
 const menuList: AppMenuItem[] = [
@@ -80,9 +98,11 @@ const menuList: AppMenuItem[] = [
 
 const isCollapse = computed(() => globalStore.isCollapse)
 
-const activeMenu = computed(
-  () => (route.meta.activeMenu as string) || route.path
-)
+const activeMenu = computed(() => (route.meta.activeMenu as string) || route.path)
+
+const goDashboard = () => {
+  router.push('/dashboard')
+}
 </script>
 
 <style scoped lang="scss">

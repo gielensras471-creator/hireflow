@@ -455,38 +455,44 @@ const handleDelete = async (interview: Interview) => {
 
 .page-header {
   display: flex;
-  align-items: center;
+  align-items: flex-end;
   justify-content: space-between;
-  margin-bottom: 16px;
+  gap: 16px;
+  margin-bottom: 18px;
 }
 
 .page-header h2 {
-  margin: 0 0 6px;
-  font-size: 22px;
+  margin: 0 0 5px;
+  color: var(--el-text-color-primary);
+  font-size: 20px;
+  font-weight: 700;
+  line-height: 1.3;
 }
 
 .page-header p {
   margin: 0;
   color: var(--el-text-color-secondary);
-  font-size: 14px;
+  font-size: 13px;
 }
 
-.filter-card,
-.table-card {
-  padding: 20px;
-  margin-bottom: 16px;
-  background: var(--el-bg-color);
-  border: 1px solid var(--el-border-color-light);
-  border-radius: 10px;
-}
+/* 筛选 */
 
 .filter-card {
   display: flex;
-  gap: 12px;
+  flex-wrap: wrap;
+  gap: 10px;
+  padding: 16px 18px;
+  margin-bottom: 14px;
+
+  background: var(--el-bg-color);
+
+  border: 1px solid var(--el-border-color-lighter);
+
+  border-radius: 12px;
 }
 
 .search-input {
-  width: 260px;
+  width: 280px;
 }
 
 .filter-select {
@@ -497,10 +503,86 @@ const handleDelete = async (interview: Interview) => {
   width: 180px;
 }
 
+.filter-card :deep(.el-input__wrapper),
+.filter-card :deep(.el-select__wrapper) {
+  min-height: 36px;
+  border-radius: 8px;
+
+  box-shadow: 0 0 0 1px var(--el-border-color) inset;
+
+  transition: box-shadow 0.2s ease;
+}
+
+.filter-card :deep(.el-input__wrapper:hover),
+.filter-card :deep(.el-select__wrapper:hover) {
+  box-shadow: 0 0 0 1px var(--el-color-primary-light-5) inset;
+}
+
+/* 表格 */
+
+.table-card {
+  box-sizing: border-box;
+  padding: 8px 18px 14px;
+
+  background: var(--el-bg-color);
+
+  border: 1px solid var(--el-border-color-lighter);
+
+  border-radius: 12px;
+}
+
+.table-card :deep(.el-table) {
+  --el-table-border-color: var(--el-border-color-lighter);
+
+  --el-table-header-bg-color: transparent;
+
+  --el-table-row-hover-bg-color: var(--el-fill-color-lighter);
+
+  background: transparent;
+}
+
+.table-card :deep(.el-table::before) {
+  display: none;
+}
+
+.table-card :deep(.el-table th.el-table__cell) {
+  height: 46px;
+  color: var(--el-text-color-secondary);
+  font-size: 12px;
+  font-weight: 600;
+  background: transparent;
+}
+
+.table-card :deep(.el-table td.el-table__cell) {
+  height: 52px;
+  color: var(--el-text-color-regular);
+}
+
+.table-card :deep(.el-table .cell) {
+  line-height: 20px;
+}
+
+.table-card :deep(.el-tag) {
+  font-weight: 500;
+  border-radius: 6px;
+}
+
+.table-card :deep(.el-button.is-link) {
+  padding: 4px 1px;
+  font-weight: 500;
+}
+
+.table-card :deep(.el-button + .el-button) {
+  margin-left: 6px;
+}
+
+/* 错误 / 分页 */
+
 .error-state {
   display: flex;
   flex-direction: column;
   gap: 16px;
+  padding: 10px 0;
 }
 
 .error-state .el-button {
@@ -510,10 +592,22 @@ const handleDelete = async (interview: Interview) => {
 .pagination {
   display: flex;
   justify-content: flex-end;
-  margin-top: 20px;
+  padding-top: 14px;
 }
 
-@media (max-width: 900px) {
+.pagination :deep(.el-pager li),
+.pagination :deep(.btn-prev),
+.pagination :deep(.btn-next) {
+  border-radius: 7px;
+}
+
+@media (max-width: 1024px) {
+  .search-input {
+    flex: 1 1 260px;
+  }
+}
+
+@media (max-width: 768px) {
   .filter-card {
     flex-direction: column;
   }
@@ -522,6 +616,10 @@ const handleDelete = async (interview: Interview) => {
   .filter-select,
   .date-picker {
     width: 100%;
+  }
+
+  .table-card {
+    padding: 8px 12px 12px;
   }
 }
 </style>

@@ -395,27 +395,63 @@ const goToInterviews = () => {
   display: flex;
   flex-direction: column;
   gap: 16px;
-}
 
-.error-state .el-button {
-  align-self: flex-start;
+  .el-button {
+    align-self: flex-start;
+  }
 }
 
 .dashboard-row {
-  margin-top: 16px;
+  margin-top: 4px;
 }
 
+/* =====================
+   数据统计卡片
+===================== */
+
 .stat-card {
-  min-height: 140px;
-  padding: 20px;
+  position: relative;
+  box-sizing: border-box;
+  min-height: 132px;
+  padding: 20px 20px 18px;
   margin-bottom: 16px;
+  overflow: hidden;
 
   background: var(--el-bg-color);
 
-  border: 1px solid var(--el-border-color-light);
+  border: 1px solid var(--el-border-color-lighter);
 
-  border-radius: 10px;
-  box-sizing: border-box;
+  border-radius: 12px;
+
+  transition:
+    transform 0.2s ease,
+    box-shadow 0.2s ease,
+    border-color 0.2s ease;
+
+  &::before {
+    position: absolute;
+    top: 0;
+    left: 20px;
+
+    width: 34px;
+    height: 3px;
+
+    content: '';
+
+    background: var(--el-color-primary);
+
+    border-radius: 0 0 3px 3px;
+
+    opacity: 0.9;
+  }
+
+  &:hover {
+    border-color: var(--el-color-primary-light-7);
+
+    box-shadow: 0 8px 24px rgb(31 35 48 / 6%);
+
+    transform: translateY(-2px);
+  }
 }
 
 .stat-card__header {
@@ -425,39 +461,59 @@ const goToInterviews = () => {
 
   color: var(--el-text-color-secondary);
 
-  font-size: 14px;
-}
-
-.stat-card__trend {
-  color: var(--el-color-primary);
-
   font-size: 13px;
 }
 
-.stat-card__value {
-  margin: 16px 0 10px;
+.stat-card__trend {
+  padding: 3px 7px;
 
-  font-size: 30px;
-  font-weight: 600;
+  color: var(--el-color-primary);
+
+  font-size: 12px;
+
+  background: var(--el-color-primary-light-9);
+
+  border-radius: 6px;
+}
+
+.stat-card__value {
+  margin: 18px 0 9px;
+
+  color: var(--el-text-color-primary);
+
+  font-size: 32px;
+  font-weight: 700;
   line-height: 1;
+
+  letter-spacing: -0.8px;
 }
 
 .stat-card__description {
   color: var(--el-text-color-secondary);
 
-  font-size: 13px;
+  font-size: 12px;
 }
 
+/* =====================
+   Dashboard 内容卡
+===================== */
+
 .dashboard-panel {
-  padding: 20px;
+  box-sizing: border-box;
+  padding: 20px 22px;
   margin-bottom: 16px;
 
   background: var(--el-bg-color);
 
-  border: 1px solid var(--el-border-color-light);
+  border: 1px solid var(--el-border-color-lighter);
 
-  border-radius: 10px;
-  box-sizing: border-box;
+  border-radius: 12px;
+
+  transition: box-shadow 0.2s ease;
+
+  &:hover {
+    box-shadow: 0 8px 26px rgb(31 35 48 / 4%);
+  }
 }
 
 .panel-header {
@@ -465,13 +521,16 @@ const goToInterviews = () => {
   align-items: center;
   justify-content: space-between;
 
-  margin-bottom: 18px;
+  margin-bottom: 12px;
 }
 
 .panel-header h3 {
-  margin: 0 0 6px;
+  margin: 0 0 5px;
 
-  font-size: 16px;
+  color: var(--el-text-color-primary);
+
+  font-size: 15px;
+  font-weight: 650;
 }
 
 .panel-header p {
@@ -479,16 +538,69 @@ const goToInterviews = () => {
 
   color: var(--el-text-color-secondary);
 
-  font-size: 13px;
+  font-size: 12px;
 }
 
+/* =====================
+   图表
+===================== */
+
 .chart-wrapper {
-  height: 320px;
+  height: 300px;
+}
+
+/* =====================
+   今日面试表格
+===================== */
+
+.dashboard-panel {
+  :deep(.el-table) {
+    --el-table-border-color: var(--el-border-color-lighter);
+
+    --el-table-header-bg-color: transparent;
+
+    background: transparent;
+
+    &::before {
+      display: none;
+    }
+
+    th.el-table__cell {
+      height: 42px;
+
+      color: var(--el-text-color-secondary);
+
+      font-size: 12px;
+      font-weight: 500;
+
+      background: transparent;
+    }
+
+    td.el-table__cell {
+      height: 46px;
+
+      color: var(--el-text-color-regular);
+    }
+  }
+}
+
+@media (max-width: 1200px) {
+  .chart-wrapper {
+    height: 280px;
+  }
 }
 
 @media (max-width: 768px) {
+  .stat-card {
+    min-height: 120px;
+  }
+
+  .dashboard-panel {
+    padding: 18px 16px;
+  }
+
   .chart-wrapper {
-    height: 280px;
+    height: 260px;
   }
 }
 </style>

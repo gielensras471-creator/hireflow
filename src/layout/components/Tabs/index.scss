@@ -1,37 +1,83 @@
 .tabs-box {
-  background-color: var(--el-bg-color);
+  box-sizing: border-box;
+  padding: 7px 10px;
+  background:
+    var(--el-bg-color);
+  border-bottom:
+    1px solid var(--el-border-color-lighter);
 
   .tabs-menu {
     position: relative;
     width: 100%;
+    height: 32px;
 
     :deep(.el-tabs) {
+      height: 32px;
+
       .el-tabs__header {
-        box-sizing: border-box;
-        height: 40px;
-        padding: 0 10px;
+        box-sizing:
+          border-box;
+        height: 32px;
+        padding: 0;
         margin: 0;
+        border: none;
 
         .el-tabs__nav-wrap {
           position: absolute;
-          width: calc(100% - 70px);
+          width:
+            calc(100% - 46px);
+
+          &::after {
+            display: none;
+          }
+
+          .el-tabs__nav-scroll {
+            height: 32px;
+          }
 
           .el-tabs__nav {
-            box-sizing: border-box;
+            box-sizing:
+              border-box;
+            height: 32px;
             border: none;
+          }
 
-            .el-tabs__item {
-              border-bottom: 1px solid transparent;
-              border-left: none;
+          .el-tabs__item {
+            height: 32px;
+            padding:
+              0 13px;
+            margin-right: 4px;
+            color:
+              var(--el-text-color-secondary);
+            font-size: 13px;
+            line-height: 32px;
+            background:
+              transparent;
+            border: none !important;
+            border-radius: 8px;
+            transition:
+              color 0.2s ease,
+              background 0.2s ease;
+
+            &:hover {
+              color:
+                var(--el-color-primary);
+              background:
+                var(--el-fill-color-light);
             }
 
-            .el-tabs__item.is-active {
-              color: var(--el-color-primary) !important;
-              border-bottom: 3px solid var(--el-color-primary);
+            &.is-active {
+              color:
+                var(--el-color-primary) !important;
+              font-weight: 600;
+              background:
+                var(--el-color-primary-light-9);
+              border: none !important;
             }
 
-            .el-tabs__item:hover {
-              color: unset;
+            .is-icon-close {
+              margin-left: 7px;
+              border-radius: 50%;
             }
           }
         }

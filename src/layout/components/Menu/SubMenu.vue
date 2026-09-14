@@ -7,7 +7,12 @@
           class="menu-icon iconfont"
           :class="'icon-' + subItem.meta.icon"
         ></i>
-        <span class="sle">{{ subItem.meta.title }}</span>
+
+        <span v-else class="menu-dot"></span>
+
+        <span class="sle">
+          {{ subItem.meta.title }}
+        </span>
       </template>
 
       <SubMenu :menu-list="subItem.children" />
@@ -20,8 +25,12 @@
         :class="'icon-' + subItem.meta.icon"
       ></i>
 
+      <span v-else class="menu-dot"></span>
+
       <template #title>
-        <span class="sle">{{ subItem.meta.title }}</span>
+        <span class="sle">
+          {{ subItem.meta.title }}
+        </span>
       </template>
     </el-menu-item>
   </template>
@@ -29,6 +38,7 @@
 
 <script setup lang="ts">
 import { useRouter } from 'vue-router'
+
 import type { AppMenuItem } from '@/types/navigation'
 
 defineProps<{
@@ -48,14 +58,69 @@ const handleClickMenu = (subItem: AppMenuItem) => {
 
 <style scoped lang="scss">
 .menu-icon {
-  margin-right: 5px;
-  font-size: 18px;
+  margin-right: 10px;
+  font-size: 17px;
   text-align: center;
-  vertical-align: middle;
 }
 
-.el-menu-item.is-active {
-  color: #ffffff;
-  background-color: var(--el-color-primary);
+.menu-dot {
+  flex: 0 0 auto;
+  width: 6px;
+  height: 6px;
+  margin-right: 12px;
+  background: currentColor;
+  border-radius: 50%;
+  opacity: 0.42;
+}
+
+.el-menu-item {
+  position: relative;
+  height: 44px;
+  margin: 4px 10px;
+  color: var(--el-text-color-regular);
+  line-height: 44px;
+  border-radius: 10px;
+  transition:
+    color 0.2s ease,
+    background 0.2s ease;
+
+  &:hover {
+    color: var(--el-color-primary);
+    background: var(--el-fill-color-light);
+  }
+
+  &.is-active {
+    color: var(--el-color-primary);
+    font-weight: 600;
+    background: var(--el-color-primary-light-9);
+
+    .menu-dot {
+      opacity: 1;
+    }
+
+    &::after {
+      position: absolute;
+      top: 12px;
+      right: 6px;
+      width: 3px;
+      height: 20px;
+      content: '';
+      background: var(--el-color-primary);
+      border-radius: 3px;
+    }
+  }
+}
+
+:deep(.el-sub-menu__title) {
+  height: 44px;
+  margin: 4px 10px;
+  color: var(--el-text-color-regular);
+  line-height: 44px;
+  border-radius: 10px;
+
+  &:hover {
+    color: var(--el-color-primary);
+    background: var(--el-fill-color-light);
+  }
 }
 </style>
