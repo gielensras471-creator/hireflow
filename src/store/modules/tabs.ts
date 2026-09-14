@@ -7,7 +7,7 @@ import { useKeepAliveStore } from '@/store/modules/keepAlive'
 const keepAliveStore = useKeepAliveStore()
 
 export const useTabsStore = defineStore({
-  id: 'ym-tabs',
+  id: 'hireflow-tabs',
   state: (): TabsState => ({
     tabsMenuList: []
   }),
@@ -75,5 +75,5 @@ export const useTabsStore = defineStore({
       this.tabsMenuList = tabsMenuList
     }
   },
-  persist: piniaPersistConfig('ym-tabs')
+  persist: piniaPersistConfig('hireflow-tabs')
 })

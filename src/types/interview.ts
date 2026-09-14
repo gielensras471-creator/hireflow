@@ -1,7 +1,4 @@
-export type InterviewStatus =
-  | 'scheduled'
-  | 'completed'
-  | 'cancelled'
+export type InterviewStatus = 'scheduled' | 'completed' | 'cancelled'
 
 export interface InterviewFormData {
   candidateId: number

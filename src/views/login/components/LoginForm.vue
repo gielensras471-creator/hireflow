@@ -9,12 +9,7 @@
     </el-form-item>
 
     <el-form-item prop="password">
-      <el-input
-        v-model="account.password"
-        type="password"
-        show-password
-        placeholder="密码"
-      >
+      <el-input v-model="account.password" type="password" show-password placeholder="密码">
         <template #prefix>
           <i class="iconfont icon-lock"></i>
         </template>
@@ -22,9 +17,7 @@
     </el-form-item>
 
     <el-form-item prop="expires7d">
-      <el-checkbox v-model="account.expires7d" class="expires7d">
-        7天免登录
-      </el-checkbox>
+      <el-checkbox v-model="account.expires7d" class="expires7d"> 7天免登录 </el-checkbox>
     </el-form-item>
   </el-form>
 </template>

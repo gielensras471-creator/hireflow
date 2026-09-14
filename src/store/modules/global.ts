@@ -4,7 +4,7 @@ import piniaPersistConfig from '@/store/helper/persist'
 import { DEFAULT_PRIMARY } from '@/config'
 
 export const useGlobalStore = defineStore({
-  id: 'ym-global',
+  id: 'hireflow-global',
   state: (): GlobalState => ({
     isCollapse: false,
     isDark: false,
@@ -23,5 +23,5 @@ export const useGlobalStore = defineStore({
       this.primary = color
     }
   },
-  persist: piniaPersistConfig('ym-global')
+  persist: piniaPersistConfig('hireflow-global')
 })

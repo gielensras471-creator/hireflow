@@ -4,7 +4,6 @@ import { resolve } from 'path'
 import AutoImport from 'unplugin-auto-import/vite'
 import Components from 'unplugin-vue-components/vite'
 import { ElementPlusResolver } from 'unplugin-vue-components/resolvers'
-import { visualizer } from 'rollup-plugin-visualizer'
 
 // https://vitejs.dev/config/
 export default defineConfig(({ mode }: ConfigEnv): UserConfig => {
@@ -35,9 +34,8 @@ export default defineConfig(({ mode }: ConfigEnv): UserConfig => {
       }),
       Components({
         resolvers: [ElementPlusResolver()],
-        dts: 'src/typings/components.d.ts' // 指定类型声明文件的路径
-      }),
-      visualizer({ open: false })
+        dts: 'src/typings/components.d.ts'
+      })
     ],
     esbuild: {
       pure: viteEnv.VITE_DROP_CONSOLE ? ['console.log', 'debugger'] : []

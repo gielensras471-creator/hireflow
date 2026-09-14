@@ -78,7 +78,15 @@ const routes: RouteRecordRaw[] = [
       }
     ]
   },
-
+  // 404
+  {
+    path: '/404',
+    name: '404',
+    component: () => import('@/components/ErrorMessage/404.vue'),
+    meta: {
+      title: '页面不存在'
+    }
+  },
   // 500
   {
     path: '/500',

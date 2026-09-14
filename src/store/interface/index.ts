@@ -1,5 +1,3 @@
-import { Menu } from '@/api/interface/system'
-
 /* GlobalState */
 export interface GlobalState {
   isCollapse: boolean
@@ -8,35 +6,7 @@ export interface GlobalState {
   primary: string
 }
 
-/* UserState */
-export interface UserState {
-  token: string
-  expires: number
-  userInfo: {
-    id: number
-    name: string
-    username: string | null
-    email: string | null
-    phone: string | null
-    avatar: string | null
-    remark: string | null
-    roleId: number
-    role: string
-    roleName: string
-    isSuper: number
-  }
-}
-
-/* AuthState */
-export interface AuthState {
-  routeName: string
-  authButtonList: {
-    [key: string]: string[]
-  }
-  authMenuList: Menu[]
-}
-
-/* tabsMenuProps */
+/* TabsMenuProps */
 export interface TabsMenuProps {
   icon: string
   title: string
@@ -51,7 +21,7 @@ export interface TabsState {
   tabsMenuList: TabsMenuProps[]
 }
 
-/* keepAliveState */
+/* KeepAliveState */
 export interface KeepAliveState {
   keepAliveNames: string[]
 }

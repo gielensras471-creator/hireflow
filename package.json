@@ -1,7 +1,7 @@
 {
-  "name": "vue3-admin-client",
+  "name": "hireflow",
+  "version": "1.0.0",
   "private": true,
-  "version": "0.0.0",
   "type": "module",
   "author": {
     "name": "Yuimng",
@@ -53,7 +53,6 @@
     "eslint-plugin-vue": "^9.25.0",
     "json-server": "0.17.4",
     "prettier": "^3.2.5",
-    "rollup-plugin-visualizer": "^5.12.0",
     "sass": "^1.75.0",
     "stylelint": "^16.6.1",
     "stylelint-config-html": "^1.1.0",
