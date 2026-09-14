@@ -184,6 +184,8 @@ import { useRoute, useRouter } from 'vue-router'
 
 import { ElMessage, ElMessageBox } from 'element-plus'
 
+import { useTabsStore } from '@/store/modules/tabs'
+
 import { useCandidateStore } from '@/store/modules/candidate'
 
 import {
@@ -200,6 +202,8 @@ const route = useRoute()
 const router = useRouter()
 
 const candidateStore = useCandidateStore()
+
+const tabsStore = useTabsStore()
 
 const detailLoading = ref(false)
 
@@ -227,7 +231,9 @@ const loadCandidateDetail = async () => {
   detailLoading.value = true
 
   try {
-    await candidateStore.fetchCandidateById(id)
+    const loadedCandidate = await candidateStore.fetchCandidateById(id)
+
+    tabsStore.updateTabTitle(route.path, `${loadedCandidate.name} · 详情`)
   } catch (error) {
     console.error('候选人详情加载失败：', error)
 

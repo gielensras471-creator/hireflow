@@ -23,6 +23,14 @@ export const useTabsStore = defineStore({
         keepAliveStore.addKeepAlive(tabItem.path)
       }
     },
+    // 修改指定 Tab 的标题
+    updateTabTitle(tabPath: string, title: string) {
+      const targetTab = this.tabsMenuList.find((item) => item.path === tabPath)
+
+      if (targetTab) {
+        targetTab.title = title
+      }
+    },
     // 移除tab
     async removeTab(tabPath: string, isCurrent: boolean = true) {
       if (isCurrent) {
