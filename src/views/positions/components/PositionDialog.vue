@@ -1,29 +1,12 @@
 <template>
-  <el-dialog
-    :model-value="modelValue"
-    :title="dialogTitle"
-    width="560px"
-    @close="handleClose"
-  >
-    <el-form
-      ref="formRef"
-      :model="formData"
-      :rules="rules"
-      label-width="90px"
-    >
+  <el-dialog :model-value="modelValue" :title="dialogTitle" width="560px" @close="handleClose">
+    <el-form ref="formRef" :model="formData" :rules="rules" label-width="90px">
       <el-form-item label="职位名称" prop="title">
-        <el-input
-          v-model="formData.title"
-          placeholder="请输入职位名称"
-        />
+        <el-input v-model="formData.title" placeholder="请输入职位名称" />
       </el-form-item>
 
       <el-form-item label="所属部门" prop="department">
-        <el-select
-          v-model="formData.department"
-          placeholder="请选择部门"
-          style="width: 100%"
-        >
+        <el-select v-model="formData.department" placeholder="请选择部门" style="width: 100%">
           <el-option label="技术部" value="技术部" />
           <el-option label="产品部" value="产品部" />
           <el-option label="设计部" value="设计部" />
@@ -32,10 +15,7 @@
       </el-form-item>
 
       <el-form-item label="工作地点" prop="location">
-        <el-input
-          v-model="formData.location"
-          placeholder="例如：深圳"
-        />
+        <el-input v-model="formData.location" placeholder="例如：深圳" />
       </el-form-item>
 
       <el-form-item label="职位状态" prop="status">
@@ -56,15 +36,9 @@
     </el-form>
 
     <template #footer>
-      <el-button @click="handleClose">
-        取消
-      </el-button>
+      <el-button @click="handleClose"> 取消 </el-button>
 
-      <el-button
-        type="primary"
-        :loading="submitting"
-        @click="handleSubmit"
-      >
+      <el-button type="primary" :loading="props.submitting" @click="handleSubmit">
         {{ position ? '保存修改' : '确认创建' }}
       </el-button>
     </template>
@@ -72,27 +46,16 @@
 </template>
 
 <script setup lang="ts">
-import {
-  computed,
-  nextTick,
-  reactive,
-  ref,
-  watch
-} from 'vue'
+import { computed, nextTick, reactive, ref, watch } from 'vue'
 
-import type {
-  FormInstance,
-  FormRules
-} from 'element-plus'
+import type { FormInstance, FormRules } from 'element-plus'
 
-import type {
-  Position,
-  PositionFormData
-} from '@/types/position'
+import type { Position, PositionFormData } from '@/types/position'
 
 const props = defineProps<{
   modelValue: boolean
   position: Position | null
+  submitting?: boolean
 }>()
 
 const emit = defineEmits<{
@@ -101,7 +64,6 @@ const emit = defineEmits<{
 }>()
 
 const formRef = ref<FormInstance>()
-const submitting = ref(false)
 
 const formData = reactive<PositionFormData>({
   title: '',
@@ -200,17 +162,12 @@ const handleClose = () => {
 const handleSubmit = async () => {
   if (!formRef.value) return
 
-  await formRef.value.validate((valid) => {
-    if (!valid) return
+  const valid = await formRef.value.validate().catch(() => false)
 
-    submitting.value = true
+  if (!valid) return
 
-    emit('submit', {
-      ...formData
-    })
-
-    submitting.value = false
-    handleClose()
+  emit('submit', {
+    ...formData
   })
 }
 </script>

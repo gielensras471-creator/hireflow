@@ -121,6 +121,7 @@
     <PositionDialog
       v-model="dialogVisible"
       :position="editingPosition"
+      :submitting="submitting"
       @submit="handleSubmitPosition"
     />
   </div>
