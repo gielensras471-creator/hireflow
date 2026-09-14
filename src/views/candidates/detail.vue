@@ -20,9 +20,30 @@
           </p>
         </div>
 
-        <el-tag :type="getStageTagType(candidate.stage)">
-          {{ getStageLabel(candidate.stage) }}
-        </el-tag>
+        <div class="page-actions">
+          <el-tag :type="getCandidateStageTagType(candidate.stage)">
+            {{ getCandidateStageLabel(candidate.stage) }}
+          </el-tag>
+
+          <el-button
+            v-if="canAdvanceCandidateStage(candidate.stage)"
+            type="primary"
+            :loading="stageUpdating"
+            @click="handleAdvanceStage"
+          >
+            {{ nextStageActionLabel }}
+          </el-button>
+
+          <el-button
+            v-if="canRejectCandidate(candidate.stage)"
+            type="danger"
+            plain
+            :disabled="stageUpdating"
+            @click="handleReject"
+          >
+            淘汰候选人
+          </el-button>
+        </div>
       </div>
 
       <el-row :gutter="16">
@@ -99,15 +120,15 @@
                 {{ candidate.appliedDate }}
               </el-timeline-item>
 
-              <el-timeline-item v-if="stageLevel >= 1" timestamp="简历筛选" type="success">
+              <el-timeline-item v-if="stageProgress >= 1" timestamp="简历筛选" type="success">
                 已通过筛选
               </el-timeline-item>
 
-              <el-timeline-item v-if="stageLevel >= 2" timestamp="初面" type="success">
+              <el-timeline-item v-if="stageProgress >= 1" timestamp="初面" type="success">
                 已进入初面阶段
               </el-timeline-item>
 
-              <el-timeline-item v-if="stageLevel >= 3" timestamp="复面" type="success">
+              <el-timeline-item v-if="stageProgress >= 2" timestamp="复面" type="success">
                 已进入复面阶段
               </el-timeline-item>
 
@@ -161,9 +182,19 @@ import { computed, ref, watch } from 'vue'
 
 import { useRoute, useRouter } from 'vue-router'
 
+import { ElMessage, ElMessageBox } from 'element-plus'
+
 import { useCandidateStore } from '@/store/modules/candidate'
 
-import type { CandidateStage } from '@/types/candidate'
+import {
+  canAdvanceCandidateStage,
+  canRejectCandidate,
+  getCandidateStageLabel,
+  getCandidateStageProgress,
+  getCandidateStageTagType,
+  getNextCandidateStage,
+  getNextCandidateStageActionLabel
+} from '@/config/recruitment'
 
 const route = useRoute()
 const router = useRouter()
@@ -173,6 +204,8 @@ const candidateStore = useCandidateStore()
 const detailLoading = ref(false)
 
 const loadError = ref(false)
+
+const stageUpdating = ref(false)
 
 const candidateId = computed(() => {
   return Number(route.params.id)
@@ -214,44 +247,102 @@ watch(
   }
 )
 
-const stageLevel = computed(() => {
+const stageProgress = computed(() => {
   if (!candidate.value) {
     return 0
   }
 
-  const levels: Record<CandidateStage, number> = {
-    screening: 1,
-    first_interview: 2,
-    second_interview: 3,
-    offer: 4,
-    rejected: 1
-  }
-
-  return levels[candidate.value.stage]
+  return getCandidateStageProgress(candidate.value.stage)
 })
 
-const getStageLabel = (stage: CandidateStage) => {
-  const labels: Record<CandidateStage, string> = {
-    screening: '筛选中',
-    first_interview: '初面',
-    second_interview: '复面',
-    offer: 'Offer',
-    rejected: '已淘汰'
+const nextStage = computed(() => {
+  if (!candidate.value) {
+    return null
   }
 
-  return labels[stage]
+  return getNextCandidateStage(candidate.value.stage)
+})
+
+const nextStageActionLabel = computed(() => {
+  if (!candidate.value) {
+    return ''
+  }
+
+  return getNextCandidateStageActionLabel(candidate.value.stage) ?? ''
+})
+
+const handleAdvanceStage = async () => {
+  if (!candidate.value || !nextStage.value || stageUpdating.value) {
+    return
+  }
+
+  const current = candidate.value
+
+  const targetStage = nextStage.value
+
+  try {
+    await ElMessageBox.confirm(
+      `确定将“${current.name}”推进至“${getCandidateStageLabel(targetStage)}”阶段吗？`,
+      '推进招聘流程',
+      {
+        confirmButtonText: '确定推进',
+
+        cancelButtonText: '取消',
+
+        type: 'info'
+      }
+    )
+  } catch {
+    return
+  }
+
+  stageUpdating.value = true
+
+  try {
+    await candidateStore.updateCandidateStage(current.id, targetStage)
+
+    ElMessage.success(`已推进至${getCandidateStageLabel(targetStage)}`)
+  } catch (error) {
+    console.error('候选人阶段更新失败：', error)
+
+    ElMessage.error('阶段更新失败，请稍后重试')
+  } finally {
+    stageUpdating.value = false
+  }
 }
 
-const getStageTagType = (stage: CandidateStage) => {
-  const types = {
-    screening: 'info',
-    first_interview: 'warning',
-    second_interview: 'primary',
-    offer: 'success',
-    rejected: 'danger'
-  } as const
+const handleReject = async () => {
+  if (!candidate.value || !canRejectCandidate(candidate.value.stage) || stageUpdating.value) {
+    return
+  }
 
-  return types[stage]
+  const current = candidate.value
+
+  try {
+    await ElMessageBox.confirm(`确定淘汰候选人“${current.name}”吗？`, '淘汰候选人', {
+      confirmButtonText: '确认淘汰',
+
+      cancelButtonText: '取消',
+
+      type: 'warning'
+    })
+  } catch {
+    return
+  }
+
+  stageUpdating.value = true
+
+  try {
+    await candidateStore.updateCandidateStage(current.id, 'rejected')
+
+    ElMessage.success('候选人已淘汰')
+  } catch (error) {
+    console.error('淘汰候选人失败：', error)
+
+    ElMessage.error('操作失败，请稍后重试')
+  } finally {
+    stageUpdating.value = false
+  }
 }
 
 const goBack = () => {
@@ -277,6 +368,7 @@ const goBack = () => {
   display: flex;
   align-items: flex-end;
   justify-content: space-between;
+  gap: 16px;
   margin-bottom: 16px;
 }
 
@@ -290,6 +382,14 @@ const goBack = () => {
   color: var(--el-text-color-secondary);
 }
 
+.page-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
 .detail-card h3 {
   margin: 0 0 18px;
   font-size: 16px;
@@ -299,5 +399,16 @@ const goBack = () => {
   margin: 0;
   color: var(--el-text-color-regular);
   line-height: 1.8;
+}
+
+@media (max-width: 768px) {
+  .page-header {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .page-actions {
+    justify-content: flex-start;
+  }
 }
 </style>

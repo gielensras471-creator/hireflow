@@ -161,6 +161,8 @@ import { useInterviewStore } from '@/store/modules/interview'
 
 import { useCandidateStore } from '@/store/modules/candidate'
 
+import { getInterviewCompletionNextStage } from '@/config/recruitment'
+
 import InterviewDialog from '@/views/candidates/components/InterviewDialog.vue'
 
 import type { Interview, InterviewFormData, InterviewStatus } from '@/types/interview'
@@ -346,17 +348,10 @@ const handleComplete = async (interview: Interview) => {
      * first_interview
      * → second_interview
      */
-    if (interview.type === '初面' && candidate.stage === 'first_interview') {
-      await candidateStore.updateCandidateStage(candidate.id, 'second_interview')
-    }
+    const nextStage = getInterviewCompletionNextStage(candidate.stage, interview.type)
 
-    /*
-     * 复面完成：
-     * second_interview
-     * → offer
-     */
-    if (interview.type === '复面' && candidate.stage === 'second_interview') {
-      await candidateStore.updateCandidateStage(candidate.id, 'offer')
+    if (nextStage) {
+      await candidateStore.updateCandidateStage(candidate.id, nextStage)
     }
 
     ElMessage.success('面试已完成，候选人流程已同步更新')

@@ -71,8 +71,8 @@
 
           <el-table-column label="招聘阶段" width="110">
             <template #default="{ row }">
-              <el-tag :type="getStageTagType(row.stage)">
-                {{ getStageLabel(row.stage) }}
+              <el-tag :type="getCandidateStageTagType(row.stage)">
+                {{ getCandidateStageLabel(row.stage) }}
               </el-tag>
             </template>
           </el-table-column>
@@ -105,7 +105,7 @@
               <el-button
                 link
                 type="success"
-                :disabled="deletingId === row.id"
+                :disabled="deletingId === row.id || !canArrangeInterview(row.stage)"
                 @click="handleInterview(row)"
               >
                 安排面试
@@ -162,6 +162,13 @@ import { storeToRefs } from 'pinia'
 import { ElMessage, ElMessageBox } from 'element-plus'
 
 import type { Candidate, CandidateFormData, CandidateStage } from '@/types/candidate'
+
+import {
+  canArrangeInterview,
+  getCandidateStageLabel,
+  getCandidateStageTagType,
+  getStageAfterInterviewScheduled
+} from '@/config/recruitment'
 
 import type { InterviewFormData } from '@/types/interview'
 
@@ -234,6 +241,12 @@ const interviewDialogVisible = ref(false)
 const interviewCandidate = ref<Candidate | null>(null)
 
 const handleInterview = (candidate: Candidate) => {
+  if (!canArrangeInterview(candidate.stage)) {
+    ElMessage.warning('当前招聘阶段不能继续安排面试')
+
+    return
+  }
+
   interviewCandidate.value = candidate
 
   interviewDialogVisible.value = true
@@ -255,10 +268,13 @@ const handleSubmitInterview = async (data: InterviewFormData) => {
       return
     }
 
-    if (interviewCandidate.value && interviewCandidate.value.stage === 'screening') {
-      await candidateStore.updateCandidateStage(interviewCandidate.value.id, 'first_interview')
-    }
+    if (interviewCandidate.value) {
+      const nextStage = getStageAfterInterviewScheduled(interviewCandidate.value.stage)
 
+      if (nextStage) {
+        await candidateStore.updateCandidateStage(interviewCandidate.value.id, nextStage)
+      }
+    }
     interviewDialogVisible.value = false
 
     ElMessage.success('面试安排成功')
@@ -318,30 +334,6 @@ watch([keyword, positionFilter, stageFilter], () => {
 /* =========================
    招聘阶段显示
 ========================= */
-
-const getStageLabel = (stage: CandidateStage) => {
-  const labels: Record<CandidateStage, string> = {
-    screening: '筛选中',
-    first_interview: '初面',
-    second_interview: '复面',
-    offer: 'Offer',
-    rejected: '已淘汰'
-  }
-
-  return labels[stage]
-}
-
-const getStageTagType = (stage: CandidateStage) => {
-  const types = {
-    screening: 'info',
-    first_interview: 'warning',
-    second_interview: 'primary',
-    offer: 'success',
-    rejected: 'danger'
-  } as const
-
-  return types[stage]
-}
 
 /* =========================
    查看候选人详情
