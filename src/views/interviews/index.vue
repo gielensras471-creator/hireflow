@@ -31,67 +31,128 @@
 
     <!-- 表格 -->
     <div class="table-card">
-      <el-table :data="pagedInterviews" row-key="id" empty-text="暂无面试安排">
-        <el-table-column prop="candidateName" label="候选人" min-width="110" />
-
-        <el-table-column prop="position" label="应聘职位" min-width="170" />
-
-        <el-table-column prop="date" label="面试日期" width="120" />
-
-        <el-table-column prop="time" label="时间" width="90" />
-
-        <el-table-column prop="type" label="面试轮次" width="100" />
-
-        <el-table-column prop="interviewer" label="面试官" width="110" />
-
-        <el-table-column label="状态" width="100">
-          <template #default="{ row }">
-            <el-tag :type="getStatusType(row.status)">
-              {{ getStatusLabel(row.status) }}
-            </el-tag>
-          </template>
-        </el-table-column>
-
-        <el-table-column prop="note" label="备注" min-width="180" show-overflow-tooltip />
-
-        <el-table-column label="操作" width="270" fixed="right">
-          <template #default="{ row }">
-            <template v-if="row.status === 'scheduled'">
-              <el-button link type="primary" @click="handleEdit(row)"> 编辑 </el-button>
-
-              <el-button link type="success" @click="handleComplete(row)"> 完成 </el-button>
-
-              <el-button link type="warning" @click="handleCancel(row)"> 取消 </el-button>
-            </template>
-
-            <el-button link type="primary" @click="handleViewCandidate(row)"> 候选人 </el-button>
-
-            <el-button link type="danger" @click="handleDelete(row)"> 删除 </el-button>
-          </template>
-        </el-table-column>
-      </el-table>
-
-      <div class="pagination">
-        <el-pagination
-          v-model:current-page="currentPage"
-          v-model:page-size="pageSize"
-          layout="total, prev, pager, next"
-          :total="filteredInterviews.length"
+      <!-- 加载失败 -->
+      <div v-if="error" class="error-state">
+        <el-alert
+          title="面试数据加载失败"
+          description="请确认 Mock API 是否正常运行。"
+          type="error"
+          show-icon
+          :closable="false"
         />
+
+        <el-button type="primary" :loading="loading" @click="loadInterviews"> 重新加载 </el-button>
       </div>
+
+      <template v-else>
+        <el-table
+          v-loading="loading"
+          :data="pagedInterviews"
+          row-key="id"
+          empty-text="暂无符合条件的面试安排"
+        >
+          <el-table-column prop="candidateName" label="候选人" min-width="110" />
+
+          <el-table-column prop="position" label="应聘职位" min-width="170" />
+
+          <el-table-column prop="date" label="面试日期" width="120" />
+
+          <el-table-column prop="time" label="时间" width="90" />
+
+          <el-table-column prop="type" label="面试轮次" width="100" />
+
+          <el-table-column prop="interviewer" label="面试官" width="110" />
+
+          <el-table-column label="状态" width="100">
+            <template #default="{ row }">
+              <el-tag :type="getStatusType(row.status)">
+                {{ getStatusLabel(row.status) }}
+              </el-tag>
+            </template>
+          </el-table-column>
+
+          <el-table-column prop="note" label="备注" min-width="180" show-overflow-tooltip />
+
+          <el-table-column label="操作" width="270" fixed="right">
+            <template #default="{ row }">
+              <template v-if="row.status === 'scheduled'">
+                <el-button
+                  link
+                  type="primary"
+                  :disabled="operatingId === row.id"
+                  @click="handleEdit(row)"
+                >
+                  编辑
+                </el-button>
+
+                <el-button
+                  link
+                  type="success"
+                  :loading="operatingId === row.id && operatingType === 'complete'"
+                  :disabled="operatingId === row.id && operatingType !== 'complete'"
+                  @click="handleComplete(row)"
+                >
+                  完成
+                </el-button>
+
+                <el-button
+                  link
+                  type="warning"
+                  :loading="operatingId === row.id && operatingType === 'cancel'"
+                  :disabled="operatingId === row.id && operatingType !== 'cancel'"
+                  @click="handleCancel(row)"
+                >
+                  取消
+                </el-button>
+              </template>
+
+              <el-button
+                link
+                type="primary"
+                :disabled="operatingId === row.id"
+                @click="handleViewCandidate(row)"
+              >
+                候选人
+              </el-button>
+
+              <el-button
+                link
+                type="danger"
+                :loading="operatingId === row.id && operatingType === 'delete'"
+                :disabled="operatingId === row.id && operatingType !== 'delete'"
+                @click="handleDelete(row)"
+              >
+                删除
+              </el-button>
+            </template>
+          </el-table-column>
+        </el-table>
+
+        <div class="pagination">
+          <el-pagination
+            v-model:current-page="currentPage"
+            v-model:page-size="pageSize"
+            layout="total, prev, pager, next"
+            :total="filteredInterviews.length"
+          />
+        </div>
+      </template>
     </div>
+
     <InterviewDialog
       v-model="editDialogVisible"
       :interview="editingInterview"
+      :submitting="submitting"
       @submit="handleSubmitEdit"
     />
   </div>
 </template>
 
 <script setup lang="ts">
-import { computed, ref, watch } from 'vue'
+import { computed, onMounted, ref, watch } from 'vue'
 
 import { useRouter } from 'vue-router'
+
 import { storeToRefs } from 'pinia'
 
 import { ElMessage, ElMessageBox } from 'element-plus'
@@ -104,36 +165,73 @@ import InterviewDialog from '@/views/candidates/components/InterviewDialog.vue'
 
 import type { Interview, InterviewFormData, InterviewStatus } from '@/types/interview'
 
-const editDialogVisible = ref(false)
-
-const editingInterview = ref<Interview | null>(null)
-const handleEdit = (interview: Interview) => {
-  editingInterview.value = interview
-
-  editDialogVisible.value = true
-}
-const handleSubmitEdit = (data: InterviewFormData) => {
-  if (!editingInterview.value) {
-    return
-  }
-
-  const success = interviewStore.updateInterview(editingInterview.value.id, data)
-
-  if (!success) {
-    ElMessage.error('未找到面试记录')
-
-    return
-  }
-
-  ElMessage.success('面试安排修改成功')
-}
 const router = useRouter()
 
 const interviewStore = useInterviewStore()
 
 const candidateStore = useCandidateStore()
 
-const { interviews } = storeToRefs(interviewStore)
+const { interviews, loading, error } = storeToRefs(interviewStore)
+
+/* =========================
+   页面请求
+========================= */
+
+const submitting = ref(false)
+
+const operatingId = ref<number | null>(null)
+
+const operatingType = ref<'complete' | 'cancel' | 'delete' | null>(null)
+
+const loadInterviews = async () => {
+  try {
+    await interviewStore.fetchInterviews(true)
+  } catch (error) {
+    console.error('面试列表加载失败：', error)
+  }
+}
+
+onMounted(() => {
+  loadInterviews()
+})
+
+/* =========================
+   编辑
+========================= */
+
+const editDialogVisible = ref(false)
+
+const editingInterview = ref<Interview | null>(null)
+
+const handleEdit = (interview: Interview) => {
+  editingInterview.value = {
+    ...interview
+  }
+
+  editDialogVisible.value = true
+}
+
+const handleSubmitEdit = async (data: InterviewFormData) => {
+  if (!editingInterview.value || submitting.value) {
+    return
+  }
+
+  submitting.value = true
+
+  try {
+    await interviewStore.updateInterview(editingInterview.value.id, data)
+
+    editDialogVisible.value = false
+
+    ElMessage.success('面试安排修改成功')
+  } catch (error) {
+    console.error('面试安排修改失败：', error)
+
+    ElMessage.error('面试安排修改失败，请稍后重试')
+  } finally {
+    submitting.value = false
+  }
+}
 
 /* =========================
    搜索 / 筛选 / 分页
@@ -150,8 +248,10 @@ const currentPage = ref(1)
 const pageSize = ref(5)
 
 const filteredInterviews = computed(() => {
+  const normalizedKeyword = keyword.value.trim().toLowerCase()
+
   return interviews.value.filter((item) => {
-    const matchKeyword = item.candidateName.toLowerCase().includes(keyword.value.toLowerCase())
+    const matchKeyword = item.candidateName.toLowerCase().includes(normalizedKeyword)
 
     const matchStatus = !statusFilter.value || item.status === statusFilter.value
 
@@ -216,37 +316,57 @@ const handleComplete = async (interview: Interview) => {
       '完成面试',
       {
         confirmButtonText: '确定完成',
+
         cancelButtonText: '取消',
+
         type: 'success'
       }
     )
+  } catch {
+    return
+  }
 
-    interviewStore.updateInterviewStatus(interview.id, 'completed')
+  operatingId.value = interview.id
 
-    const candidate = candidateStore.getCandidateById(interview.candidateId)
+  operatingType.value = 'complete'
+
+  try {
+    await interviewStore.updateInterviewStatus(interview.id, 'completed')
 
     /*
-      简单招聘流程联动：
+     * 用户可能直接进入面试页，
+     * Candidate Store 此时可能还没有数据。
+     *
+     * 所以主动获取候选人详情。
+     */
+    const candidate = await candidateStore.fetchCandidateById(interview.candidateId)
 
-      初面完成
-      → 进入复面
+    /*
+     * 初面完成：
+     * first_interview
+     * → second_interview
+     */
+    if (interview.type === '初面' && candidate.stage === 'first_interview') {
+      await candidateStore.updateCandidateStage(candidate.id, 'second_interview')
+    }
 
-      复面完成
-      → 进入 Offer
-    */
-    if (candidate) {
-      if (interview.type === '初面' && candidate.stage === 'first_interview') {
-        candidate.stage = 'second_interview'
-      }
-
-      if (interview.type === '复面' && candidate.stage === 'second_interview') {
-        candidate.stage = 'offer'
-      }
+    /*
+     * 复面完成：
+     * second_interview
+     * → offer
+     */
+    if (interview.type === '复面' && candidate.stage === 'second_interview') {
+      await candidateStore.updateCandidateStage(candidate.id, 'offer')
     }
 
     ElMessage.success('面试已完成，候选人流程已同步更新')
-  } catch {
-    // 用户取消
+  } catch (error) {
+    console.error('完成面试失败：', error)
+
+    ElMessage.error('操作失败，请稍后重试')
+  } finally {
+    operatingId.value = null
+    operatingType.value = null
   }
 }
 
@@ -261,21 +381,36 @@ const handleCancel = async (interview: Interview) => {
       '取消面试',
       {
         confirmButtonText: '确定取消',
+
         cancelButtonText: '返回',
+
         type: 'warning'
       }
     )
+  } catch {
+    return
+  }
 
-    interviewStore.updateInterviewStatus(interview.id, 'cancelled')
+  operatingId.value = interview.id
+
+  operatingType.value = 'cancel'
+
+  try {
+    await interviewStore.updateInterviewStatus(interview.id, 'cancelled')
 
     ElMessage.success('面试已取消')
-  } catch {
-    // 用户取消
+  } catch (error) {
+    console.error('取消面试失败：', error)
+
+    ElMessage.error('取消面试失败，请稍后重试')
+  } finally {
+    operatingId.value = null
+    operatingType.value = null
   }
 }
 
 /* =========================
-   删除面试记录
+   删除面试
 ========================= */
 
 const handleDelete = async (interview: Interview) => {
@@ -285,20 +420,35 @@ const handleDelete = async (interview: Interview) => {
       '删除面试记录',
       {
         confirmButtonText: '删除',
+
         cancelButtonText: '取消',
+
         type: 'warning'
       }
     )
+  } catch {
+    return
+  }
 
-    interviewStore.removeInterview(interview.id)
+  operatingId.value = interview.id
+
+  operatingType.value = 'delete'
+
+  try {
+    await interviewStore.removeInterview(interview.id)
 
     if (pagedInterviews.value.length === 0 && currentPage.value > 1) {
       currentPage.value--
     }
 
     ElMessage.success('面试记录已删除')
-  } catch {
-    // 用户取消
+  } catch (error) {
+    console.error('删除面试记录失败：', error)
+
+    ElMessage.error('删除面试记录失败，请稍后重试')
+  } finally {
+    operatingId.value = null
+    operatingType.value = null
   }
 }
 </script>
@@ -350,6 +500,16 @@ const handleDelete = async (interview: Interview) => {
 
 .date-picker {
   width: 180px;
+}
+
+.error-state {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.error-state .el-button {
+  align-self: flex-start;
 }
 
 .pagination {

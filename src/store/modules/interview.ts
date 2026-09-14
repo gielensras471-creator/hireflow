@@ -1,72 +1,132 @@
 import { defineStore } from 'pinia'
 import { ref } from 'vue'
 
+import {
+  createInterviewApi,
+  deleteInterviewApi,
+  getInterviewListApi,
+  updateInterviewApi,
+  updateInterviewStatusApi
+} from '@/api/modules/interview'
+
 import type { Interview, InterviewFormData, InterviewStatus } from '@/types/interview'
 
 export const useInterviewStore = defineStore('interview', () => {
-  const interviews = ref<Interview[]>([
-    {
-      id: 1,
-      candidateId: 1,
-      candidateName: '陈晓',
-      position: '前端开发工程师',
-      date: '2026-09-14',
-      time: '10:00',
-      interviewer: '张经理',
-      type: '初面',
-      note: '重点了解 Vue3 和项目经历',
-      status: 'scheduled'
-    }
-  ])
+  const interviews = ref<Interview[]>([])
 
-  const addInterview = (data: InterviewFormData) => {
-    const hasScheduledInterview = interviews.value.some(
-      (item) => item.candidateId === data.candidateId && item.status === 'scheduled'
+  const loading = ref(false)
+
+  const error = ref(false)
+
+  const loaded = ref(false)
+
+  const sortInterviews = (list: Interview[]) => {
+    return [...list].sort((a, b) => {
+      const dateResult = b.date.localeCompare(a.date)
+
+      if (dateResult !== 0) {
+        return dateResult
+      }
+
+      return b.time.localeCompare(a.time)
+    })
+  }
+
+  const fetchInterviews = async (force = false) => {
+    if (loaded.value && !force) {
+      return interviews.value
+    }
+
+    loading.value = true
+    error.value = false
+
+    try {
+      const data = await getInterviewListApi()
+
+      interviews.value = sortInterviews(data)
+
+      loaded.value = true
+
+      return interviews.value
+    } catch (err) {
+      error.value = true
+
+      throw err
+    } finally {
+      loading.value = false
+    }
+  }
+
+  const hasScheduledInterview = (candidateId: number) => {
+    return interviews.value.some(
+      (item) => item.candidateId === candidateId && item.status === 'scheduled'
     )
+  }
 
-    if (hasScheduledInterview) {
-      return false
+  const addInterview = async (data: InterviewFormData) => {
+    /*
+     * Candidate 页面可能在用户尚未进入
+     * Interview 页面时创建面试。
+     *
+     * 所以这里先保证 Store 已获取后端数据，
+     * 否则无法可靠判断重复待面试记录。
+     */
+    if (!loaded.value) {
+      await fetchInterviews()
     }
 
-    interviews.value.unshift({
-      id: Date.now(),
+    if (hasScheduledInterview(data.candidateId)) {
+      return null
+    }
+
+    const created = await createInterviewApi({
       ...data,
       status: 'scheduled'
     })
 
-    return true
+    interviews.value.unshift(created)
+
+    return created
   }
 
-  const updateInterviewStatus = (id: number, status: InterviewStatus) => {
-    const target = interviews.value.find((item) => item.id === id)
+  const updateInterview = async (id: number, data: InterviewFormData) => {
+    const updated = await updateInterviewApi(id, data)
 
-    if (target) {
-      target.status = status
+    const index = interviews.value.findIndex((item) => item.id === id)
+
+    if (index !== -1) {
+      interviews.value[index] = updated
     }
+
+    return updated
   }
-  const updateInterview = (id: number, data: InterviewFormData) => {
-    const target = interviews.value.find((item) => item.id === id)
 
-    if (!target) {
-      return false
+  const updateInterviewStatus = async (id: number, status: InterviewStatus) => {
+    const updated = await updateInterviewStatusApi(id, status)
+
+    const index = interviews.value.findIndex((item) => item.id === id)
+
+    if (index !== -1) {
+      interviews.value[index] = updated
     }
 
-    Object.assign(target, data)
-
-    return {
-      interviews,
-      addInterview,
-      updateInterview,
-      updateInterviewStatus,
-      removeInterview
-    }
+    return updated
   }
-  const removeInterview = (id: number) => {
+
+  const removeInterview = async (id: number) => {
+    await deleteInterviewApi(id)
+
     interviews.value = interviews.value.filter((item) => item.id !== id)
   }
 
   return {
     interviews,
+    loading,
+    error,
+    loaded,
+
+    fetchInterviews,
+    hasScheduledInterview,
     addInterview,
     updateInterview,
     updateInterviewStatus,

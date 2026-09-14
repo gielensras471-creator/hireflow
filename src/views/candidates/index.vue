@@ -147,6 +147,7 @@
     <InterviewDialog
       v-model="interviewDialogVisible"
       :candidate="interviewCandidate"
+      :submitting="submitting"
       @submit="handleSubmitInterview"
     />
   </div>
@@ -239,28 +240,34 @@ const handleInterview = (candidate: Candidate) => {
 }
 
 const handleSubmitInterview = async (data: InterviewFormData) => {
-  const success = interviewStore.addInterview(data)
-
-  if (!success) {
-    ElMessage.warning('该候选人已经存在待面试安排')
-
+  if (submitting.value) {
     return
   }
 
+  submitting.value = true
+
   try {
-    /*
-     * 候选人仍处于筛选阶段时，
-     * 安排第一次面试后自动进入初面。
-     */
+    const created = await interviewStore.addInterview(data)
+
+    if (!created) {
+      ElMessage.warning('该候选人已经存在待面试安排')
+
+      return
+    }
+
     if (interviewCandidate.value && interviewCandidate.value.stage === 'screening') {
       await candidateStore.updateCandidateStage(interviewCandidate.value.id, 'first_interview')
     }
 
+    interviewDialogVisible.value = false
+
     ElMessage.success('面试安排成功')
   } catch (error) {
-    console.error('候选人阶段同步失败：', error)
+    console.error('安排面试失败：', error)
 
-    ElMessage.warning('面试已安排，但候选人阶段同步失败')
+    ElMessage.error('面试安排失败，请稍后重试')
+  } finally {
+    submitting.value = false
   }
 }
 

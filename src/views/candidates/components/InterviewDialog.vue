@@ -1,5 +1,12 @@
 <template>
-  <el-dialog :model-value="modelValue" :title="dialogTitle" width="560px" @close="handleClose">
+  <el-dialog
+    :model-value="modelValue"
+    :title="dialogTitle"
+    width="560px"
+    :close-on-click-modal="!props.submitting"
+    :close-on-press-escape="!props.submitting"
+    @close="handleClose"
+  >
     <el-form ref="formRef" :model="formData" :rules="rules" label-width="90px">
       <el-form-item label="候选人">
         <el-input :model-value="candidateName" disabled />
@@ -50,9 +57,9 @@
     </el-form>
 
     <template #footer>
-      <el-button @click="handleClose"> 取消 </el-button>
+      <el-button :disabled="props.submitting" @click="handleClose"> 取消 </el-button>
 
-      <el-button type="primary" @click="handleSubmit">
+      <el-button type="primary" :loading="props.submitting" @click="handleSubmit">
         {{ interview ? '保存修改' : '确认安排' }}
       </el-button>
     </template>
@@ -72,10 +79,12 @@ const props = defineProps<{
   modelValue: boolean
   candidate?: Candidate | null
   interview?: Interview | null
+  submitting?: boolean
 }>()
 
 const emit = defineEmits<{
   'update:modelValue': [value: boolean]
+
   submit: [data: InterviewFormData]
 }>()
 
@@ -156,14 +165,20 @@ const resetForm = () => {
 watch(
   () => props.modelValue,
   async (visible) => {
-    if (!visible) return
+    if (!visible) {
+      return
+    }
 
     if (props.interview) {
       Object.assign(formData, {
         date: props.interview.date,
+
         time: props.interview.time,
+
         interviewer: props.interview.interviewer,
+
         type: props.interview.type,
+
         note: props.interview.note
       })
     } else {
@@ -171,36 +186,52 @@ watch(
     }
 
     await nextTick()
+
     formRef.value?.clearValidate()
   }
 )
 
 const handleClose = () => {
+  if (props.submitting) {
+    return
+  }
+
   emit('update:modelValue', false)
 }
 
 const handleSubmit = async () => {
-  if (!formRef.value) return
+  if (!formRef.value || props.submitting) {
+    return
+  }
 
   const candidateId = props.interview?.candidateId ?? props.candidate?.id
 
-  if (!candidateId) return
+  if (!candidateId) {
+    return
+  }
 
-  await formRef.value.validate((valid) => {
-    if (!valid) return
+  const valid = await formRef.value.validate().catch(() => false)
 
-    emit('submit', {
-      candidateId,
-      candidateName: candidateName.value,
-      position: positionName.value,
-      date: formData.date,
-      time: formData.time,
-      interviewer: formData.interviewer,
-      type: formData.type,
-      note: formData.note
-    })
+  if (!valid) {
+    return
+  }
 
-    handleClose()
+  emit('submit', {
+    candidateId,
+
+    candidateName: candidateName.value,
+
+    position: positionName.value,
+
+    date: formData.date,
+
+    time: formData.time,
+
+    interviewer: formData.interviewer,
+
+    type: formData.type,
+
+    note: formData.note
   })
 }
 </script>

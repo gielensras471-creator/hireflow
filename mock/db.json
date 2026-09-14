@@ -70,7 +70,7 @@
       "school": "深圳大学",
       "phone": "13800000001",
       "email": "chenxiao@example.com",
-      "stage": "first_interview",
+      "stage": "offer",
       "owner": "张经理",
       "skills": "Vue3、TypeScript、JavaScript",
       "experience": "参与企业后台管理系统前端开发。",
@@ -166,6 +166,56 @@
       "experience": "有社区运营实习经历。",
       "note": "已安排初面。",
       "appliedDate": "2026-09-03"
+    }
+  ],
+  "interviews": [
+    {
+      "id": 1,
+      "candidateId": 1,
+      "candidateName": "陈晓",
+      "position": "前端开发工程师",
+      "date": "2026-09-14",
+      "time": "10:00",
+      "interviewer": "张经理",
+      "type": "复面",
+      "note": "重点了解 Vue3 和项目经历",
+      "status": "cancelled"
+    },
+    {
+      "candidateId": 1,
+      "candidateName": "陈晓",
+      "position": "前端开发工程师",
+      "date": "2026-09-23",
+      "time": "10:30",
+      "interviewer": "张经理",
+      "type": "初面",
+      "note": "",
+      "status": "completed",
+      "id": 2
+    },
+    {
+      "candidateId": 1,
+      "candidateName": "陈晓",
+      "position": "前端开发工程师",
+      "date": "2026-09-16",
+      "time": "11:30",
+      "interviewer": "张经理",
+      "type": "初面",
+      "note": "",
+      "status": "completed",
+      "id": 3
+    },
+    {
+      "candidateId": 1,
+      "candidateName": "陈晓",
+      "position": "前端开发工程师",
+      "date": "2026-09-15",
+      "time": "12:30",
+      "interviewer": "张经理",
+      "type": "复面",
+      "note": "",
+      "status": "completed",
+      "id": 4
     }
   ]
 }
