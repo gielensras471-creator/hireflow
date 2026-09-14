@@ -5,10 +5,22 @@
 </template>
 
 <script setup lang="ts">
-import ECharts from '@/components/ECharts/index.vue'
-import { ECOption } from '@/components/ECharts/config'
+import { computed } from 'vue'
 
-const option: ECOption = {
+import ECharts from '@/components/ECharts/index.vue'
+
+import type { ECOption } from '@/components/ECharts/config'
+
+interface StageChartItem {
+  name: string
+  value: number
+}
+
+const props = defineProps<{
+  data: StageChartItem[]
+}>()
+
+const option = computed<ECOption>(() => ({
   tooltip: {
     trigger: 'item',
     formatter: '{b}: {c} 人 ({d}%)'
@@ -23,8 +35,11 @@ const option: ECOption = {
     {
       name: '招聘阶段',
       type: 'pie',
+
       radius: ['48%', '70%'],
+
       center: ['50%', '43%'],
+
       avoidLabelOverlap: true,
 
       itemStyle: {
@@ -36,31 +51,10 @@ const option: ECOption = {
         formatter: '{b}\n{c} 人'
       },
 
-      data: [
-        {
-          value: 42,
-          name: '筛选'
-        },
-        {
-          value: 31,
-          name: '初面'
-        },
-        {
-          value: 18,
-          name: '复面'
-        },
-        {
-          value: 11,
-          name: 'Offer'
-        },
-        {
-          value: 24,
-          name: '淘汰'
-        }
-      ]
+      data: props.data
     }
   ]
-}
+}))
 </script>
 
 <style scoped lang="scss">

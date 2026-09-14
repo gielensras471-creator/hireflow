@@ -166,6 +166,21 @@
       "experience": "有社区运营实习经历。",
       "note": "已安排初面。",
       "appliedDate": "2026-09-03"
+    },
+    {
+      "name": "李华",
+      "position": "测试工程师",
+      "education": "大专",
+      "school": "深圳技术大学",
+      "phone": "13423234567",
+      "email": "gi@gmail.com",
+      "stage": "second_interview",
+      "owner": "李经历",
+      "skills": "",
+      "experience": "",
+      "note": "",
+      "appliedDate": "2026-09-14",
+      "id": 8
     }
   ],
   "interviews": [
@@ -216,6 +231,18 @@
       "note": "",
       "status": "completed",
       "id": 4
+    },
+    {
+      "candidateId": 8,
+      "candidateName": "李华",
+      "position": "测试工程师",
+      "date": "2026-09-14",
+      "time": "11:30",
+      "interviewer": "李经理",
+      "type": "初面",
+      "note": "",
+      "status": "completed",
+      "id": 5
     }
   ]
 }

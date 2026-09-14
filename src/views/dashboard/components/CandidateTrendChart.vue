@@ -5,31 +5,18 @@
 </template>
 
 <script setup lang="ts">
+import { computed } from 'vue'
+
 import ECharts from '@/components/ECharts/index.vue'
-import { ECOption } from '@/components/ECharts/config'
 
-const data = {
-  columns: getDates(),
-  values: [12, 18, 15, 24, 20, 31, 26]
-}
+import type { ECOption } from '@/components/ECharts/config'
 
-function getDates() {
-  const dates: string[] = []
+const props = defineProps<{
+  labels: string[]
+  values: number[]
+}>()
 
-  for (let i = 6; i >= 0; i--) {
-    const date = new Date()
-    date.setDate(date.getDate() - i)
-
-    const month = String(date.getMonth() + 1).padStart(2, '0')
-    const day = String(date.getDate()).padStart(2, '0')
-
-    dates.push(`${month}-${day}`)
-  }
-
-  return dates
-}
-
-const option: ECOption = {
+const option = computed<ECOption>(() => ({
   tooltip: {
     trigger: 'axis'
   },
@@ -45,7 +32,8 @@ const option: ECOption = {
   xAxis: {
     type: 'category',
     boundaryGap: false,
-    data: data.columns,
+    data: props.labels,
+
     axisTick: {
       show: false
     }
@@ -54,12 +42,15 @@ const option: ECOption = {
   yAxis: {
     type: 'value',
     minInterval: 1,
+
     axisLine: {
       show: false
     },
+
     axisTick: {
       show: false
     },
+
     splitLine: {
       show: true
     }
@@ -72,14 +63,16 @@ const option: ECOption = {
       smooth: true,
       symbol: 'circle',
       symbolSize: 7,
-      data: data.values,
+      data: props.values,
+
       areaStyle: {},
+
       lineStyle: {
         width: 3
       }
     }
   ]
-}
+}))
 </script>
 
 <style scoped lang="scss">
