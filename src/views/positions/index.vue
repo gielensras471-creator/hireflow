@@ -6,60 +6,118 @@
         <p>管理招聘职位及招聘进度</p>
       </div>
 
-      <el-button type="primary" @click="openCreateDialog"> + 新建职位 </el-button>
+      <el-button type="primary" :disabled="loading" @click="openCreateDialog">
+        + 新建职位
+      </el-button>
     </div>
 
     <div class="filter-card">
       <el-input v-model="keyword" placeholder="搜索职位名称" clearable class="search-input" />
 
+      <el-select
+        v-model="departmentFilter"
+        placeholder="所属部门"
+        clearable
+        class="department-select"
+      >
+        <el-option
+          v-for="department in departmentOptions"
+          :key="department"
+          :label="department"
+          :value="department"
+        />
+      </el-select>
+
       <el-select v-model="statusFilter" placeholder="职位状态" clearable class="status-select">
         <el-option label="招聘中" value="open" />
+
         <el-option label="已关闭" value="closed" />
       </el-select>
     </div>
 
     <div class="table-card">
-      <el-table :data="pagedPositions">
-        <el-table-column prop="title" label="职位名称" min-width="180" />
-
-        <el-table-column prop="department" label="部门" width="120" />
-
-        <el-table-column prop="location" label="工作地点" width="120" />
-
-        <el-table-column label="状态" width="120">
-          <template #default="{ row }">
-            <el-tag :type="row.status === 'open' ? 'success' : 'info'">
-              {{ row.status === 'open' ? '招聘中' : '已关闭' }}
-            </el-tag>
-          </template>
-        </el-table-column>
-
-        <el-table-column prop="candidateCount" label="候选人数" width="110" />
-
-        <el-table-column prop="publishDate" label="发布日期" width="130" />
-
-        <el-table-column label="操作" width="180" fixed="right">
-          <template #default="{ row }">
-            <el-button link type="primary" @click="openEditDialog(row)"> 编辑 </el-button>
-
-            <el-button link type="warning" @click="handleToggleStatus(row)">
-              {{ row.status === 'open' ? '关闭' : '重新开启' }}
-            </el-button>
-
-            <el-button link type="danger" @click="handleDeletePosition(row)"> 删除 </el-button>
-          </template>
-        </el-table-column>
-      </el-table>
-
-      <div class="pagination">
-        <el-pagination
-          v-model:current-page="currentPage"
-          v-model:page-size="pageSize"
-          layout="total, prev, pager, next"
-          :total="filteredPositions.length"
+      <div v-if="loadError" class="error-state">
+        <el-alert
+          title="职位数据加载失败"
+          description="请确认 Mock API 是否已经启动，然后重新加载。"
+          type="error"
+          show-icon
+          :closable="false"
         />
+
+        <el-button type="primary" :loading="loading" @click="loadPositions"> 重新加载 </el-button>
       </div>
+
+      <template v-else>
+        <el-table
+          v-loading="loading"
+          :data="pagedPositions"
+          row-key="id"
+          empty-text="暂无符合条件的职位"
+        >
+          <el-table-column prop="title" label="职位名称" min-width="180" />
+
+          <el-table-column prop="department" label="部门" width="120" />
+
+          <el-table-column prop="location" label="工作地点" width="120" />
+
+          <el-table-column label="状态" width="120">
+            <template #default="{ row }">
+              <el-tag :type="row.status === 'open' ? 'success' : 'info'">
+                {{ row.status === 'open' ? '招聘中' : '已关闭' }}
+              </el-tag>
+            </template>
+          </el-table-column>
+
+          <el-table-column prop="candidateCount" label="候选人数" width="110" />
+
+          <el-table-column prop="publishDate" label="发布日期" width="130" />
+
+          <el-table-column label="操作" width="200" fixed="right">
+            <template #default="{ row }">
+              <el-button
+                link
+                type="primary"
+                :disabled="togglingId === row.id || deletingId === row.id"
+                @click="openEditDialog(row)"
+              >
+                编辑
+              </el-button>
+
+              <el-button
+                link
+                type="warning"
+                :loading="togglingId === row.id"
+                :disabled="deletingId === row.id"
+                @click="handleToggleStatus(row)"
+              >
+                {{ row.status === 'open' ? '关闭' : '重新开启' }}
+              </el-button>
+
+              <el-button
+                link
+                type="danger"
+                :loading="deletingId === row.id"
+                :disabled="togglingId === row.id"
+                @click="handleDeletePosition(row)"
+              >
+                删除
+              </el-button>
+            </template>
+          </el-table-column>
+        </el-table>
+
+        <div class="pagination">
+          <el-pagination
+            v-model:current-page="currentPage"
+            v-model:page-size="pageSize"
+            layout="total, prev, pager, next"
+            :total="filteredPositions.length"
+          />
+        </div>
+      </template>
     </div>
+
     <PositionDialog
       v-model="dialogVisible"
       :position="editingPosition"
@@ -69,109 +127,72 @@
 </template>
 
 <script setup lang="ts">
-import { computed, ref, watch } from 'vue'
+import { computed, onMounted, ref, watch } from 'vue'
+
 import { ElMessage, ElMessageBox } from 'element-plus'
+
+import {
+  createPositionApi,
+  deletePositionApi,
+  getPositionListApi,
+  updatePositionApi
+} from '@/api/modules/position'
 
 import type { Position, PositionFormData, PositionStatus } from '@/types/position'
 
 import PositionDialog from './components/PositionDialog.vue'
 
+const positions = ref<Position[]>([])
+
+const loading = ref(false)
+
+const loadError = ref(false)
+
+const submitting = ref(false)
+
+const togglingId = ref<number | null>(null)
+
+const deletingId = ref<number | null>(null)
+
 const dialogVisible = ref(false)
+
 const editingPosition = ref<Position | null>(null)
 
-const openCreateDialog = () => {
-  editingPosition.value = null
-  dialogVisible.value = true
-}
-
-const openEditDialog = (position: Position) => {
-  editingPosition.value = position
-  dialogVisible.value = true
-}
 const keyword = ref('')
+
+const departmentFilter = ref('')
+
 const statusFilter = ref<PositionStatus | ''>('')
 
 const currentPage = ref(1)
+
 const pageSize = ref(5)
-watch([keyword, statusFilter], () => {
+
+const departmentOptions = computed(() => {
+  return Array.from(new Set(positions.value.map((item) => item.department)))
+})
+
+watch([keyword, departmentFilter, statusFilter], () => {
   currentPage.value = 1
 })
 
-const positions = ref<Position[]>([
-  {
-    id: 1,
-    title: '前端开发工程师',
-    department: '技术部',
-    location: '深圳',
-    status: 'open',
-    candidateCount: 18,
-    publishDate: '2026-09-10',
-    description: '负责公司 Web 前端业务开发'
-  },
-  {
-    id: 2,
-    title: 'Java 后端工程师',
-    department: '技术部',
-    location: '深圳',
-    status: 'open',
-    candidateCount: 25,
-    publishDate: '2026-09-08',
-    description: '负责服务端业务系统开发'
-  },
-  {
-    id: 3,
-    title: 'UI 设计师',
-    department: '设计部',
-    location: '深圳',
-    status: 'closed',
-    candidateCount: 9,
-    publishDate: '2026-08-26',
-    description: '负责产品界面和视觉设计'
-  },
-  {
-    id: 4,
-    title: '产品助理',
-    department: '产品部',
-    location: '深圳',
-    status: 'open',
-    candidateCount: 14,
-    publishDate: '2026-09-05',
-    description: '协助产品需求分析和项目推进'
-  },
-  {
-    id: 5,
-    title: '测试工程师',
-    department: '技术部',
-    location: '广州',
-    status: 'open',
-    candidateCount: 11,
-    publishDate: '2026-09-03',
-    description: '负责 Web 产品测试和质量保障'
-  },
-  {
-    id: 6,
-    title: '运营专员',
-    department: '运营部',
-    location: '深圳',
-    status: 'closed',
-    candidateCount: 7,
-    publishDate: '2026-08-20',
-    description: '负责平台运营和活动执行'
-  }
-])
-
 const filteredPositions = computed(() => {
+  const normalizedKeyword = keyword.value.trim().toLowerCase()
+
   return positions.value.filter((item) => {
-    const matchKeyword = item.title.toLowerCase().includes(keyword.value.toLowerCase())
+    const matchKeyword = item.title.toLowerCase().includes(normalizedKeyword)
+
+    const matchDepartment = !departmentFilter.value || item.department === departmentFilter.value
 
     const matchStatus = !statusFilter.value || item.status === statusFilter.value
 
-    return matchKeyword && matchStatus
+    return matchKeyword && matchDepartment && matchStatus
   })
 })
 
 const pagedPositions = computed(() => {
   const start = (currentPage.value - 1) * pageSize.value
+
   const end = start + pageSize.value
 
   return filteredPositions.value.slice(start, end)
@@ -181,38 +202,108 @@ const getCurrentDate = () => {
   const date = new Date()
 
   const year = date.getFullYear()
+
   const month = String(date.getMonth() + 1).padStart(2, '0')
+
   const day = String(date.getDate()).padStart(2, '0')
 
   return `${year}-${month}-${day}`
 }
 
-const handleSubmitPosition = (data: PositionFormData) => {
-  if (editingPosition.value) {
-    const target = positions.value.find((item) => item.id === editingPosition.value?.id)
+const sortPositions = (list: Position[]) => {
+  return [...list].sort((a, b) => {
+    const dateResult = b.publishDate.localeCompare(a.publishDate)
 
-    if (target) {
-      Object.assign(target, data)
+    if (dateResult !== 0) {
+      return dateResult
     }
 
-    ElMessage.success('职位修改成功')
+    return b.id - a.id
+  })
+}
+
+const loadPositions = async () => {
+  loading.value = true
+  loadError.value = false
+
+  try {
+    const data = await getPositionListApi()
+
+    positions.value = sortPositions(data)
+  } catch (error) {
+    console.error('职位列表加载失败：', error)
+
+    loadError.value = true
+  } finally {
+    loading.value = false
+  }
+}
+
+const openCreateDialog = () => {
+  editingPosition.value = null
+  dialogVisible.value = true
+}
+
+const openEditDialog = (position: Position) => {
+  editingPosition.value = {
+    ...position
+  }
+
+  dialogVisible.value = true
+}
+
+const handleSubmitPosition = async (data: PositionFormData) => {
+  if (submitting.value) {
     return
   }
 
-  const newPosition: Position = {
-    id: Date.now(),
-    ...data,
-    candidateCount: 0,
-    publishDate: getCurrentDate()
+  submitting.value = true
+
+  try {
+    if (editingPosition.value) {
+      const updated = await updatePositionApi(editingPosition.value.id, data)
+
+      const index = positions.value.findIndex((item) => item.id === updated.id)
+
+      if (index !== -1) {
+        positions.value[index] = updated
+      }
+
+      editingPosition.value = updated
+
+      dialogVisible.value = false
+
+      ElMessage.success('职位修改成功')
+
+      return
+    }
+
+    const created = await createPositionApi({
+      ...data,
+      candidateCount: 0,
+      publishDate: getCurrentDate()
+    })
+
+    positions.value.unshift(created)
+
+    currentPage.value = 1
+
+    dialogVisible.value = false
+
+    ElMessage.success('职位创建成功')
+  } catch (error) {
+    console.error('职位保存失败：', error)
+
+    ElMessage.error(editingPosition.value ? '职位修改失败，请稍后重试' : '职位创建失败，请稍后重试')
+  } finally {
+    submitting.value = false
   }
-
-  positions.value.unshift(newPosition)
-  currentPage.value = 1
-
-  ElMessage.success('职位创建成功')
 }
+
 const handleToggleStatus = async (position: Position) => {
   const isOpen = position.status === 'open'
+
+  const nextStatus: PositionStatus = isOpen ? 'closed' : 'open'
 
   const actionText = isOpen ? '关闭' : '重新开启'
 
@@ -226,14 +317,29 @@ const handleToggleStatus = async (position: Position) => {
         type: 'warning'
       }
     )
-
-    position.status = isOpen ? 'closed' : 'open'
-
-    ElMessage.success(`职位已${actionText}`)
   } catch {
-    // 用户点击取消，不执行任何操作
+    return
+  }
+
+  togglingId.value = position.id
+
+  try {
+    const updated = await updatePositionApi(position.id, {
+      status: nextStatus
+    })
+
+    Object.assign(position, updated)
+
+    ElMessage.success(isOpen ? '职位已关闭' : '职位已重新开启')
+  } catch (error) {
+    console.error('职位状态更新失败：', error)
+
+    ElMessage.error('职位状态更新失败，请稍后重试')
+  } finally {
+    togglingId.value = null
   }
 }
+
 const handleDeletePosition = async (position: Position) => {
   try {
     await ElMessageBox.confirm(`删除后无法恢复，确定删除职位“${position.title}”吗？`, '删除职位', {
@@ -241,6 +347,14 @@ const handleDeletePosition = async (position: Position) => {
       cancelButtonText: '取消',
       type: 'warning'
     })
+  } catch {
+    return
+  }
+
+  deletingId.value = position.id
+
+  try {
+    await deletePositionApi(position.id)
 
     positions.value = positions.value.filter((item) => item.id !== position.id)
 
@@ -249,10 +363,18 @@ const handleDeletePosition = async (position: Position) => {
     }
 
     ElMessage.success('职位删除成功')
-  } catch {
-    // 用户点击取消
+  } catch (error) {
+    console.error('职位删除失败：', error)
+
+    ElMessage.error('职位删除失败，请稍后重试')
+  } finally {
+    deletingId.value = null
   }
 }
+
+onMounted(() => {
+  loadPositions()
+})
 </script>
 
 <style scoped lang="scss">
@@ -296,8 +418,19 @@ const handleDeletePosition = async (position: Position) => {
   width: 280px;
 }
 
+.department-select,
 .status-select {
   width: 160px;
+}
+
+.error-state {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.error-state .el-button {
+  align-self: flex-start;
 }
 
 .pagination {
@@ -312,6 +445,7 @@ const handleDeletePosition = async (position: Position) => {
   }
 
   .search-input,
+  .department-select,
   .status-select {
     width: 100%;
   }

@@ -1,0 +1,64 @@
+{
+  "positions": [
+    {
+      "id": 1,
+      "title": "前端开发工程师",
+      "department": "技术部",
+      "location": "深圳",
+      "status": "open",
+      "candidateCount": 18,
+      "publishDate": "2026-09-10",
+      "description": "负责公司 Web 前端业务开发"
+    },
+    {
+      "id": 2,
+      "title": "Java 后端工程师",
+      "department": "技术部",
+      "location": "深圳",
+      "status": "open",
+      "candidateCount": 25,
+      "publishDate": "2026-09-08",
+      "description": "负责服务端业务系统开发"
+    },
+    {
+      "id": 3,
+      "title": "UI 设计师",
+      "department": "设计部",
+      "location": "深圳",
+      "status": "closed",
+      "candidateCount": 9,
+      "publishDate": "2026-08-26",
+      "description": "负责产品界面和视觉设计"
+    },
+    {
+      "id": 4,
+      "title": "产品助理",
+      "department": "产品部",
+      "location": "深圳",
+      "status": "open",
+      "candidateCount": 14,
+      "publishDate": "2026-09-05",
+      "description": "协助产品需求分析和项目推进"
+    },
+    {
+      "id": 5,
+      "title": "测试工程师",
+      "department": "技术部",
+      "location": "广州",
+      "status": "open",
+      "candidateCount": 11,
+      "publishDate": "2026-09-03",
+      "description": "负责 Web 产品测试和质量保障"
+    },
+    {
+      "id": 6,
+      "title": "运营专员",
+      "department": "运营部",
+      "location": "深圳",
+      "status": "closed",
+      "candidateCount": 7,
+      "publishDate": "2026-08-20",
+      "description": "负责平台运营和活动执行"
+    }
+  ]
+}
