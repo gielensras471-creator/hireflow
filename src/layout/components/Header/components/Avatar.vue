@@ -1,22 +1,39 @@
 <template>
   <el-dropdown trigger="click">
-    <span class="avatar">
-      <img
-        :src="
-          avatar ? avatar : 'https://cube.elemecdn.com/3/7c/3ea6beec64369c2642b92c6726f1epng.png'
-        "
-      />
-    </span>
+    <div class="user-trigger">
+      <div class="avatar">
+        H
+      </div>
+
+      <span class="username">
+        {{ username }}
+      </span>
+    </div>
+
     <template #dropdown>
       <el-dropdown-menu>
-        <el-dropdown-item>
-          <span><i class="iconfont icon-user"></i>个人信息</span>
+        <el-dropdown-item @click="goProfile">
+          <span>
+            <i class="iconfont icon-user"></i>
+            个人信息
+          </span>
         </el-dropdown-item>
-        <el-dropdown-item>
-          <span><i class="iconfont icon-xiugai"></i>修改密码</span>
+
+        <el-dropdown-item @click="goChangePassword">
+          <span>
+            <i class="iconfont icon-xiugai"></i>
+            修改密码
+          </span>
         </el-dropdown-item>
-        <el-dropdown-item divided @click="logout">
-          <span><i class="iconfont icon-tuichu"></i>退出登录</span>
+
+        <el-dropdown-item
+          divided
+          @click="logout"
+        >
+          <span>
+            <i class="iconfont icon-tuichu"></i>
+            退出登录
+          </span>
         </el-dropdown-item>
       </el-dropdown-menu>
     </template>
@@ -24,39 +41,101 @@
 </template>
 
 <script setup lang="ts">
-import { LOGIN_URL } from '@/config'
-import router from '@/router'
-import { useUserStore } from '@/store/modules/user'
-import { ElMessageBox, ElMessage } from 'element-plus'
 import { computed } from 'vue'
+import { useRouter } from 'vue-router'
+import {
+  ElMessage,
+  ElMessageBox
+} from 'element-plus'
 
-const userStore = useUserStore()
-const avatar = computed(() => userStore.userInfo.avatar)
+import { LOGIN_URL } from '@/config'
 
-const logout = () => {
-  ElMessageBox.confirm('您是否确认退出登录?', '温馨提醒', {
-    confirmButtonText: '确认',
-    cancelButtonText: '取消',
-    type: 'warning'
-  }).then(() => {
-    userStore.setTokenWithExpires('', 0)
-    router.replace(LOGIN_URL)
-    ElMessage.success('退出登录成功！')
+const router = useRouter()
+
+const username = computed(() => {
+  return (
+    localStorage.getItem(
+      'hireflow_username'
+    ) || 'admin'
+  )
+})
+
+const goProfile = () => {
+  router.push('/profile')
+}
+
+const goChangePassword = () => {
+  router.push({
+    path: '/profile',
+    query: {
+      action: 'password'
+    }
   })
+}
+
+const logout = async () => {
+  try {
+    await ElMessageBox.confirm(
+      '您是否确认退出登录？',
+      '退出登录',
+      {
+        confirmButtonText: '确认退出',
+        cancelButtonText: '取消',
+        type: 'warning'
+      }
+    )
+
+    localStorage.removeItem(
+      'hireflow_token'
+    )
+
+    localStorage.removeItem(
+      'hireflow_username'
+    )
+
+    ElMessage.success(
+      '退出登录成功'
+    )
+
+    await router.replace(
+      LOGIN_URL
+    )
+  } catch {
+    // 用户取消退出
+  }
 }
 </script>
 
 <style scoped lang="scss">
+.user-trigger {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+}
+
 .avatar {
+  display: flex;
+  align-items: center;
+  justify-content: center;
   width: 40px;
   height: 40px;
   overflow: hidden;
-  cursor: pointer;
+  color: #fff;
+  font-size: 20px;
+  font-weight: 700;
+  background: #2254f4;
   border-radius: 50%;
+}
 
-  img {
-    width: 100%;
-    height: 100%;
-  }
+.username {
+  color: var(--el-text-color-primary);
+  font-size: 14px;
+}
+
+.el-dropdown-menu__item span {
+  display: flex;
+  gap: 8px;
+  align-items: center;
 }
 </style>

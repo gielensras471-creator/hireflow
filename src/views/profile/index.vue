@@ -110,7 +110,9 @@
 </template>
 
 <script setup lang="ts">
-import { computed, ref } from 'vue'
+import { computed, ref, watch } from 'vue'
+
+import { useRoute } from 'vue-router'
 
 import { storeToRefs } from 'pinia'
 
@@ -125,11 +127,25 @@ import PasswordDialog from './components/PasswordDialog.vue'
 
 const profileStore = useProfileStore()
 
+const route = useRoute()
+
 const { profile } = storeToRefs(profileStore)
 
 const editDialogVisible = ref(false)
 
 const passwordDialogVisible = ref(false)
+
+watch(
+  () => route.query.action,
+  (action) => {
+    if (action === 'password') {
+      passwordDialogVisible.value = true
+    }
+  },
+  {
+    immediate: true
+  }
+)
 
 const avatarText = computed(() => {
   return profile.value.name.trim().slice(0, 1) || 'H'
