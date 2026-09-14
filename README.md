@@ -1,13 +1,3 @@
-## 在线演示
-
-**在线地址：**  
-https://hireflow-wed.onrender.com
-
-**演示账号：**
-
-```text
-账号：admin
-密码：123456
 # HireFlow 招聘流程协作平台
 
 HireFlow 是一个基于 **Vue 3 + TypeScript + Pinia + Element Plus** 开发的招聘流程协作平台。
@@ -16,6 +6,55 @@ HireFlow 是一个基于 **Vue 3 + TypeScript + Pinia + Element Plus** 开发的
 
 > 当前项目主要用于前端工程实践与作品展示。  
 > 数据接口由 `json-server` 提供 Mock REST API，并非真实生产后端。
+
+---
+
+## 在线演示
+
+**在线地址：**  
+https://hireflow-wed.onrender.com
+
+**GitHub：**  
+https://github.com/gielensras471-creator/hireflow
+
+**演示账号：**
+
+```text
+账号：admin
+密码：123456
+```
+
+> 在线演示使用 Render 部署的 Mock REST API。  
+> Render 免费实例长时间无访问后可能进入休眠，首次打开页面或首次加载数据时可能需要等待几十秒。  
+> 演示数据可能在服务重启或重新部署后恢复为初始数据。
+
+---
+
+## 项目截图
+
+### 登录页
+
+HireFlow 登录页采用左右分栏布局，突出产品品牌与招聘业务场景，并提供 Demo 账号快速体验。
+
+![HireFlow 登录页](./docs/images/login.png)
+
+### 招聘工作台
+
+工作台集中展示招聘中职位、候选人、今日面试、待处理事项，以及近 7 日候选人趋势和招聘阶段分布等核心数据。
+
+![HireFlow 招聘工作台](./docs/images/dashboard.png)
+
+### 候选人管理
+
+支持候选人的新增、编辑、删除、筛选、分页、查看详情和安排面试，并根据招聘阶段展示不同业务状态。
+
+![HireFlow 候选人管理](./docs/images/candidates.png)
+
+### 候选人详情
+
+候选人详情页展示基础信息、应聘岗位和招聘进度。多个候选人详情同时打开时，顶部 Tabs 会根据候选人姓名动态区分标签，方便并行处理候选人。
+
+![HireFlow 候选人详情](./docs/images/candidate-detail.png)
 
 ---
 
@@ -242,6 +281,13 @@ src/api/modules/
 
 ```text
 hireflow/
+├─ docs/
+│  └─ images/
+│     ├─ login.png
+│     ├─ dashboard.png
+│     ├─ candidates.png
+│     └─ candidate-detail.png
+│
 ├─ mock/
 │  └─ db.json
 │
@@ -258,24 +304,16 @@ hireflow/
 │  │  └─ request.ts
 │  │
 │  ├─ assets/
-│  │
 │  ├─ components/
-│  │
 │  ├─ config/
 │  │  └─ recruitment.ts
-│  │
 │  ├─ layout/
-│  │
 │  ├─ router/
 │  │  └─ index.ts
-│  │
 │  ├─ store/
 │  │  └─ modules/
-│  │
 │  ├─ styles/
-│  │
 │  ├─ types/
-│  │
 │  ├─ views/
 │  │  ├─ candidates/
 │  │  ├─ dashboard/
@@ -283,11 +321,11 @@ hireflow/
 │  │  ├─ login/
 │  │  ├─ positions/
 │  │  └─ profile/
-│  │
 │  ├─ App.vue
 │  └─ main.ts
 │
 ├─ .env.development
+├─ .env.production
 ├─ index.html
 ├─ package.json
 ├─ pnpm-lock.yaml
@@ -302,7 +340,7 @@ hireflow/
 ### 1. 克隆项目
 
 ```bash
-git clone <your-repository-url>
+git clone https://github.com/gielensras471-creator/hireflow.git
 ```
 
 进入项目：
@@ -484,7 +522,7 @@ vue-tsc && vite build
 
 ---
 
-## 数据说明
+## 数据与部署说明
 
 当前项目使用：
 
@@ -494,12 +532,26 @@ json-server + mock/db.json
 
 模拟后端数据库。
 
-因此：
+本地开发时 Mock API 默认运行在：
 
-- 数据会写入本地 `mock/db.json`
+```text
+http://localhost:3300
+```
+
+在线演示的 Mock API 部署于 Render：
+
+```text
+https://hireflow-qd7r.onrender.com
+```
+
+因此需要注意：
+
+- 在线 API 为 Mock REST API，并非真实生产后端
 - 不包含真实数据库
 - 不包含真实用户认证服务
 - 不包含生产环境权限系统
+- Render 免费服务长时间无访问后可能休眠
+- 演示数据可能在服务重新部署或重启后恢复为初始数据
 
 该设计主要用于完整展示前端 CRUD、状态管理、API 请求与业务流程能力。
 
