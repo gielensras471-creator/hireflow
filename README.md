@@ -1,3 +1,13 @@
+## 在线演示
+
+**在线地址：**  
+https://hireflow-wed.onrender.com
+
+**演示账号：**
+
+```text
+账号：admin
+密码：123456
 # HireFlow 招聘流程协作平台
 
 HireFlow 是一个基于 **Vue 3 + TypeScript + Pinia + Element Plus** 开发的招聘流程协作平台。
