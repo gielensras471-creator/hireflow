@@ -1,80 +1,127 @@
 # HireFlow 招聘流程协作平台
 
-HireFlow 是一个围绕职位、候选人、面试与招聘阶段流转构建的前后端分离招聘协作项目。
+> 一个围绕职位、候选人、面试与招聘阶段流转构建的前后端分离招聘协作系统。
 
-V2.1 在 V2.0 前端工程重构的基础上，将原来的 `json-server` Mock API 替换为真正的 **Node.js + Express + SQLite + JWT** 后端，实现登录认证、业务数据持久化、用户资料与密码修改，以及职位 / 候选人 / 面试 RESTful CRUD。
+HireFlow 使用 **Vue 3 + TypeScript** 构建前端，使用 **Node.js + Express** 提供 RESTful API，并通过 **JWT + SQLite** 完成登录鉴权与业务数据持久化。项目覆盖职位管理、候选人管理、面试安排、招聘阶段流转、个人资料与密码修改等完整招聘后台业务流程。
 
-## 在线与仓库
+## 在线体验
 
-- Frontend Demo: https://hireflow-wed.onrender.com
-- GitHub: https://github.com/gielensras471-creator/hireflow
+- **Frontend Demo**：https://hireflow-wed.onrender.com
+- **Backend API**：https://hireflow-api-blsl.onrender.com
+- **API Health Check**：https://hireflow-api-blsl.onrender.com/api/health
+- **GitHub**：https://github.com/gielensras471-creator/hireflow
 
-> V2.1 后端部署完成前，线上 Demo 可能仍指向旧版本服务。生产部署时需要把 `.env.production` 中的 API 地址替换为实际 Express 服务地址。
-
-## 演示账号
+### 演示账号
 
 ```text
 账号：admin
 密码：123456
 ```
 
-数据库首次启动时会自动创建该账号，并使用 bcrypt 哈希存储密码。
+> Render 免费实例长时间无访问时可能进入休眠，首次打开 Demo 或登录时可能需要等待服务唤醒。
 
 ---
 
-## V2.1 核心升级
+## 作品展示
 
-### 真实后端 API
+### 1. 登录与身份认证
+
+![HireFlow 登录页](docs/images/login.png)
+
+- 独立登录页与品牌化视觉设计
+- Express 后端校验账号密码
+- bcrypt 密码哈希验证
+- 登录成功后签发 JWT
+- Axios 自动携带 Bearer Token
+- Token 失效后自动清理会话并返回登录页
+
+### 2. Dashboard 招聘数据概览
+
+![HireFlow Dashboard](docs/images/dashboard.png)
+
+- 招聘核心指标概览
+- ECharts 数据可视化
+- 职位、候选人、面试数据统一展示
+- 支持 Loading / Empty / Error / Retry 状态
+
+### 3. 职位管理
+
+![HireFlow 职位管理](docs/images/positions.png)
+
+- 职位新增、编辑、删除
+- 开启 / 关闭招聘状态
+- 搜索、筛选与分页
+- 数据通过 Express API 写入 SQLite
+
+### 4. 候选人管理
+
+![HireFlow 候选人管理](docs/images/candidates.png)
+
+- 候选人新增、编辑、删除
+- 搜索、筛选、分页
+- 候选人详情页
+- 招聘阶段状态管理
+- 多标签页与动态候选人详情 Tab
+
+### 5. 面试管理
+
+![HireFlow 面试管理](docs/images/interviews.png)
+
+- 安排、编辑、完成、取消和删除面试
+- 维护候选人、面试官、时间与面试类型
+- 与候选人招聘阶段联动
+
+### 6. 候选人详情 / 招聘流程
+
+![HireFlow 候选人详情](docs/images/candidate-detail.png)
+
+招聘阶段：
+
+```text
+筛选
+  ↓
+初面
+  ↓
+复面
+  ↓
+Offer / 淘汰
+```
+
+---
+
+## 项目亮点
+
+### 前后端分离
 
 ```text
 Vue 3 / TypeScript
-        ↓ Axios + Bearer Token
+        ↓
+Pinia / API Module
+        ↓
+Axios + Bearer Token
+        ↓
 Node.js / Express
+        ↓
+JWT Middleware
+        ↓
+RESTful API
         ↓
 SQLite
 ```
 
-主要接口：
+项目从早期 Mock API 版本升级为真实前后端架构，职位、候选人、面试、用户资料和账号密码均通过 HTTP API 与数据库完成读写。
 
-```text
-POST   /api/auth/login
-GET    /api/auth/me
+### JWT 登录鉴权
 
-GET    /api/profile
-PATCH  /api/profile
-PATCH  /api/profile/password
-
-GET    /api/positions
-POST   /api/positions
-PATCH  /api/positions/:id
-DELETE /api/positions/:id
-
-GET    /api/candidates
-GET    /api/candidates/:id
-POST   /api/candidates
-PATCH  /api/candidates/:id
-DELETE /api/candidates/:id
-
-GET    /api/interviews
-GET    /api/interviews/:id
-POST   /api/interviews
-PATCH  /api/interviews/:id
-DELETE /api/interviews/:id
-```
-
-### JWT 登录认证
-
-登录成功后后端签发 JWT：
-
-- 普通登录：12 小时
+- 普通登录有效期：12 小时
 - “7 天内保持登录”：7 天
 - Axios 请求拦截器自动附加 `Authorization: Bearer <token>`
-- 后端认证中间件统一校验受保护 API
-- Token 失效后前端自动清除本地会话并返回登录页
+- Express 认证中间件统一校验受保护接口
+- Token 失效后前端自动清理本地登录状态
 
 ### SQLite 数据持久化
 
-数据库文件默认生成在：
+数据库默认生成在：
 
 ```text
 server/data/hireflow.db
@@ -91,42 +138,107 @@ interviews
 
 本地数据库文件已加入 `.gitignore`，不会提交到 GitHub。
 
-### 账号资料与密码
+### 用户资料与密码管理
 
-个人中心不再只修改前端内存状态：
-
-- 用户资料通过 Express API 持久化到 SQLite
-- 修改密码会验证当前密码
-- 新密码使用 bcrypt 重新哈希后保存
+- 用户资料通过 API 持久化
+- 修改密码前验证当前密码
+- 新密码使用 bcrypt 哈希后保存
+- 修改后重新登录即可验证新密码
 
 ---
 
-## 前端技术栈
+## 技术栈
 
-| 技术 | 用途 |
-| --- | --- |
-| Vue 3 | 核心框架 |
-| TypeScript | 类型约束 |
-| Pinia | 状态管理 |
-| Vue Router | 路由与鉴权 |
-| Axios | HTTP 请求与 Token 拦截 |
-| Element Plus | UI 组件 |
-| ECharts | 数据可视化 |
-| Vite | 开发与构建 |
-| Sass | 样式 |
+### Frontend
 
-## 后端技术栈
+| 技术         | 用途                  |
+| ------------ | --------------------- |
+| Vue 3        | 核心前端框架          |
+| TypeScript   | 类型约束与工程维护    |
+| Pinia        | 全局状态管理          |
+| Vue Router   | 页面路由与路由鉴权    |
+| Axios        | HTTP 请求、Token 拦截 |
+| Element Plus | 后台 UI 组件          |
+| ECharts      | 招聘数据可视化        |
+| Vite         | 开发服务器与生产构建  |
+| Sass         | 样式组织              |
 
-| 技术 | 用途 |
-| --- | --- |
-| Node.js | JavaScript 服务端运行时 |
-| Express | REST API |
-| SQLite | 本地关系型数据持久化 |
-| node:sqlite | Node.js 24 内置 SQLite 接口，无需额外原生驱动 |
-| jsonwebtoken | JWT 签发与校验 |
-| bcryptjs | 密码哈希与验证 |
-| cors | 跨域配置 |
-| dotenv | 后端环境变量 |
+### Backend
+
+| 技术          | 用途                        |
+| ------------- | --------------------------- |
+| Node.js       | 服务端运行时                |
+| Express       | RESTful API                 |
+| SQLite        | 关系型数据持久化            |
+| `node:sqlite` | Node.js 24 内置 SQLite 接口 |
+| jsonwebtoken  | JWT 签发与校验              |
+| bcryptjs      | 密码哈希与验证              |
+| cors          | 跨域访问控制                |
+| dotenv        | 环境变量管理                |
+
+---
+
+## 核心业务功能
+
+- Dashboard 招聘数据概览
+- 职位新增 / 编辑 / 删除 / 开启关闭
+- 候选人新增 / 编辑 / 删除 / 搜索 / 筛选 / 分页
+- 候选人详情与动态 Tab
+- 招聘阶段：筛选 → 初面 → 复面 → Offer / 淘汰
+- 面试安排 / 编辑 / 完成 / 取消 / 删除
+- JWT 登录与受保护路由
+- 用户资料持久化
+- 密码修改
+- Loading / Empty / Error / Retry 状态
+- 响应式适配
+
+---
+
+## RESTful API
+
+### Auth
+
+```text
+POST   /api/auth/login
+GET    /api/auth/me
+```
+
+### Profile
+
+```text
+GET    /api/profile
+PATCH  /api/profile
+PATCH  /api/profile/password
+```
+
+### Positions
+
+```text
+GET    /api/positions
+POST   /api/positions
+PATCH  /api/positions/:id
+DELETE /api/positions/:id
+```
+
+### Candidates
+
+```text
+GET    /api/candidates
+GET    /api/candidates/:id
+POST   /api/candidates
+PATCH  /api/candidates/:id
+DELETE /api/candidates/:id
+```
+
+### Interviews
+
+```text
+GET    /api/interviews
+GET    /api/interviews/:id
+POST   /api/interviews
+PATCH  /api/interviews/:id
+DELETE /api/interviews/:id
+```
 
 ---
 
@@ -150,7 +262,6 @@ hireflow/
 │  │  └─ seed-data.json
 │  ├─ scripts/
 │  │  └─ reset-db.js
-│  ├─ utils/
 │  ├─ data/
 │  ├─ .env.example
 │  └─ index.js
@@ -164,18 +275,27 @@ hireflow/
 │  ├─ types/
 │  ├─ utils/
 │  └─ views/
+│
 ├─ docs/
+│  └─ screenshots/
+│     ├─ login.png
+│     ├─ dashboard.png
+│     ├─ positions.png
+│     ├─ candidates.png
+│     ├─ interviews.png
+│     └─ candidate-detail.png
+│
 ├─ public/
+├─ .env.production
 ├─ package.json
 └─ vite.config.ts
 ```
 
 ---
 
-
-> V2.1.1 使用 Node.js 内置 `node:sqlite`，建议使用 **Node.js 24.15+**。这样无需安装 Visual Studio C++ Build Tools。
-
 ## 本地运行
+
+> 当前版本使用 Node.js 内置 `node:sqlite`，建议使用 **Node.js 24.15+**。
 
 ### 1. 安装依赖
 
@@ -200,10 +320,10 @@ http://localhost:3300
 健康检查：
 
 ```text
-GET http://localhost:3300/api/health
+http://localhost:3300/api/health
 ```
 
-开发时如果希望修改后端代码自动重启：
+开发模式：
 
 ```bash
 pnpm api:dev
@@ -217,13 +337,13 @@ pnpm api:dev
 pnpm dev
 ```
 
-Vite 默认运行在：
+默认地址：
 
 ```text
 http://localhost:5173
 ```
 
-开发环境下 `/api` 会由 Vite 代理到 `http://localhost:3300`。
+开发环境下 `/api` 由 Vite 代理到本地 Express 服务。
 
 ### 4. 生产构建
 
@@ -233,18 +353,24 @@ pnpm build
 
 ### 5. 重置数据库
 
-如需恢复初始演示数据：
-
 ```bash
 pnpm db:reset
 pnpm api
 ```
 
+重置后演示账号恢复为：
+
+```text
+admin / 123456
+```
+
 ---
 
-## 后端环境变量
+## 环境变量
 
-开发环境可复制：
+### 本地后端
+
+复制：
 
 ```text
 server/.env.example
@@ -264,51 +390,70 @@ CLIENT_ORIGIN=http://localhost:5173
 JWT_SECRET=replace-with-a-long-random-secret-before-production
 ```
 
-> 生产环境必须使用随机且足够长的 `JWT_SECRET`，不要使用默认开发密钥。
+生产环境必须使用随机且足够长的 `JWT_SECRET`，不要将真实密钥提交到 GitHub。
+
+### 生产前端
+
+`.env.production`：
+
+```env
+VITE_HIREFLOW_API_URL=https://hireflow-api-blsl.onrender.com/api
+```
 
 ---
 
-## 核心业务功能
+## 部署
 
-- Dashboard 招聘数据概览
-- 职位新增 / 编辑 / 删除 / 开启关闭
-- 候选人新增 / 编辑 / 删除 / 搜索筛选 / 详情
-- 招聘阶段：筛选 → 初面 → 复面 → Offer / 淘汰
-- 面试安排 / 编辑 / 完成 / 取消 / 删除
-- 路由鉴权
-- JWT 登录
-- 用户资料持久化
-- 密码修改
-- Loading / Empty / Error / Retry 状态
-- 多标签页与候选人详情动态 Tab
-- 响应式适配
-
----
-
-## V2.1 的工程价值
-
-V2.0 主要证明 Vue 3 / TypeScript 前端业务与工程能力；V2.1 将项目补全为真正的前后端分离应用：
+项目采用前后端独立部署：
 
 ```text
-页面组件
-  ↓
-Pinia / API Module
-  ↓
-Axios Request
-  ↓
-JWT Middleware
-  ↓
-Express Route
-  ↓
+Frontend
+https://hireflow-wed.onrender.com
+        ↓
+Backend API
+https://hireflow-api-blsl.onrender.com/api
+        ↓
+Express
+        ↓
+JWT
+        ↓
 SQLite
 ```
 
-因此职位、候选人、面试、用户资料和账号密码都不再依赖静态 Mock 数据，而是经过真实 HTTP API 和数据库持久化完成。
+前端与后端均部署在 Render。
 
-## 后续计划
+> 当前演示环境使用 SQLite。Render 免费实例的文件系统不适合作为长期生产数据库，因此该部署主要用于作品演示和技术验证。
 
-- V2.2：后端参数校验、单元测试 / E2E、API 文档、前端分包与性能优化
+---
+
+## 版本说明
+
+### V2.1
+
+- 将 Mock API 替换为 Node.js + Express 后端
+- 接入 SQLite 数据持久化
+- 增加 JWT 登录认证
+- 增加 bcrypt 密码哈希
+- 完成职位 / 候选人 / 面试 RESTful CRUD
+- 用户资料与密码修改接入真实 API
+- 完成前后端独立部署与线上联调
+
+### V2.0
+
+- 重构后台 Layout、Sidebar、Header、Tabs 与 Router
+- 清理模板示例页面与残留功能
+- 重新整理 Pinia、API Module 与全局样式
+- 保留并强化招聘业务流程
+
+---
+
+## 后续可扩展方向
+
+- API 参数校验与统一错误码
+- 单元测试 / E2E 测试
+- OpenAPI / Swagger 文档
+- 前端路由与组件分包
 - MySQL / PostgreSQL 数据库迁移
-- RBAC 权限模型
+- RBAC 角色权限模型
 - 操作日志
 - 简历上传与解析
