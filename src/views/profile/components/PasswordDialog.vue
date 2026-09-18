@@ -1,7 +1,7 @@
 <template>
   <el-dialog :model-value="modelValue" title="修改密码" width="500px" @close="handleClose">
     <el-alert
-      title="当前为 Demo 模式，默认密码为 123456"
+      title="当前账号已接入真实后端认证；演示账号初始密码为 123456"
       type="info"
       :closable="false"
       class="password-tip"
@@ -39,7 +39,7 @@
     <template #footer>
       <el-button @click="handleClose"> 取消 </el-button>
 
-      <el-button type="primary" @click="handleSubmit"> 确认修改 </el-button>
+      <el-button type="primary" :loading="props.submitting" @click="handleSubmit"> 确认修改 </el-button>
     </template>
   </el-dialog>
 </template>
@@ -53,6 +53,7 @@ import type { PasswordFormData } from '@/types/profile'
 
 const props = defineProps<{
   modelValue: boolean
+  submitting?: boolean
 }>()
 
 const emit = defineEmits<{

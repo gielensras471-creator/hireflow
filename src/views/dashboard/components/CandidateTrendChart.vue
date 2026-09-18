@@ -1,22 +1,22 @@
 <template>
   <div class="chart-box">
-    <ECharts :option="option" :resize="true" />
+    <BaseChart :option="option" />
   </div>
 </template>
 
 <script setup lang="ts">
 import { computed } from 'vue'
 
-import ECharts from '@/components/ECharts/index.vue'
+import BaseChart from '@/components/charts/BaseChart.vue'
 
-import type { ECOption } from '@/components/ECharts/config'
+import type { EChartsOption } from 'echarts'
 
 const props = defineProps<{
   labels: string[]
   values: number[]
 }>()
 
-const option = computed<ECOption>(() => ({
+const option = computed<EChartsOption>(() => ({
   tooltip: {
     trigger: 'axis',
     backgroundColor: 'rgba(255, 255, 255, 0.96)',

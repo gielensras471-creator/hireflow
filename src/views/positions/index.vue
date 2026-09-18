@@ -39,7 +39,7 @@
       <div v-if="loadError" class="error-state">
         <el-alert
           title="职位数据加载失败"
-          description="请确认 Mock API 是否已经启动，然后重新加载。"
+          description="请确认 Express API 是否已经启动，然后重新加载。"
           type="error"
           show-icon
           :closable="false"

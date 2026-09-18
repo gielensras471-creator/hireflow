@@ -1,0 +1,29 @@
+:root {
+  --el-color-primary: var(--hf-primary);
+  --el-border-radius-base: 8px;
+  --el-border-color-light: var(--hf-border);
+  --el-border-color-lighter: #eef1f5;
+  --el-bg-color-page: var(--hf-bg);
+  --el-text-color-primary: var(--hf-text);
+  --el-text-color-regular: var(--hf-text-secondary);
+}
+
+.el-card,
+.el-dialog,
+.el-message-box {
+  border-radius: var(--hf-radius-md);
+}
+
+.el-button {
+  font-weight: 500;
+}
+
+.el-table {
+  --el-table-header-bg-color: #f8fafc;
+  --el-table-row-hover-bg-color: #f8fbff;
+}
+
+.el-input__wrapper,
+.el-select__wrapper {
+  box-shadow: 0 0 0 1px var(--hf-border-strong) inset;
+}

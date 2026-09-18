@@ -1,15 +1,15 @@
 <template>
   <div class="chart-box">
-    <ECharts :option="option" :resize="true" />
+    <BaseChart :option="option" />
   </div>
 </template>
 
 <script setup lang="ts">
 import { computed } from 'vue'
 
-import ECharts from '@/components/ECharts/index.vue'
+import BaseChart from '@/components/charts/BaseChart.vue'
 
-import type { ECOption } from '@/components/ECharts/config'
+import type { EChartsOption } from 'echarts'
 
 interface StageChartItem {
   name: string
@@ -24,7 +24,7 @@ const total = computed(() => {
   return props.data.reduce((sum, item) => sum + item.value, 0)
 })
 
-const option = computed<ECOption>(() => ({
+const option = computed<EChartsOption>(() => ({
   tooltip: {
     trigger: 'item',
     formatter: '{b}<br/>{c} 人 · {d}%'

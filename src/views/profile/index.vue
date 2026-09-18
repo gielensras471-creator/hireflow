@@ -134,11 +134,16 @@
     <ProfileEditDialog
       v-model="editDialogVisible"
       :profile="profile"
+      :submitting="profileSubmitting"
       @submit="handleUpdateProfile"
     />
 
     <!-- 修改密码 -->
-    <PasswordDialog v-model="passwordDialogVisible" @submit="handleChangePassword" />
+    <PasswordDialog
+      v-model="passwordDialogVisible"
+      :submitting="passwordSubmitting"
+      @submit="handleChangePassword"
+    />
   </div>
 </template>
 
@@ -149,9 +154,11 @@ import { useRoute } from 'vue-router'
 
 import { storeToRefs } from 'pinia'
 
+import axios from 'axios'
+
 import { ElMessage } from 'element-plus'
 
-import { useProfileStore } from '@/store/modules/profile'
+import { useProfileStore } from '@/stores/profile'
 
 import type { ProfileFormData, PasswordFormData } from '@/types/profile'
 
@@ -167,6 +174,10 @@ const { profile } = storeToRefs(profileStore)
 const editDialogVisible = ref(false)
 
 const passwordDialogVisible = ref(false)
+
+const profileSubmitting = ref(false)
+
+const passwordSubmitting = ref(false)
 
 /*
  * Header 中点击“修改密码”时会跳转：
@@ -191,24 +202,44 @@ const avatarText = computed(() => {
   return profile.value.name.trim().slice(0, 1) || 'H'
 })
 
-const handleUpdateProfile = (data: ProfileFormData) => {
-  profileStore.updateProfile(data)
-
-  ElMessage.success('个人资料修改成功')
-}
-
-const handleChangePassword = (data: PasswordFormData) => {
-  const result = profileStore.changePassword(data)
-
-  if (!result.success) {
-    ElMessage.error(result.message)
-
-    return
+const getErrorMessage = (error: unknown, fallback: string) => {
+  if (axios.isAxiosError(error)) {
+    return error.response?.data?.message || fallback
   }
 
-  ElMessage.success(result.message)
+  return fallback
+}
 
-  passwordDialogVisible.value = false
+const handleUpdateProfile = async (data: ProfileFormData) => {
+  if (profileSubmitting.value) return
+
+  profileSubmitting.value = true
+
+  try {
+    await profileStore.updateProfile(data)
+    ElMessage.success('个人资料修改成功')
+    editDialogVisible.value = false
+  } catch (error) {
+    ElMessage.error(getErrorMessage(error, '个人资料修改失败，请稍后重试'))
+  } finally {
+    profileSubmitting.value = false
+  }
+}
+
+const handleChangePassword = async (data: PasswordFormData) => {
+  if (passwordSubmitting.value) return
+
+  passwordSubmitting.value = true
+
+  try {
+    const result = await profileStore.changePassword(data)
+    ElMessage.success(result.message)
+    passwordDialogVisible.value = false
+  } catch (error) {
+    ElMessage.error(getErrorMessage(error, '密码修改失败，请稍后重试'))
+  } finally {
+    passwordSubmitting.value = false
+  }
 }
 </script>
 

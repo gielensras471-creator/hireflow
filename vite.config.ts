@@ -1,61 +1,33 @@
-import { ConfigEnv, UserConfig, defineConfig, loadEnv } from 'vite'
+import { defineConfig, loadEnv } from 'vite'
 import vue from '@vitejs/plugin-vue'
-import { resolve } from 'path'
-import AutoImport from 'unplugin-auto-import/vite'
-import Components from 'unplugin-vue-components/vite'
-import { ElementPlusResolver } from 'unplugin-vue-components/resolvers'
+import { fileURLToPath, URL } from 'node:url'
 
-// https://vitejs.dev/config/
-export default defineConfig(({ mode }: ConfigEnv): UserConfig => {
-  const viteEnv = loadEnv(mode, process.cwd())
+export default defineConfig(({ mode }) => {
+  const env = loadEnv(mode, process.cwd(), '')
+
   return {
-    base: '/',
     resolve: {
       alias: {
-        '@': resolve(__dirname, './src')
+        '@': fileURLToPath(new URL('./src', import.meta.url))
       }
     },
     server: {
       host: '0.0.0.0',
-      port: viteEnv.VITE_PORT as unknown as number,
-      proxy: {
-        '/api': {
-          target: viteEnv.VITE_PROXY,
-          changeOrigin: true,
-          rewrite: (path) => path.replace(/^\/api/, '')
-        }
-      }
+      port: Number(env.VITE_PORT || 5173),
+      proxy: env.VITE_PROXY
+        ? {
+            '/api': {
+              target: env.VITE_PROXY,
+              changeOrigin: true
+            }
+          }
+        : undefined
     },
-    plugins: [
-      vue(),
-      AutoImport({
-        resolvers: [ElementPlusResolver()],
-        dts: 'src/typings/auto-imports.d.ts' // 指定类型声明文件的路径
-      }),
-      Components({
-        resolvers: [ElementPlusResolver()],
-        dts: 'src/typings/components.d.ts'
-      })
-    ],
-    esbuild: {
-      pure: viteEnv.VITE_DROP_CONSOLE ? ['console.log', 'debugger'] : []
-    },
+    plugins: [vue()],
     build: {
       outDir: 'dist',
-      minify: 'esbuild',
       sourcemap: false,
-      // 禁用 gzip 压缩大小报告，可略微减少打包时间
-      reportCompressedSize: true,
-      // 规定触发警告的 chunk 大小
-      chunkSizeWarningLimit: 2000,
-      rollupOptions: {
-        output: {
-          // Static resource classification and packaging
-          chunkFileNames: 'assets/js/[name]-[hash].js',
-          entryFileNames: 'assets/js/[name]-[hash].js',
-          assetFileNames: 'assets/[ext]/[name]-[hash].[ext]'
-        }
-      }
+      chunkSizeWarningLimit: 1800
     }
   }
 })

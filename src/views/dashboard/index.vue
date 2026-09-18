@@ -4,7 +4,7 @@
     <div v-if="loadError" class="error-state">
       <el-alert
         title="工作台数据加载失败"
-        description="请确认 Mock API 是否正常运行。"
+        description="请确认 Express API 是否正常运行。"
         type="error"
         show-icon
         :closable="false"

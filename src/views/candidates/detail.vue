@@ -154,7 +154,7 @@
       v-else-if="loadError"
       icon="error"
       title="候选人加载失败"
-      sub-title="无法获取候选人信息，请检查 Mock API 是否正常运行"
+      sub-title="无法获取候选人信息，请检查 Express API 是否正常运行"
     >
       <template #extra>
         <el-button type="primary" @click="loadCandidateDetail"> 重新加载 </el-button>
@@ -184,9 +184,9 @@ import { useRoute, useRouter } from 'vue-router'
 
 import { ElMessage, ElMessageBox } from 'element-plus'
 
-import { useTabsStore } from '@/store/modules/tabs'
+import { useTabsStore } from '@/stores/tabs'
 
-import { useCandidateStore } from '@/store/modules/candidate'
+import { useCandidateStore } from '@/stores/candidate'
 
 import {
   canAdvanceCandidateStage,

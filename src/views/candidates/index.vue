@@ -44,7 +44,7 @@
       <div v-if="error" class="error-state">
         <el-alert
           title="候选人数据加载失败"
-          description="请确认 Mock API 是否正常运行。"
+          description="请确认 Express API 是否正常运行。"
           type="error"
           show-icon
           :closable="false"
@@ -172,9 +172,9 @@ import {
 
 import type { InterviewFormData } from '@/types/interview'
 
-import { useCandidateStore } from '@/store/modules/candidate'
+import { useCandidateStore } from '@/stores/candidate'
 
-import { useInterviewStore } from '@/store/modules/interview'
+import { useInterviewStore } from '@/stores/interview'
 
 import CandidateDialog from './components/CandidateDialog.vue'
 import InterviewDialog from './components/InterviewDialog.vue'

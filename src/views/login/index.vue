@@ -69,20 +69,7 @@
           <p>登录 HireFlow 招聘流程协作平台</p>
         </div>
 
-        <LoginForm ref="loginRef" />
-
-        <div class="login-btns">
-          <el-button class="login-btn" size="large" @click="handleResetClick"> 重置 </el-button>
-
-          <el-button
-            type="primary"
-            size="large"
-            class="login-btn login-btn--primary"
-            @click="handleSubmitClick"
-          >
-            立即登录
-          </el-button>
-        </div>
+        <LoginForm />
 
         <div class="demo-tip">
           演示账号：admin
@@ -97,18 +84,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue'
 import LoginForm from './components/LoginForm.vue'
-
-const loginRef = ref<InstanceType<typeof LoginForm>>()
-
-const handleSubmitClick = () => {
-  loginRef.value?.loginAction()
-}
-
-const handleResetClick = () => {
-  loginRef.value?.resetAction()
-}
 </script>
 
 <style scoped lang="scss">
@@ -335,29 +311,6 @@ const handleResetClick = () => {
 
 :deep(.el-input__wrapper.is-focus) {
   box-shadow: 0 0 0 1px var(--el-color-primary) inset;
-}
-
-:deep(.expires7d) {
-  color: var(--el-text-color-secondary);
-  font-size: 12px;
-}
-
-.login-btns {
-  display: grid;
-  grid-template-columns: 1fr 2fr;
-  gap: 10px;
-  margin-top: 6px;
-}
-
-.login-btn {
-  width: 100%;
-  height: 44px;
-  margin: 0 !important;
-  border-radius: 9px;
-}
-
-.login-btn--primary {
-  box-shadow: 0 8px 18px rgb(34 84 244 / 18%);
 }
 
 .demo-tip {

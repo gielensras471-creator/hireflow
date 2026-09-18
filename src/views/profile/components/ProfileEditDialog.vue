@@ -35,7 +35,7 @@
     <template #footer>
       <el-button @click="handleClose"> 取消 </el-button>
 
-      <el-button type="primary" @click="handleSubmit"> 保存修改 </el-button>
+      <el-button type="primary" :loading="props.submitting" @click="handleSubmit"> 保存修改 </el-button>
     </template>
   </el-dialog>
 </template>
@@ -50,6 +50,7 @@ import type { UserProfile, ProfileFormData } from '@/types/profile'
 const props = defineProps<{
   modelValue: boolean
   profile: UserProfile
+  submitting?: boolean
 }>()
 
 const emit = defineEmits<{
@@ -143,6 +144,6 @@ const handleSubmit = async () => {
     ...formData
   })
 
-  handleClose()
 }
+
 </script>
