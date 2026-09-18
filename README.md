@@ -277,7 +277,7 @@ hireflow/
 │  └─ views/
 │
 ├─ docs/
-│  └─ screenshots/
+│  └─ images/
 │     ├─ login.png
 │     ├─ dashboard.png
 │     ├─ positions.png
