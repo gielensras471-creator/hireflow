@@ -129,6 +129,7 @@ import type { Candidate, CandidateStage } from '@/types/candidate'
 
 import type { Interview, InterviewStatus } from '@/types/interview'
 
+
 const router = useRouter()
 
 const positions = ref<Position[]>([])
@@ -146,6 +147,7 @@ const loadError = ref(false)
 ========================= */
 
 const formatDate = (date: Date) => {
+  
   const year = date.getFullYear()
 
   const month = String(date.getMonth() + 1).padStart(2, '0')
