@@ -148,7 +148,10 @@ export const createRecruitingService = ({ db, resolveActor }) => {
   core.register('application.update', {
     aggregate: 'candidate',
     eventType: 'candidate_updated',
-    change: (b, p) => changedFields(b, fields(p, applicantFields))
+    change: (b, p) => {
+      if (b.application_status !== 'active') reject('APPLICATION_CLOSED')
+      return changedFields(b, fields(p, applicantFields))
+    }
   })
   const auth = (context) => requireRecruitingActor(db, resolveActor, context)
   const positionDetail = (context, positionId) => {
