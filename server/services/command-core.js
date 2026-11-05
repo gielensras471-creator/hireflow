@@ -77,8 +77,13 @@ export const createCommandCore = ({ db, resolveActor, authorize }) => {
     if (!['position', 'candidate'].includes(definition.aggregate)) fail('INVALID_AGGREGATE')
     if (typeof definition.eventType !== 'string' || typeof definition.change !== 'function')
       fail('INVALID_COMMAND')
-    if (definition.mode !== undefined && !['create', 'update'].includes(definition.mode))
+    if (
+      definition.mode !== undefined &&
+      !['create', 'update', 'activity'].includes(definition.mode)
+    )
       fail('INVALID_COMMAND')
+    if (definition.mode === 'activity' && definition.aggregate !== 'candidate')
+      fail('INVALID_AGGREGATE')
     definitions.set(name, Object.freeze({ ...definition }))
   }
   const execute = (context, request) => {
@@ -144,12 +149,23 @@ export const createCommandCore = ({ db, resolveActor, authorize }) => {
         db.exec('COMMIT')
         return { replayed: true, result }
       }
+      const activity = def.mode === 'activity'
       const creating = def.mode === 'create'
       const before = creating
         ? null
         : db.prepare('SELECT * FROM ' + table + ' WHERE id=?').get(r.aggregateId)
       if (!creating && !before) fail('AGGREGATE_NOT_FOUND')
       if (!creating && before.version !== r.expectedVersion) fail('VERSION_CONFLICT')
+      let subjectBefore = null
+      if (activity && r.payload?.interview_id !== undefined) {
+        if (!Number.isSafeInteger(r.payload.interview_id) || r.payload.interview_id < 1)
+          fail('INVALID_INTERVIEW')
+        subjectBefore = db
+          .prepare('SELECT * FROM interviews WHERE id=?')
+          .get(r.payload.interview_id)
+        if (!subjectBefore || subjectBefore.candidate_id !== before.id)
+          fail('INTERVIEW_ASSOCIATION_CONFLICT')
+      }
       const now = Date.now(),
         commandId = randomUUID()
       const patch = sync(
@@ -166,10 +182,29 @@ export const createCommandCore = ({ db, resolveActor, authorize }) => {
         .prepare('PRAGMA table_info(' + table + ')')
         .all()
         .map((c) => c.name)
-      if (!keys.length || keys.some((k) => !allowed.includes(k) || ['id', 'version'].includes(k)))
+      if (
+        activity
+          ? keys.length !== 1 || keys[0] !== 'interviewId'
+          : !keys.length || keys.some((k) => !allowed.includes(k) || ['id', 'version'].includes(k))
+      )
         fail('INVALID_PATCH')
       let id = r.aggregateId
-      if (creating) {
+      let subjectAfter = null
+      if (activity) {
+        if (!Number.isSafeInteger(patch.interviewId) || patch.interviewId < 1)
+          fail('INVALID_INTERVIEW')
+        subjectAfter = db.prepare('SELECT * FROM interviews WHERE id=?').get(patch.interviewId)
+        if (
+          !subjectAfter ||
+          subjectAfter.candidate_id !== before.id ||
+          (subjectBefore && subjectBefore.id !== subjectAfter.id)
+        )
+          fail('INTERVIEW_ASSOCIATION_CONFLICT')
+        const changed = db
+          .prepare('UPDATE candidates SET version=version+1 WHERE id=? AND version=?')
+          .run(before.id, r.expectedVersion)
+        if (changed.changes !== 1) fail('VERSION_CONFLICT')
+      } else if (creating) {
         const inserted = db
           .prepare(
             'INSERT INTO ' +
@@ -206,11 +241,20 @@ export const createCommandCore = ({ db, resolveActor, authorize }) => {
         )
       )
         fail('INVALID_EVENT_METADATA')
+      if (
+        activity &&
+        metadata.interviewId !== undefined &&
+        metadata.interviewId !== subjectAfter.id
+      )
+        fail('INVALID_EVENT_METADATA')
       const result = {
         commandId,
         aggregate: def.aggregate,
         aggregateId: after.id,
-        version: after.version
+        version: after.version,
+        ...(activity
+          ? { interviewId: subjectAfter.id, interviewVersion: subjectAfter.version }
+          : {})
       }
       // Immediate FK business_events.command_id -> receipts requires this insertion order.
       db.prepare(
@@ -222,7 +266,7 @@ export const createCommandCore = ({ db, resolveActor, authorize }) => {
         def.aggregate,
         def.aggregate === 'position' ? after.id : null,
         def.aggregate === 'candidate' ? after.id : null,
-        metadata.interviewId ?? null,
+        activity ? subjectAfter.id : metadata.interviewId ?? null,
         metadata.feedbackId ?? null,
         commandId,
         after.version,
@@ -231,8 +275,8 @@ export const createCommandCore = ({ db, resolveActor, authorize }) => {
         user.name,
         now,
         metadata.reason ?? null,
-        JSON.stringify(before),
-        JSON.stringify(after),
+        JSON.stringify(activity ? subjectBefore : before),
+        JSON.stringify(activity ? subjectAfter : after),
         JSON.stringify(metadata.context ?? {})
       )
       db.exec('COMMIT')

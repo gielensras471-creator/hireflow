@@ -50,6 +50,7 @@ test('fresh imports cannot open a database, seed, load dotenv, listen or mutate 
     'services/command-core.js',
     'services/recruiting-auth.js',
     'services/recruiting-service.js',
+    'services/interview-service.js',
     'db/seed.js',
     'utils/jwt.js',
     'middleware/auth.js',
