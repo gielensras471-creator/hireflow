@@ -77,6 +77,8 @@ export const createCommandCore = ({ db, resolveActor, authorize }) => {
     if (!['position', 'candidate'].includes(definition.aggregate)) fail('INVALID_AGGREGATE')
     if (typeof definition.eventType !== 'string' || typeof definition.change !== 'function')
       fail('INVALID_COMMAND')
+    if (definition.mode !== undefined && !['create', 'update'].includes(definition.mode))
+      fail('INVALID_COMMAND')
     definitions.set(name, Object.freeze({ ...definition }))
   }
   const execute = (context, request) => {
@@ -106,11 +108,13 @@ export const createCommandCore = ({ db, resolveActor, authorize }) => {
     const def = definitions.get(r.command)
     if (!def) fail('UNKNOWN_COMMAND')
     if (
-      !Number.isSafeInteger(r.aggregateId) ||
-      r.aggregateId < 1 ||
-      !Number.isSafeInteger(r.expectedVersion) ||
-      r.expectedVersion < 1 ||
-      r.expectedVersion >= Number.MAX_SAFE_INTEGER ||
+      (def.mode === 'create'
+        ? Object.hasOwn(r, 'aggregateId') || Object.hasOwn(r, 'expectedVersion')
+        : !Number.isSafeInteger(r.aggregateId) ||
+          r.aggregateId < 1 ||
+          !Number.isSafeInteger(r.expectedVersion) ||
+          r.expectedVersion < 1 ||
+          r.expectedVersion >= Number.MAX_SAFE_INTEGER) ||
       typeof r.idempotencyKey !== 'string' ||
       !r.idempotencyKey.trim()
     )
@@ -140,30 +144,59 @@ export const createCommandCore = ({ db, resolveActor, authorize }) => {
         db.exec('COMMIT')
         return { replayed: true, result }
       }
-      const before = db.prepare('SELECT * FROM ' + table + ' WHERE id=?').get(r.aggregateId)
-      if (!before) fail('AGGREGATE_NOT_FOUND')
-      if (before.version !== r.expectedVersion) fail('VERSION_CONFLICT')
+      const creating = def.mode === 'create'
+      const before = creating
+        ? null
+        : db.prepare('SELECT * FROM ' + table + ' WHERE id=?').get(r.aggregateId)
+      if (!creating && !before) fail('AGGREGATE_NOT_FOUND')
+      if (!creating && before.version !== r.expectedVersion) fail('VERSION_CONFLICT')
       const now = Date.now(),
         commandId = randomUUID()
-      const patch = sync(def.change, frozen({ ...before }), r.payload, frozen({ ...user }), now)
-      canonicalRequest(patch)
-      if (!patch || Array.isArray(patch)) fail('INVALID_PATCH')
-      const keys = Object.keys(patch)
-      if (
-        !keys.length ||
-        keys.some((k) => !Object.hasOwn(before, k) || ['id', 'version'].includes(k))
+      const patch = sync(
+        def.change,
+        creating ? null : frozen({ ...before }),
+        r.payload,
+        frozen({ ...user }),
+        now
       )
+      canonicalRequest(patch)
+      if (!patch || Array.isArray(patch) || typeof patch !== 'object') fail('INVALID_PATCH')
+      const keys = Object.keys(patch)
+      const allowed = db
+        .prepare('PRAGMA table_info(' + table + ')')
+        .all()
+        .map((c) => c.name)
+      if (!keys.length || keys.some((k) => !allowed.includes(k) || ['id', 'version'].includes(k)))
         fail('INVALID_PATCH')
-      const columns = keys.map((k) => '"' + k + '"=?').join(',')
-      const updated = db
-        .prepare(
-          'UPDATE ' + table + ' SET ' + columns + ',version=version+1 WHERE id=? AND version=?'
-        )
-        .run(...keys.map((k) => patch[k]), r.aggregateId, r.expectedVersion)
-      if (updated.changes !== 1) fail('VERSION_CONFLICT')
-      const after = db.prepare('SELECT * FROM ' + table + ' WHERE id=?').get(r.aggregateId)
+      let id = r.aggregateId
+      if (creating) {
+        const inserted = db
+          .prepare(
+            'INSERT INTO ' +
+              table +
+              ' (' +
+              keys.map((k) => '"' + k + '"').join(',') +
+              ',version) VALUES (' +
+              keys.map(() => '?').join(',') +
+              ',1)'
+          )
+          .run(...keys.map((k) => patch[k]))
+        id = Number(inserted.lastInsertRowid)
+      } else {
+        const updated = db
+          .prepare(
+            'UPDATE ' +
+              table +
+              ' SET ' +
+              keys.map((k) => '"' + k + '"=?').join(',') +
+              ',version=version+1 WHERE id=? AND version=?'
+          )
+          .run(...keys.map((k) => patch[k]), id, r.expectedVersion)
+        if (updated.changes !== 1) fail('VERSION_CONFLICT')
+      }
+      const after = db.prepare('SELECT * FROM ' + table + ' WHERE id=?').get(id)
       const metadata = def.describe
-        ? sync(def.describe, frozen({ ...before }), frozen({ ...after }), r.payload)
+        ? sync(def.describe, before ? frozen({ ...before }) : null, frozen({ ...after }), r.payload)
         : {}
       canonicalRequest(metadata)
       if (
