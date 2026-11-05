@@ -1,0 +1,213 @@
+import { createHash, randomUUID } from 'node:crypto'
+
+export class CommandError extends Error {
+  constructor(code, message = code) {
+    super(message)
+    this.name = 'CommandError'
+    this.code = code
+  }
+}
+const fail = (code) => {
+  throw new CommandError(code)
+}
+// JSON only: reject lossy/ambiguous JS values; sort object keys recursively.
+export const canonicalRequest = (value) => {
+  const ancestors = new Set()
+  const visit = (v) => {
+    if (v === null || typeof v === 'string' || typeof v === 'boolean') return JSON.stringify(v)
+    if (typeof v === 'number') {
+      if (!Number.isFinite(v)) fail('INVALID_REQUEST')
+      return JSON.stringify(v)
+    }
+    if (typeof v !== 'object' || ancestors.has(v)) fail('INVALID_REQUEST')
+    if (
+      !Array.isArray(v) &&
+      Object.getPrototypeOf(v) !== Object.prototype &&
+      Object.getPrototypeOf(v) !== null
+    )
+      fail('INVALID_REQUEST')
+    if (Object.getOwnPropertySymbols(v).length) fail('INVALID_REQUEST')
+    ancestors.add(v)
+    let result
+    if (Array.isArray(v)) {
+      if (Object.keys(v).length !== v.length) fail('INVALID_REQUEST')
+      result = '[' + Array.from({ length: v.length }, (_, i) => visit(v[i])).join(',') + ']'
+    } else
+      result =
+        '{' +
+        Object.keys(v)
+          .sort()
+          .map((k) => {
+            const d = Object.getOwnPropertyDescriptor(v, k)
+            if (!('value' in d)) fail('INVALID_REQUEST')
+            return JSON.stringify(k) + ':' + visit(d.value)
+          })
+          .join(',') +
+        '}'
+    ancestors.delete(v)
+    return result
+  }
+  return visit(value)
+}
+const sync = (fn, ...args) => {
+  if (typeof fn !== 'function' || fn.constructor.name === 'AsyncFunction') fail('ASYNC_OPERATION')
+  const value = fn(...args)
+  if (value && typeof value.then === 'function') {
+    Promise.resolve(value).catch(() => {})
+    fail('ASYNC_OPERATION')
+  }
+  return value
+}
+const frozen = (value) => {
+  if (value && typeof value === 'object') {
+    for (const item of Object.values(value)) frozen(item)
+    Object.freeze(value)
+  }
+  return value
+}
+// Server-only composition API. resolveActor must verify the authentication context;
+// authorize must explicitly grant write access from the CURRENT database user.
+// Never expose register/resolveActor/authorize or service callbacks to request bodies.
+export const createCommandCore = ({ db, resolveActor, authorize }) => {
+  if (typeof resolveActor !== 'function' || typeof authorize !== 'function')
+    fail('AUTH_POLICY_REQUIRED')
+  const definitions = new Map()
+  const register = (name, definition) => {
+    if (typeof name !== 'string' || !name.trim() || definitions.has(name)) fail('INVALID_COMMAND')
+    if (!['position', 'candidate'].includes(definition.aggregate)) fail('INVALID_AGGREGATE')
+    if (typeof definition.eventType !== 'string' || typeof definition.change !== 'function')
+      fail('INVALID_COMMAND')
+    definitions.set(name, Object.freeze({ ...definition }))
+  }
+  const execute = (context, request) => {
+    if (db.isTransaction) fail('NESTED_TRANSACTION')
+    if (
+      db.prepare('PRAGMA foreign_keys').get().foreign_keys !== 1 ||
+      db.prepare('PRAGMA recursive_triggers').get().recursive_triggers !== 1
+    )
+      fail('UNSAFE_CONNECTION')
+    if (
+      db
+        .prepare('PRAGMA database_list')
+        .all()
+        .some((r) => !['main', 'temp'].includes(r.name))
+    )
+      fail('UNSAFE_CONNECTION')
+    const r = frozen(JSON.parse(canonicalRequest(request)))
+    if (
+      !r ||
+      Array.isArray(r) ||
+      Object.keys(r).some(
+        (k) =>
+          !['command', 'aggregateId', 'expectedVersion', 'idempotencyKey', 'payload'].includes(k)
+      )
+    )
+      fail('INVALID_REQUEST')
+    const def = definitions.get(r.command)
+    if (!def) fail('UNKNOWN_COMMAND')
+    if (
+      !Number.isSafeInteger(r.aggregateId) ||
+      r.aggregateId < 1 ||
+      !Number.isSafeInteger(r.expectedVersion) ||
+      r.expectedVersion < 1 ||
+      r.expectedVersion >= Number.MAX_SAFE_INTEGER ||
+      typeof r.idempotencyKey !== 'string' ||
+      !r.idempotencyKey.trim()
+    )
+      fail('INVALID_REQUEST')
+    const hash = createHash('sha256').update(canonicalRequest(r)).digest('hex')
+    const table = def.aggregate === 'position' ? 'positions' : 'candidates'
+    try {
+      db.exec('BEGIN IMMEDIATE')
+    } catch (error) {
+      if (/locked|busy/i.test(error.message)) fail('COMMAND_BUSY')
+      throw error
+    }
+    try {
+      const userId = sync(resolveActor, context)
+      if (!Number.isSafeInteger(userId) || userId < 1) fail('INVALID_ACTOR')
+      const user = db
+        .prepare('SELECT id,username,name,role,department,email,phone FROM users WHERE id=?')
+        .get(userId)
+      if (!user || typeof user.name !== 'string' || !user.name.trim()) fail('INVALID_ACTOR')
+      if (sync(authorize, frozen({ ...user }), r.command) !== true) fail('FORBIDDEN')
+      const oldReceipt = db
+        .prepare('SELECT * FROM command_receipts WHERE actor_user_id=? AND idempotency_key=?')
+        .get(userId, r.idempotencyKey)
+      if (oldReceipt) {
+        if (oldReceipt.request_sha256 !== hash) fail('IDEMPOTENCY_CONFLICT')
+        const result = JSON.parse(oldReceipt.result_json)
+        db.exec('COMMIT')
+        return { replayed: true, result }
+      }
+      const before = db.prepare('SELECT * FROM ' + table + ' WHERE id=?').get(r.aggregateId)
+      if (!before) fail('AGGREGATE_NOT_FOUND')
+      if (before.version !== r.expectedVersion) fail('VERSION_CONFLICT')
+      const now = Date.now(),
+        commandId = randomUUID()
+      const patch = sync(def.change, frozen({ ...before }), r.payload, frozen({ ...user }), now)
+      canonicalRequest(patch)
+      if (!patch || Array.isArray(patch)) fail('INVALID_PATCH')
+      const keys = Object.keys(patch)
+      if (
+        !keys.length ||
+        keys.some((k) => !Object.hasOwn(before, k) || ['id', 'version'].includes(k))
+      )
+        fail('INVALID_PATCH')
+      const columns = keys.map((k) => '"' + k + '"=?').join(',')
+      const updated = db
+        .prepare(
+          'UPDATE ' + table + ' SET ' + columns + ',version=version+1 WHERE id=? AND version=?'
+        )
+        .run(...keys.map((k) => patch[k]), r.aggregateId, r.expectedVersion)
+      if (updated.changes !== 1) fail('VERSION_CONFLICT')
+      const after = db.prepare('SELECT * FROM ' + table + ' WHERE id=?').get(r.aggregateId)
+      const metadata = def.describe
+        ? sync(def.describe, frozen({ ...before }), frozen({ ...after }), r.payload)
+        : {}
+      canonicalRequest(metadata)
+      if (
+        !metadata ||
+        Object.keys(metadata).some(
+          (k) => !['reason', 'interviewId', 'feedbackId', 'context'].includes(k)
+        )
+      )
+        fail('INVALID_EVENT_METADATA')
+      const result = {
+        commandId,
+        aggregate: def.aggregate,
+        aggregateId: after.id,
+        version: after.version
+      }
+      // Immediate FK business_events.command_id -> receipts requires this insertion order.
+      db.prepare(
+        'INSERT INTO command_receipts(command_id,actor_user_id,idempotency_key,request_sha256,result_json,committed_at) VALUES (?,?,?,?,?,?)'
+      ).run(commandId, user.id, r.idempotencyKey, hash, JSON.stringify(result), now)
+      db.prepare(
+        'INSERT INTO business_events(aggregate_type,position_id,candidate_id,interview_id,feedback_id,command_id,aggregate_version,event_type,actor_user_id,actor_name_snapshot,occurred_at,reason,old_values_json,new_values_json,context_json) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)'
+      ).run(
+        def.aggregate,
+        def.aggregate === 'position' ? after.id : null,
+        def.aggregate === 'candidate' ? after.id : null,
+        metadata.interviewId ?? null,
+        metadata.feedbackId ?? null,
+        commandId,
+        after.version,
+        def.eventType,
+        user.id,
+        user.name,
+        now,
+        metadata.reason ?? null,
+        JSON.stringify(before),
+        JSON.stringify(after),
+        JSON.stringify(metadata.context ?? {})
+      )
+      db.exec('COMMIT')
+      return { replayed: false, result }
+    } catch (error) {
+      if (db.isTransaction) db.exec('ROLLBACK')
+      throw error
+    }
+  }
+  return Object.freeze({ register, execute })
+}

@@ -47,6 +47,7 @@ test('fresh imports cannot open a database, seed, load dotenv, listen or mutate 
     'db/schema.js',
     'db/schema-v3.js',
     'db/migration-sandbox.js',
+    'services/command-core.js',
     'db/seed.js',
     'utils/jwt.js',
     'middleware/auth.js',
