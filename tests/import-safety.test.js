@@ -42,6 +42,10 @@ test('fresh imports cannot open a database, seed, load dotenv, listen or mutate 
   for (const file of [
     'index.js',
     'app.js',
+    'app-v3.js',
+    'db/verify-v3-db.js',
+    'middleware/auth-v3.js',
+    'middleware/error-v3.js',
     'config.js',
     'db/database.js',
     'db/schema.js',

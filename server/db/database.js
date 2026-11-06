@@ -2,6 +2,9 @@ import fs from 'node:fs'
 import path from 'node:path'
 import { DatabaseSync } from 'node:sqlite'
 
+const inMemoryConnections = new WeakSet()
+export const isInMemoryConnection = (db) => inMemoryConnections.has(db)
+
 export const openDatabase = (databasePath) => {
   if (
     typeof databasePath !== 'string' ||
@@ -33,6 +36,7 @@ export const openDatabase = (databasePath) => {
           throw error
         }
       }
+    if (databasePath === ':memory:') inMemoryConnections.add(db)
     return db
   } catch (error) {
     db.close()
