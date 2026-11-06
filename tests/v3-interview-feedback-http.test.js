@@ -151,9 +151,8 @@ test('E3-API-03 all thirteen routes enforce Bearer and the current recruiting ro
   assert.equal((await f.get('/interviews')).status, 200)
   for (const [method, path] of [
     ['DELETE', '/interviews/1'],
-    ['POST', '/applications/1/advance'],
-    ['POST', '/applications/1/close'],
-    ['POST', '/applications/1/offer/send']
+    ['POST', '/applications/1/reopen'],
+    ['DELETE', '/applications/1']
   ])
     failure(await f.request(path, { method, token: f.token }), 404, 'NOT_FOUND')
   f.db.exec("UPDATE users SET role='viewer' WHERE id=1")

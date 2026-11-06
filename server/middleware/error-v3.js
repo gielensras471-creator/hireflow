@@ -2,6 +2,16 @@ import { randomUUID } from 'node:crypto'
 import { CommandError } from '../services/command-core.js'
 
 const publicErrors = Object.freeze({
+  NO_NEXT_STAGE: [409, '当前申请没有下一招聘阶段'],
+  SCHEDULED_INTERVIEW_PENDING: [409, '请先处理待进行的面试'],
+  INVALID_APPLICATION_STATE: [409, '当前申请状态不允许此操作'],
+  INVALID_OFFER_STAGE: [409, '当前阶段不能操作 Offer'],
+  INVALID_OFFER_STATUS: [409, '当前 Offer 状态不允许此操作'],
+  ADVANCEMENT_REASON_REQUIRED: [422, '本次晋级须填写理由'],
+  INVALID_REASON: [422, '理由格式无效'],
+  INVALID_STAGE_TRANSITION: [422, '只能推进到下一个招聘阶段'],
+  INVALID_CLOSURE_OUTCOME: [422, '关闭结果无效'],
+  CLOSURE_REASON_REQUIRED: [422, '须填写非空的结束理由'],
   INVALID_INTERVIEW: [400, '面试编号无效'],
   INVALID_INTERVIEW_VERSION: [400, '缺少有效的面试版本'],
   INVALID_FEEDBACK_REVISION: [400, '缺少有效的面评版本'],
