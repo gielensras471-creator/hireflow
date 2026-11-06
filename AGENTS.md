@@ -1,50 +1,50 @@
 # HireFlow 项目协作规范
 
-## 项目与工作区
-- 定位：面向小型企业或小规模招聘团队的招聘流程协作平台。
-- 保留技术栈：Vue 3、TypeScript、Pinia、Vue Router、Axios、Element Plus、ECharts、Vite、Sass；Node.js、Express、JWT、bcryptjs、SQLite（node:sqlite）。
-- 正式工作区：E:/FIFile/Documents/Codex/hireflow-v3。
-- 开发分支：feature/hireflow-v3；每批工作前核对目录、分支和 Git 状态，保护已有改动。
-- E 盘为唯一正式开发工作区；C 盘 hireflow / hireflow-v3 仅保留历史资料，不用于 V3 开发。
+> **DOC-SYNC-03 阶段文档定稿** · 2026-11-06。本文与 `docs/项目主控总纲.md` v1.6 同步生效须经 GitHub 和 ChatGPT 项目来源分别核验。
 
-## 当前已批准基线与授权边界
-- 当前权威总纲为 v1.5（2026-11-03）；S1-01～S1-03、D1-01～D1-02、E2-01 已通过正式阶段验收。
-- DOC-SYNC-01、DEV-01、DEV-02 已完成并推送至 V3 开发分支；PRD v1.0 与 MVP 验收清单 v1.0 已于 2026-11-02 获 Owner 正式批准冻结。
-- A+ 数据模型、四阶段 screening → first_interview → second_interview → offer、10 P0 / 6 P1 不得擅自修改；R04 等历史研究中的未决结论不得覆盖正式 PRD。
-- UI 开发以已验收设计规范和 Figma 主文件 https://www.figma.com/design/5SnNs9DASMJdq3rvJXc37U 为依据；竞品仅作辅助参考，docs/images/ 是必须保留的 V2.1.1 历史视觉基线。
-- 据 Codex 执行报告，DEV-01 曾为 11/11 测试通过，DEV-02 后累计 24/24 隔离测试通过；这些结果及产品/设计验收、UI 承载映射不代表 AC-01～AC-36 正式业务/端到端验收通过。
-- 当前下一开发任务为 DEV-03：旧数据安全迁移、只读归档、核对及恢复工具，尚未正式授权；具体任务以本轮明确派发的范围为准，不得自动实施后续工作。
-- 正式原文件中的旧 C 盘工作区表述以 Owner 最新确认的 E 盘路径为准；历史版本、历史文件名和过时阶段表述不构成新授权。
-- 不得擅自执行数据库迁移、生产环境操作或部署。
+## 项目、工作区与当前事实
+
+- 定位：面向小型企业或小型招聘团队的企业招聘流程协作平台，不转为个人求职追踪工具。
+- 保留技术栈：Vue 3、TypeScript、Pinia、Vue Router、Axios、Element Plus、ECharts、Vite、Sass；Node.js、Express、JWT、bcryptjs、SQLite（`node:sqlite`）。
+- **唯一正式 V3 本地工作区**：`E:/FIFile/Documents/Codex/hireflow-v3`。C 盘旧工程仅是历史资料，不能用于当前开发。
+- **开发分支**：`feature/hireflow-v3`，DEV-10 已验收并推送的基线 HEAD：`b0b84c21dec945f18db3c15e44cf0dd2737a1e9a`。V2 `main`：`490b9ee2f1985b37052feebefd73605aa0dba1ab`，未合并/未由 V3 修改。
+- **当前权威总纲**：`docs/项目主控总纲.md` v1.6（DOC-SYNC-03 更新稿）；阶段②摘要：`docs/technical/HireFlow_DOC-SYNC-03_阶段二完成与集成边界_v1.0.md`。
+- **已验收任务**：S1-01～03、D1-01/02、E2-01、DEV-01～DEV-10。代码均已由总控 A 分批验收且 GitHub 提交链核验，**阶段②后端隔离研发批次 10/10 完成**。
+- Codex 报告 `pnpm test` **102/102 隔离测试通过**；总控 A 未独立在用户 E 盘完整复跑。**AC-01～AC-36 正式 API/UI/E2E 验收尚未完成**，不能把后端完成说成 V3 交付/生产上线。
+- **DOC-SYNC-03 文档不构成后续操作授权**；E3/API/UI、Git Commit/Push、main 合并、生产部署/迁移均需相应独立授权。每批执行前核对工作区、HEAD、状态及明确任务书。
+
+## 已冻结基线与已验收实现边界
+
+- Owner 于 2026-11-02 冻结 PRD v1.0、MVP 验收清单 v1.0：**A+ 一申请一 CandidateRecord**；四阶段 `screening → first_interview → second_interview → offer`；`application_status` / `outcome` / `offer_status` 独立；10 P0 / 6 P1，不得擅改。
+- 设计基线为已验收 D1-02 UI 规范和 Figma <https://www.figma.com/design/5SnNs9DASMJdq3rvJXc37U>，17 张编号画板 00～16；竞品仅作辅助参考；`docs/images/` 是须保留的 V2 历史视觉资料。
+- DEV-01～10 已完成的**隔离后端能力**：Schema/迁移沙盒、可信 HR 身份与 Command Core/幂等、职位与申请、面试独立活动、面评提交/历史补录/有痕更正、柔性晋级与真实事件、Offer 与结案、Dashboard 六类待办及上海时区、申请/职位真实历史与未知旧档读取。
+- **不等于已正式接入** V3 Express API/前端 UI；旧 V2 线上仍按当前部署基线运行，不得因新服务存在就修改现网数据。
+- Dashboard “开放职位”采用冻结 `status='open'` 字面口径，`softDeletedOpen` 单列；不能与排除软删除的可投递职位选项混称。旧轮历史缺评不计当前待面评；active+accepted 不等于 hired；今日按上海 `[00:00, 次日00:00)`，到时提醒为 scheduled 且 `now >= scheduled_at`，均只读。
+- 旧档历史未知事实不可伪造；DEV-03 迁移仅对虚构数据和受控隔离库测试过，**不允许因此操作生产 SQLite**。
 
 ## 文档入口与优先级
-- 每批任务先读取 docs/项目主控总纲.md，核对正文版本、日期、阶段及已批准决策；它是唯一当前总纲入口。
-- 用户本轮明确指令与最新确认决策优先；已批准的 PRD、业务规则和技术方案优先于讨论稿。出现冲突先指出，不擅自替用户决定产品路线。
-- 总纲是调度文件，不替代源码、审计证据或测试结果；研究产出不等于已批准需求，计划实施不等于已经实现。
-- 按任务选择资料，不要求每轮读完全部文档：
-  - 项目现状与源码基线：docs/research/01-项目现状与功能盘点.md。
-  - 竞品参考：docs/research/02-竞品研究.md。
-  - 数据模型比较：docs/research/R04-数据模型A_B对比研究.md。
-  - 业务流程与状态：docs/product/03-招聘业务流程与状态规则.md。
-  - 冻结 PRD：docs/product/PRD-V3.0_v1.0_正式冻结版.md。
-  - 冻结验收规格：docs/product/V3.0-MVP验收清单_v1.0_正式冻结版.md。
-  - 视觉研究：docs/design/D1-01-视觉参考与信息架构研究_v1.0_已验收.md。
-  - 正式 UI 规范：docs/design/HireFlow_D1-02_UI_Design_Spec_v1.0_Approved.md。
-  - UI 承载对照（非测试）：docs/design/HireFlow_D1-02_AC01-AC36_UI承载对照_v1.0_未测试.md。
-  - 技术任务书：docs/technical/HireFlow_E2-01_技术方案阶段启动任务书_v1.0.md。
-- 具体批准状态以最新确认记录为准，不把未冻结的 MVP、数据模型或状态机写成已批准需求。
-- 所需总纲、PRD、技术方案或设计资料缺失时明确说明，不假装已经读取；文档中的任务模板不视为本轮执行授权。
-- 总纲更新保持固定路径，在正文更新版本和日期；不将总纲全文复制到本文件。
 
-## 分工与执行
-- 对话 A 负责总控、验收及任务安排；B 负责产品研究、业务规则与 PRD；C 负责 UI/UX 与设计；Codex 负责明确任务范围内的源码审计、实现和验证；用户最终确认重要取舍。
-- 只执行本轮授权范围，不因交接材料列出下一步就自动开始后续批次。
-- 遵循现有架构；不无依据更换技术栈、增加依赖或扩大需求。
-- 修改业务规则时检查前端、API、数据库的一致性，并执行适当的规则及异常场景测试。
-- 区分静态审计、构建检查和实际运行测试；不编造调研、性能数字或验证结果。
+- **开始任务先看** `docs/项目主控总纲.md` 的版本、当前决议及本任务单；技术实施细节再看实际 HEAD 源码。总纲是调度资料，**不是测试结果或 API 合同**。
+- 最新经 Owner 确认的具体决议 > 冻结 PRD/MVP / 已验收 UI 规范 > 已验收技术方案 > 当前总纲的进度调度 > 早期研究和历史任务书；冲突必须报告，不自行纠正需求。
+- 常用资料：
+  - `docs/research/01-项目现状与功能盘点.md`、`02-竞品研究.md`、`R04-数据模型A_B对比研究.md`（早期研究）。
+  - `docs/product/03-招聘业务流程与状态规则.md`、`PRD-V3.0_v1.0_正式冻结版.md`、`V3.0-MVP验收清单_v1.0_正式冻结版.md`。
+  - `docs/design/HireFlow_D1-02_UI_Design_Spec_v1.0_Approved.md`、`HireFlow_D1-02_AC01-AC36_UI承载对照_v1.0_未测试.md`。
+  - `docs/technical/HireFlow_E2-01_技术方案阶段启动任务书_v1.0.md`（历史背景）和 `HireFlow_DOC-SYNC-03_阶段二完成与集成边界_v1.0.md`（最新阶段摘要）。
+- 不要求每轮阅读全文；缺少关键文件时须报告，不以聊天记忆替代源码/冻结文件。不能将历史研究、旧任务书的未决或旧 C 盘路径当作当前授权。
 
-## 安全与交付
-- 未经明确授权，不提交或推送、不合并 main、不部署、不重置数据库、不接触生产数据或密钥，不进行破坏性操作。
-- 数据库迁移须有本地/测试验证、备份及回滚方案；生产 SQLite 的 WAL/SHM 一并考虑。
-- 保留开源来源及许可证说明，保护原始资料和用户已有文件。
-- 完成后说明文件改动、实际验证结果及未解决问题，然后停止等待下一步任务。
+## 协作与执行权限
+
+- 对话 A 负责项目总控与源码验收；B 负责产品研究与冻结规则解释；C 负责 UI/UX 走查；Owner 最终确认重要取舍；Codex 只执行 A 明确派发的单批工作。
+- **DOC-SYNC-03 仓库授权修改范围仅包括** `AGENTS.md`、`docs/项目主控总纲.md`、`docs/technical/HireFlow_DOC-SYNC-03_阶段二完成与集成边界_v1.0.md`。ChatGPT 来源 `HireFlow项目说明.md` 为外部项目文件，不擅自放入 Git 仓库。
+- 不得修改冻结 PRD/MVP、已验收设计规范、现有 V2/DEV-01～10 业务源码、测试与 Schema，也不得借文档更新顺便开工 API/UI。
+- 工作流：明确授权 → Codex 在本机只修改授权文件 → 静态核对/差异审查 → 总控 A 验收 → **独立授权 Commit/Push** → GitHub 远程核验 → Owner 再替换 ChatGPT 项目来源。**任一步都不视为自动完成下一步。**
+- DOC-SYNC-03 结束后下一事项是 E3/API 接入方案与 UI 执行计划的**启动评审**，不是立即以本文件为指令开发。
+
+## 生产、Git 与安全
+
+- 禁止未经单独批准的 `git add`/commit/push、main 合并/强推、生产部署、生产库备份/覆盖/迁移、旧 `reset-db`、测试数据写入真实库、机密或真实候选人数据读取与公开。
+- 迁移/恢复必须显式授权，遵循隔离、备份/WAL/SHM 与核对/回滚要求；DEV-03 工具测试不等于正式部署许可。
+- 网络与凭据只使用本次经核验的临时代理/现有合法凭据，不将代理端口写死、不关闭 SSL 验证、不输出凭据、不永久修改全局 Git 设置。
+- 保留开源上游与 MIT / `THIRD_PARTY_NOTICES.md` 声明；不编造性能改善、用例成功或验证结论。
+- 本次输出修改文件清单、差异摘要、静态/链接检查、当前 Git 状态和剩余风险，等待 A 下一步授权。
