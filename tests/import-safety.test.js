@@ -44,6 +44,8 @@ test('fresh imports cannot open a database, seed, load dotenv, listen or mutate 
     'app.js',
     'app-v3.js',
     'routes/recruiting-v3.js',
+    'routes/interview-feedback-v3.js',
+    'routes/request-v3.js',
     'db/verify-v3-db.js',
     'middleware/auth-v3.js',
     'middleware/error-v3.js',

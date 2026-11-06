@@ -1,5 +1,6 @@
 import { createCommandCore, CommandError } from './command-core.js'
 import { authorizeRecruiting, requireRecruitingActor } from './recruiting-auth.js'
+import { createRecruitingRead, validateLimit } from './query-read.js'
 const fail = (code) => {
   throw new CommandError(code)
 }
@@ -120,6 +121,7 @@ export const createInterviewService = ({ db, resolveActor, clock = Date.now }) =
       describe: (_b, _a, p) => (action === 'cancel' ? { reason: p.reason } : {})
     })
   const auth = (context) => requireRecruitingActor(db, resolveActor, context)
+  const read = createRecruitingRead(db, resolveActor)
   const select = `SELECT i.*,c.name AS candidate_name,c.stage AS application_stage,c.application_status,c.version AS application_version,p.id AS position_id,p.title AS position_title FROM interviews i JOIN candidates c ON c.id=i.candidate_id JOIN positions p ON p.id=c.position_id`
   const decorate = (row, now) => {
     const due = row.status === 'scheduled' && now >= row.scheduled_at
@@ -142,6 +144,36 @@ export const createInterviewService = ({ db, resolveActor, clock = Date.now }) =
         .all()
         .map((r) => decorate(r, time))
     },
+    listPage: (
+      context,
+      { applicationId, positionId, stageScope, status, limit = 50, offset = 0 } = {}
+    ) =>
+      read(context, () => {
+        validateLimit(limit)
+        if (!Number.isSafeInteger(offset) || offset < 0) fail('INVALID_QUERY')
+        const filters = [
+          ['i.candidate_id', applicationId],
+          ['p.id', positionId],
+          ['i.stage_scope', stageScope],
+          ['i.status', status]
+        ].filter(([, value]) => value !== undefined)
+        const where = filters.length
+          ? ' WHERE ' + filters.map(([column]) => column + '=?').join(' AND ')
+          : ''
+        const params = filters.map(([, value]) => value)
+        const total = db
+          .prepare(
+            'SELECT COUNT(*) AS n FROM interviews i JOIN candidates c ON c.id=i.candidate_id JOIN positions p ON p.id=c.position_id' +
+              where
+          )
+          .get(...params).n
+        const time = now()
+        const items = db
+          .prepare(select + where + ' ORDER BY i.scheduled_at,i.id LIMIT ? OFFSET ?')
+          .all(...params, limit, offset)
+          .map((row) => decorate(row, time))
+        return { items, total, limit, offset }
+      }),
     detail: (context, id) => {
       auth(context)
       const row = db.prepare(select + ' WHERE i.id=?').get(positive(id))

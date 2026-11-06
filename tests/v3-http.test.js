@@ -90,7 +90,7 @@ test('E3-API-01 exposes minimal health and authenticates a real bcrypt V3 HR acc
     'INVALID_REQUEST'
   )
   await errorResponse(
-    await fetch(base + '/api/v3/interviews', bearer(session.token)),
+    await fetch(base + '/api/v3/dashboard/summary', bearer(session.token)),
     404,
     'NOT_FOUND'
   )
