@@ -179,20 +179,36 @@ export const createDashboardService = ({ db, resolveActor, clock = Date.now }) =
         validateOptions(options, ['limit', 'offset'])
         return listWorkItems('offer', { ...options, status })
       }),
-    todayInterviews: (context) =>
+    todayInterviews: (context, options) =>
       read(context, () => {
+        const paged = options !== undefined
+        if (paged) validateOptions(options, ['limit', 'offset'])
+        const { limit = 50, offset = 0 } = options ?? {}
+        if (paged) {
+          validateLimit(limit)
+          if (!Number.isSafeInteger(offset) || offset < 0 || offset > 100_000)
+            throw new CommandError('INVALID_QUERY')
+        }
         const now = readNow(clock)
         const { start, end } = dayBounds(now)
         const byStatus = { scheduled: 0, completed: 0, cancelled: 0 }
+        for (const row of db
+          .prepare(
+            'SELECT i.status,COUNT(*) AS count FROM interviews i WHERE ' +
+              todayRange +
+              ' GROUP BY i.status'
+          )
+          .all(start, end))
+          byStatus[row.status] = row.count
+        const total = byStatus.scheduled + byStatus.completed + byStatus.cancelled
         const items = db
           .prepare(
             `SELECT ${applicationFields},${interviewFields}
           FROM interviews i JOIN candidates c ON c.id=i.candidate_id
-          WHERE ${todayRange} ORDER BY i.scheduled_at,i.id`
+          WHERE ${todayRange} ORDER BY i.scheduled_at,i.id${paged ? ' LIMIT ? OFFSET ?' : ''}`
           )
-          .all(start, end)
+          .all(start, end, ...(paged ? [limit, offset] : []))
           .map((row) => {
-            byStatus[row.interviewStatus]++
             const due = row.interviewStatus === 'scheduled' && now >= row.scheduledAt
             return { ...row, due, hint: due ? dueHint : null }
           })
@@ -200,9 +216,10 @@ export const createDashboardService = ({ db, resolveActor, clock = Date.now }) =
           timezone: 'Asia/Shanghai',
           start,
           end,
-          total: items.length,
+          total,
           unit: interviewUnit,
           byStatus,
+          ...(paged ? { limit, offset } : {}),
           items
         }
       })

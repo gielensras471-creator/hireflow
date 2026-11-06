@@ -33,6 +33,7 @@ const publicErrors = Object.freeze({
   INVALID_RECOMMENDATION: [422, '评价结论无效'],
   CANCEL_REASON_REQUIRED: [422, '取消面试须填写理由'],
   CORRECTION_REASON_REQUIRED: [422, '更正面评须填写理由'],
+  LEGACY_RECORD_NOT_FOUND: [404, '旧版档案不存在'],
   INVALID_QUERY: [400, '筛选或分页参数无效'],
   INVALID_ID: [400, '资源编号无效'],
   INVALID_VERSION: [400, '缺少有效的资源版本'],
