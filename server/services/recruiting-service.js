@@ -1,5 +1,6 @@
 import { createCommandCore, CommandError } from './command-core.js'
 import { authorizeRecruiting, requireRecruitingActor } from './recruiting-auth.js'
+import { createRecruitingRead, validateLimit } from './query-read.js'
 const reject = (code) => {
   throw new CommandError(code)
 }
@@ -154,6 +155,20 @@ export const createRecruitingService = ({ db, resolveActor }) => {
     }
   })
   const auth = (context) => requireRecruitingActor(db, resolveActor, context)
+  const read = createRecruitingRead(db, resolveActor)
+  const applicationJoin = 'FROM candidates c JOIN positions p ON p.id=c.position_id'
+  const positionRelation =
+    'p.title AS position_title,p.status AS position_status,p.deleted_at AS position_deleted_at'
+  const page = (projection, from, predicates, params, sort, limit, offset) => {
+    validateLimit(limit)
+    if (!Number.isSafeInteger(offset) || offset < 0) reject('INVALID_QUERY')
+    const scope = from + ' WHERE ' + predicates
+    const total = db.prepare('SELECT COUNT(*) AS n ' + scope).get(...params).n
+    const items = db
+      .prepare('SELECT ' + projection + ' ' + scope + ' ORDER BY ' + sort + ' LIMIT ? OFFSET ?')
+      .all(...params, limit, offset)
+    return { items, total, limit, offset }
+  }
   const positionDetail = (context, positionId) => {
     auth(context)
     const p = db.prepare('SELECT * FROM positions WHERE id=?').get(id(positionId))
@@ -172,6 +187,56 @@ export const createRecruitingService = ({ db, resolveActor }) => {
       return response
     },
     positionDetail,
+    positionsPage: (context, { status, q, limit = 50, offset = 0 } = {}) =>
+      read(context, () => {
+        const keyword = q ?? null
+        const result = page(
+          'p.*',
+          'FROM positions p',
+          '(? IS NULL OR p.status=?) AND (? IS NULL OR instr(lower(p.title),lower(?))>0 OR instr(lower(p.department),lower(?))>0 OR instr(lower(p.location),lower(?))>0)',
+          [status ?? null, status ?? null, keyword, keyword, keyword, keyword],
+          'p.id',
+          limit,
+          offset
+        )
+        return { ...result, items: result.items.map((p) => ({ ...p, ...risk(p.id) })) }
+      }),
+    applicationsPage: (
+      context,
+      { positionId, stage, applicationStatus, q, limit = 50, offset = 0 } = {}
+    ) =>
+      read(context, () => {
+        const keyword = q ?? null
+        return page(
+          'c.id,c.name,c.owner,c.applied_date,c.created_at,c.position_id,c.stage,c.application_status,c.outcome,c.offer_status,c.closed_at,c.version,' +
+            positionRelation,
+          applicationJoin,
+          '(? IS NULL OR c.position_id=?) AND (? IS NULL OR c.stage=?) AND (? IS NULL OR c.application_status=?) AND (? IS NULL OR instr(lower(c.name),lower(?))>0 OR instr(lower(c.owner),lower(?))>0 OR instr(lower(p.title),lower(?))>0)',
+          [
+            positionId ?? null,
+            positionId ?? null,
+            stage ?? null,
+            stage ?? null,
+            applicationStatus ?? null,
+            applicationStatus ?? null,
+            keyword,
+            keyword,
+            keyword,
+            keyword
+          ],
+          'c.id',
+          limit,
+          offset
+        )
+      }),
+    applicationDetail: (context, applicationId) =>
+      read(context, () => {
+        const row = db
+          .prepare('SELECT c.*,' + positionRelation + ' ' + applicationJoin + ' WHERE c.id=?')
+          .get(id(applicationId))
+        if (!row) reject('AGGREGATE_NOT_FOUND')
+        return row
+      }),
     positions: (context) => {
       auth(context)
       return db
@@ -190,9 +255,7 @@ export const createRecruitingService = ({ db, resolveActor }) => {
     applications: (context) => {
       auth(context)
       return db
-        .prepare(
-          'SELECT c.*,p.title AS position_title,p.status AS position_status,p.deleted_at AS position_deleted_at FROM candidates c JOIN positions p ON p.id=c.position_id ORDER BY c.id'
-        )
+        .prepare('SELECT c.*,' + positionRelation + ' ' + applicationJoin + ' ORDER BY c.id')
         .all()
     }
   })
