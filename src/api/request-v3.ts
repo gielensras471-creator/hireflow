@@ -18,7 +18,8 @@ export function adaptV3Error(error: unknown): V3Error {
       IDEMPOTENCY_CONFLICT: '提交标识与内容不一致，请先核对原操作结果。'
     }
     const message =
-      businessMessages[code] ?? status === 401
+      businessMessages[code] ??
+      (status === 401
         ? '登录失效或账号密码有误，请重新登录。'
         : status === 403
           ? '当前账号没有招聘权限。'
@@ -26,7 +27,7 @@ export function adaptV3Error(error: unknown): V3Error {
             ? '记录已有新进展，请刷新后重新确认。'
             : status === 422 || status === 400
               ? '请检查填写内容。'
-              : '服务暂不可用，请稍后重试。'
+              : '服务暂不可用，请稍后重试。')
     return new V3Error(status, code, message, requestId)
   }
   return new V3Error(0, 'REQUEST_FAILED', '服务暂不可用，请稍后重试。')
