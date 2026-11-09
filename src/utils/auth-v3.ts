@@ -97,7 +97,7 @@ export function createV3Session(
         if (error instanceof V3Error && error.status === 401) clear('anonymous', true)
         else if (error instanceof V3Error && error.status === 403) clear('forbidden')
         else {
-          state.user = null
+          // Retain the mounted draft while identity cannot be revalidated.
           state.status = 'unavailable'
         }
       })

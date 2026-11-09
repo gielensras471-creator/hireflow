@@ -78,6 +78,8 @@ async function authorized<T>(
         ...(idempotencyKey ? { 'Idempotency-Key': idempotencyKey } : {})
       }
     })
+    if (v3Session.version() === version && v3Session.state.status === 'unavailable')
+      throw new V3Error(0, 'IDENTITY_UNAVAILABLE', '连接暂时中断，请重试。')
     if (
       v3Session.version() !== version ||
       v3Session.token() !== token ||
@@ -87,7 +89,8 @@ async function authorized<T>(
     return result.data
   } catch (error) {
     const problem = error instanceof V3Error ? error : adaptV3Error(error)
-    v3Session.reject(token, problem.status, version)
+    if (problem.status === 401) v3Session.reject(token, 401, version)
+    if (problem.status === 403 && v3Session.version() === version) await v3Session.refresh()
     throw problem
   }
 }

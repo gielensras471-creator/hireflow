@@ -33,6 +33,7 @@ router.beforeEach(async (to, from) => {
   if (v3Session.token()) await v3Session.refresh()
   const status = v3Session.state.status
   if (to.name === 'v3-login') return status === 'ready' ? safeReturn(to.query.redirect) : true
+  if (status === 'unavailable' && v3Session.state.user) return false
   if (status === 'ready' || status === 'unavailable') return true
   return { name: 'v3-login', query: { redirect: safeReturn(to.fullPath) } }
 })
