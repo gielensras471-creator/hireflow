@@ -14,7 +14,7 @@
       <el-button
         v-if="!isDetail"
         type="primary"
-        :disabled="loading || !!editor"
+        :disabled="loading || !!gate.current.value"
         @click="openEditor(null)"
         >＋ {{ positions ? '新建职位' : '添加申请' }}</el-button
       >
@@ -58,7 +58,7 @@
       :row="editor.row"
       :action="editor.action"
       :options="options"
-      @close="editor = null"
+      @close="closeProfile"
       @saved="saved"
     />
     <section
@@ -107,9 +107,9 @@
           <dd>{{ display(selected, key) }}</dd></template
         >
       </dl>
-      <p>面试、评价、晋级、结案与 Offer 操作将在后续批次接入。</p>
+      <p>评价、晋级、结案与 Offer 操作将在后续批次接入。</p>
       <el-button
-        :disabled="(selected as Application).applicationStatus !== 'active'"
+        :disabled="!!gate.current.value || (selected as Application).applicationStatus !== 'active'"
         @click="openEditor(selected)"
         >编辑申请资料</el-button
       >
@@ -185,7 +185,7 @@
                 <el-button
                   text
                   :disabled="
-                    !!editor ||
+                    !!gate.current.value ||
                     (positions
                       ? !!(row as Position).deletedAt
                       : (row as Application).applicationStatus === 'closed')
@@ -194,10 +194,16 @@
                   >编辑</el-button
                 >
                 <template v-if="positions && !(row as Position).deletedAt">
-                  <el-button text :disabled="!!editor" @click="openEditor(row, 'status')">{{
-                    (row as Position).status === 'open' ? '关闭' : '重新开放'
-                  }}</el-button>
-                  <el-button text :disabled="!!editor" @click="openEditor(row, 'archive')"
+                  <el-button
+                    text
+                    :disabled="!!gate.current.value"
+                    @click="openEditor(row, 'status')"
+                    >{{ (row as Position).status === 'open' ? '关闭' : '重新开放' }}</el-button
+                  >
+                  <el-button
+                    text
+                    :disabled="!!gate.current.value"
+                    @click="openEditor(row, 'archive')"
                     >归档</el-button
                   >
                   <RouterLink :to="{ path: '/candidates', query: { positionId: row.id } }"
@@ -225,10 +231,17 @@
       </dl>
       <el-button @click="selected = null">收起</el-button>
     </section>
+    <V3Interviews
+      v-if="isDetail && selected && !loading && !error"
+      :key="selected.id"
+      :application-id="selected.id"
+      :disabled="!!editor || (gate.current.value !== null && gate.current.value === profileLease)"
+      @updated="load"
+    />
   </section>
 </template>
 <script setup lang="ts">
-import { computed, onUnmounted, ref, watch } from 'vue'
+import { computed, nextTick, onUnmounted, provide, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { readV3, v3Session } from '../api/request-v3'
 import { latestRead } from '../api/v3-operation'
@@ -245,8 +258,13 @@ import {
 } from '../api/recruiting-v3'
 import V3Feedback from '../components/V3Feedback.vue'
 import V3RecruitingEditor from '../components/V3RecruitingEditor.vue'
-import { confirmV3Leave } from '../router/v3-drafts'
+import V3Interviews from './V3Interviews.vue'
+import { createEditorGate, editorGateKey } from '../utils/v3-editor-gate'
 import '../styles/v3-recruiting.scss'
+const gate = createEditorGate()
+provide(editorGateKey, gate)
+let profileLease: symbol | null = null
+let alive = true
 const route = useRoute(),
   router = useRouter()
 const positions = computed(() => route.path === '/positions')
@@ -349,20 +367,43 @@ async function openEditor(
   row: RecruitingRow | null,
   action: 'edit' | 'status' | 'archive' = 'edit'
 ) {
-  if (editor.value && !confirmV3Leave()) return
+  if (!alive || gate.current.value || v3Session.state.status !== 'ready') return
+  const lease = gate.acquire()
+  if (!lease) return
+  profileLease = lease
   const attempt = ++openingGeneration
   const path = route.fullPath
   const session = v3Session.version()
   try {
     const current = row ? await detail(resource.value, row.id) : null
     if (!positions.value && !row) options.value = await readV3<Position[]>('/positions/options')
-    if (attempt !== openingGeneration || route.fullPath !== path || v3Session.version() !== session)
+    if (
+      !alive ||
+      !gate.owns(lease) ||
+      attempt !== openingGeneration ||
+      route.fullPath !== path ||
+      v3Session.version() !== session ||
+      v3Session.state.status !== 'ready'
+    )
       return
     editor.value = { row: current, action, key: ++editorKey }
   } catch (e) {
     if (attempt === openingGeneration && route.fullPath === path && v3Session.version() === session)
       error.value = e instanceof Error ? e.message : '无法打开表单'
+  } finally {
+    if (!editor.value) {
+      gate.release(lease)
+      if (profileLease === lease) profileLease = null
+    }
   }
+}
+async function closeProfile() {
+  const lease = profileLease
+  openingGeneration++
+  editor.value = null
+  await nextTick()
+  if (lease) gate.release(lease)
+  if (profileLease === lease) profileLease = null
 }
 function showDetail(row: RecruitingRow) {
   if (!positions.value) {
@@ -380,7 +421,7 @@ function showDetail(row: RecruitingRow) {
   )
 }
 function saved() {
-  editor.value = null
+  void closeProfile()
   void load()
 }
 watch(
@@ -388,7 +429,7 @@ watch(
   () => {
     query.invalidate()
     selection.invalidate()
-    editor.value = null
+    void closeProfile()
     search.value = String(route.query.q ?? '')
     status.value = String(route.query[positions.value ? 'status' : 'applicationStatus'] ?? '')
     stage.value = String(route.query.stage ?? '')
@@ -398,6 +439,8 @@ watch(
   { immediate: true }
 )
 onUnmounted(() => {
+  alive = false
+  if (profileLease) gate.release(profileLease)
   openingGeneration++
   query.invalidate()
   selection.invalidate()
