@@ -61,7 +61,11 @@ wrapped.use((req, res, next) => {
     return res.status(503).json({ error: { code: 'FIXTURE_READ_FAILED', message: 'fixture' } })
   if (slowOnce && req.method === 'GET' && req.path === '/api/v3/interviews') {
     slowOnce = false
-    return setTimeout(next, 2500)
+    return setTimeout(() => {
+      if (failList)
+        return res.status(503).json({ error: { code: 'FIXTURE_READ_FAILED', message: 'fixture' } })
+      next()
+    }, 2500)
   }
   if (alignVersion && req.method === 'POST' && req.path.endsWith('/reschedule')) {
     alignVersion = false
@@ -670,8 +674,11 @@ try {
   await evaluate('document.querySelector(".v3-interview-filters").requestSubmit()')
   await check('document.body.innerText.includes("没有匹配的面试记录")', 'filtered empty')
   failList = true
+  slowOnce = true
   await button('清除筛选')
+  await check('!!document.querySelector(".v3-interview-loading")', 'slow failing read loading')
   await check('document.body.innerText.includes("暂时无法查看面试记录")', 'list failure')
+  assert.equal(await evaluate('document.querySelectorAll(".v3-interview-loading").length'), 0)
   await snapshot('interviews-error')
   failList = false
   await button('重新加载')
@@ -680,11 +687,57 @@ try {
   await input('面试状态', 'scheduled')
   await evaluate('document.querySelector(".v3-interview-filters").requestSubmit()')
   await check('document.body.innerText.includes("加载面试记录中")', 'pending filter')
+
+  assert.deepEqual(
+    await evaluate(
+      '[...document.querySelectorAll(".v3-interview-loading th")].map(e=>e.textContent)'
+    ),
+    ['面试 / 申请', '应聘职位', '轮次', '预约开始时间（上海）', '面试官', '状态', '操作']
+  )
+  assert.equal(await evaluate('document.querySelectorAll(".v3-interview-loading-row").length'), 5)
+  assert.equal(await evaluate('document.querySelectorAll(".v3-interview-loading-cell").length'), 35)
+  assert.equal(
+    await evaluate(
+      'document.querySelectorAll(".v3-interviews tbody button,.v3-interviews [data-interview-id]").length'
+    ),
+    0
+  )
+  assert.ok(
+    await evaluate(
+      'document.querySelector(".v3-interview-loading").getAttribute("aria-busy")==="true" && document.querySelector(".v3-interview-loading tbody").getAttribute("aria-hidden")==="true"'
+    )
+  )
+  assert.ok(
+    await evaluate(
+      'document.querySelector(".v3-interview-loading [role=status]").textContent.includes("加载面试记录中")'
+    )
+  )
+  assert.equal(
+    await evaluate('document.querySelector("[aria-label=\\"面试状态\\"]").value'),
+    'scheduled'
+  )
+  assert.ok(
+    await evaluate(
+      '!document.querySelector(".v3-interview-loading").textContent.includes("共 23 场")'
+    )
+  )
+  await snapshot('interviews-loading')
+  await width(390)
+  await check('document.querySelector(".v3-shell").dataset.tier==="mobile"', 'loading mobile')
+  assert.ok(await evaluate('document.documentElement.scrollWidth<=390'))
+  assert.ok(
+    await evaluate(
+      'document.querySelector(".v3-interview-loading .v3-table-scroll").scrollWidth>document.querySelector(".v3-interview-loading .v3-table-scroll").clientWidth'
+    )
+  )
+  await width(1440)
+
   await input('面试状态', 'completed')
   await evaluate('document.querySelector(".v3-interview-filters").requestSubmit()')
   await check('document.querySelectorAll(".v3-interviews tbody tr").length===20', 'new filter')
   await sleep(3000)
   assert.equal(await evaluate('document.querySelectorAll(".v3-interviews tbody tr").length'), 20)
+  assert.equal(await evaluate('document.querySelectorAll(".v3-interview-loading-cell").length'), 0)
   slowOnce = true
   await input('面试状态', 'scheduled')
   await evaluate('document.querySelector(".v3-interview-filters").requestSubmit()')

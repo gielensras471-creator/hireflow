@@ -73,3 +73,17 @@ The Chromium fixture holds an application-detail response until the test explici
 The final UI-03A script passed without intervention when run serially, and the original UI-02 browser regression passed. A concurrent fixture run encountered a transient Vite dynamic-import startup problem. Final evidence uses the independent serial run. Browser polling deadlines now use performance.now so the fixture's fixed Date.now cannot prevent timeout reporting.
 
 Quality gates passed: 165 Node tests, type checking, lint, build, changed-file Prettier and git diff --check. Only the existing Dashboard attribute-order warning remains. Existing dropped-response cases still generate expected socket-hang-up diagnostics.
+
+## UI03A-D01 global interview list loading
+
+The global /interviews loading branch retains the page heading, explanatory text and current filters. All seven existing list headers remain visible above five rows containing thirty-five decorative skeleton cells. Table padding, borders and surfaces inherit the interview table styles. The loading table uses a minimum width inside the existing scroll container for narrow screens.
+
+No real record identities, record totals, lifecycle values or row actions are rendered while loading. The region provides aria-busy, a labelled table and a loading status. Decorative rows are aria-hidden. The embedded application-detail loading branch retains the compact feedback component.
+
+The actual Chromium workflow passed seven exact headers, five rows/thirty-five cells, retained scheduled filter input, zero stale row actions, aria-busy/decorative semantics, removal after newer results, delayed-response rejection, delayed failure into Error/Retry, paging and unmount protection. Loading was checked at 390px for container scrolling without whole-page overflow. Existing embedded-detail and editor-safety scenarios also passed.
+
+[Actual global interview loading screenshot](interviews-loading.png) was captured at desktop viewport 1440 by 900, DPR 1, with full-page capture. Only this new image is included for this fix. Earlier screenshots remain from their original runs.
+
+Quality gates: pnpm test 165 passed, 0 failed, 0 skipped; type check, lint, build, changed-file Prettier and git diff --check passed. The existing Dashboard attribute-order warning remains. Expected socket-hang-up diagnostics come from the existing dropped-response test. The standalone UI-02 browser workflow was not rerun for this isolated global-interview template/style change. Shared components, request handling and editor-gate mechanisms were not modified.
+
+This patch addresses only UI03A-D01 and awaits control A re-review.

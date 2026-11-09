@@ -67,7 +67,32 @@
       @saved="saved"
     />
     <p v-if="operationError" class="v3-error" role="alert">{{ operationError }}</p>
-    <V3Feedback v-if="loading" state="loading" title="加载面试记录中" />
+    <section
+      v-if="loading && !applicationId"
+      class="v3-card v3-interview-loading"
+      aria-busy="true"
+      aria-labelledby="interview-loading-title"
+    >
+      <h2 id="interview-loading-title">面试记录</h2>
+      <div class="v3-table-scroll">
+        <table aria-label="面试记录加载中">
+          <thead>
+            <tr>
+              <th v-for="column in interviewColumns" :key="column" scope="col">{{ column }}</th>
+            </tr>
+          </thead>
+          <tbody aria-hidden="true">
+            <tr v-for="row in 5" :key="row" class="v3-interview-loading-row">
+              <td v-for="column in interviewColumns" :key="column">
+                <span class="v3-interview-loading-cell" />
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+      <p role="status">加载面试记录中，请稍候…</p>
+    </section>
+    <V3Feedback v-else-if="loading" state="loading" title="加载面试记录中" />
     <V3Feedback
       v-else-if="error"
       state="error"
@@ -216,6 +241,15 @@ const filtered = computed(
     !props.applicationId &&
     Object.keys(route.query).some((key) => key !== 'offset' && route.query[key])
 )
+const interviewColumns = [
+  '面试 / 申请',
+  '应聘职位',
+  '轮次',
+  '预约开始时间（上海）',
+  '面试官',
+  '状态',
+  '操作'
+]
 const actions: Exclude<InterviewAction, 'schedule'>[] = ['reschedule', 'complete', 'cancel']
 const editor = ref<{
   application: Application

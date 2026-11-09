@@ -87,3 +87,24 @@
     max-width: 100%;
   }
 }
+
+.v3-interviews .v3-interview-loading {
+  table {
+    min-width: 950px;
+  }
+  td {
+    height: 70px;
+  }
+  .v3-interview-loading-cell {
+    display: block;
+    width: 90%;
+    min-width: 60px;
+    height: 12px;
+    border-radius: 6px;
+    background: var(--v3-border);
+  }
+  p {
+    margin: 16px 0 0;
+    font-size: 12px;
+  }
+}
