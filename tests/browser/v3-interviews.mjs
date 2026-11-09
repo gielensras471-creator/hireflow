@@ -25,6 +25,10 @@ const password = randomBytes(18).toString('base64url')
 db.prepare(
   'INSERT INTO users (username,password_hash,name,role,department,email,phone) VALUES (?,?,?,?,?,?,?)'
 ).run(username, bcrypt.hashSync(password, 10), '本地演示 HR', 'hr', '', '', '')
+let releaseOpen = null,
+  holdOpen = false,
+  failOpen = false,
+  failEmbedded = false
 let alignVersion = false,
   slowOnce = false
 let deny = false,
@@ -35,6 +39,26 @@ const { default: express } = await import(root('node_modules/express/index.js'))
 const wrapped = express()
 wrapped.use(express.json())
 wrapped.use((req, res, next) => {
+  const applicationDetail =
+    req.method === 'GET' &&
+    req.path.startsWith('/api/v3/applications/') &&
+    req.path.split('/').length === 5
+  if (applicationDetail && holdOpen) {
+    holdOpen = false
+    releaseOpen = () => next()
+    return
+  }
+  if (applicationDetail && failOpen) {
+    failOpen = false
+    return res.status(503).json({ error: { code: 'FIXTURE_OPEN_FAILED', message: 'fixture' } })
+  }
+  if (
+    failEmbedded &&
+    req.method === 'GET' &&
+    req.path.startsWith('/api/v3/applications/') &&
+    req.path.endsWith('/interviews')
+  )
+    return res.status(503).json({ error: { code: 'FIXTURE_READ_FAILED', message: 'fixture' } })
   if (slowOnce && req.method === 'GET' && req.path === '/api/v3/interviews') {
     slowOnce = false
     return setTimeout(next, 2500)
@@ -110,9 +134,9 @@ const chrome = spawn(
 let ws
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms))
 async function until(fn, label, ms = 25000) {
-  const end = Date.now() + ms
+  const end = performance.now() + ms
   let last
-  while (Date.now() < end) {
+  while (performance.now() < end) {
     try {
       const value = await fn()
       if (value) return value
@@ -348,6 +372,84 @@ try {
       '[...document.querySelectorAll(".v3-interviews button")].find(e=>e.textContent.trim()==="安排面试").disabled'
     )
   )
+
+  await detailPage(first)
+  holdOpen = true
+  await button('安排面试', 'document.querySelector(".v3-interviews")')
+  await until(() => releaseOpen, 'held interview open')
+  assert.ok(
+    await evaluate(
+      '[...document.querySelectorAll("button")].find(e=>e.textContent.trim()==="编辑申请资料").disabled'
+    )
+  )
+  await evaluate(
+    '[...document.querySelectorAll("button")].find(e=>e.textContent.trim()==="编辑申请资料").click()'
+  )
+  releaseOpen()
+  releaseOpen = null
+  await check('!!document.querySelector(".v3-interview-editor")', 'sole interview editor')
+  assert.equal(await evaluate('document.querySelectorAll(".v3-editor").length'), 0)
+  await snapshot('interview-open-exclusive')
+  await input('专业面试官姓名', '互斥草稿')
+  dialogMode = false
+  await click('.v3-sidebar a[href="/positions"]')
+  await sleep(150)
+  assert.equal(await evaluate('document.querySelector("h1").textContent'), '申请详情')
+  assert.equal(
+    await evaluate('document.querySelector("[aria-label=\\"专业面试官姓名\\"]").value'),
+    '互斥草稿'
+  )
+  dialogMode = true
+  await button('返回', 'document.querySelector(".v3-interview-editor")')
+  await check('!document.querySelector(".v3-interview-editor")', 'interview release')
+  holdOpen = true
+  await button('编辑申请资料')
+  await until(() => releaseOpen, 'held profile open')
+  assert.ok(
+    await evaluate(
+      '[...document.querySelectorAll(".v3-interviews button")].find(e=>e.textContent.trim()==="安排面试").disabled'
+    )
+  )
+  await evaluate(
+    '[...document.querySelectorAll(".v3-interviews button")].find(e=>e.textContent.trim()==="安排面试").click()'
+  )
+  releaseOpen()
+  releaseOpen = null
+  await check('!!document.querySelector(".v3-editor")', 'sole profile editor')
+  assert.equal(await evaluate('document.querySelectorAll(".v3-interview-editor").length'), 0)
+  await snapshot('profile-open-exclusive')
+  await input('姓名', '资料草稿仍存在')
+  dialogMode = false
+  await click('.v3-sidebar a[href="/positions"]')
+  await sleep(150)
+  assert.equal(
+    await evaluate('document.querySelector("[aria-label=\\"姓名\\"]").value'),
+    '资料草稿仍存在'
+  )
+  dialogMode = true
+  await button('取消', 'document.querySelector(".v3-editor")')
+  await check('!document.querySelector(".v3-editor")', 'profile release')
+  holdOpen = true
+  await button('安排面试', 'document.querySelector(".v3-interviews")')
+  await until(() => releaseOpen, 'held open before unmount')
+  await click('.v3-sidebar a[href="/positions"]')
+  await h1('职位管理')
+  releaseOpen()
+  releaseOpen = null
+  await sleep(200)
+  assert.equal(
+    await evaluate('document.querySelectorAll(".v3-editor,.v3-interview-editor").length'),
+    0
+  )
+  await detailPage(first)
+  failOpen = true
+  await button('安排面试', 'document.querySelector(".v3-interviews")')
+  await check('document.querySelector(".v3-interviews [role=alert]") !== null', 'failed open')
+  await button('编辑申请资料')
+  await check('!!document.querySelector(".v3-editor")', 'failed opening releases lease')
+  await button('取消', 'document.querySelector(".v3-editor")')
+  await check('!document.querySelector(".v3-editor")', 'editor close')
+
   const id = await schedule(first)
   assert.equal((await apiGet('/applications/' + first)).stage, 'first_interview')
   const r1 = await apiGet('/interviews/' + id)
@@ -367,6 +469,34 @@ try {
   assert.equal(duplicate.status, 409)
   assert.equal(duplicate.data.error.code, 'INTERVIEW_ALREADY_SCHEDULED')
   await snapshot('application-interview')
+
+  failEmbedded = true
+  await button('刷新面试记录', 'document.querySelector(".v3-interviews")')
+  await check(
+    'document.querySelector(".v3-interviews")?.textContent.includes("暂时无法查看面试记录")',
+    'embedded error'
+  )
+  assert.equal(
+    await evaluate(
+      '[...document.querySelectorAll(".v3-interviews button")].filter(e=>e.textContent.trim()==="安排面试"&&!e.disabled).length'
+    ),
+    0
+  )
+  assert.equal(await evaluate('document.querySelectorAll(".v3-interview-editor").length'), 0)
+  await snapshot('failed-refresh-blocked')
+  failEmbedded = false
+  await button('重新加载', 'document.querySelector(".v3-interviews")')
+  await check('!!document.querySelector(".v3-interviews tbody tr")', 'embedded recover')
+  assert.ok(
+    await evaluate(
+      '[...document.querySelectorAll(".v3-interviews button")].find(e=>e.textContent.trim()==="安排面试").disabled'
+    )
+  )
+  await button('改期', rowScope(id))
+  await check('!!document.querySelector(".v3-interview-editor")', 'recovered legal action')
+  await button('返回', 'document.querySelector(".v3-interview-editor")')
+  await check('!document.querySelector(".v3-interview-editor")', 'return from recovered editor')
+
   for (const [local, due] of [
     ['2030-01-01T13:59:59+08:00', false],
     ['2030-01-01T14:00:00+08:00', true],
@@ -627,6 +757,11 @@ try {
       {
         chromium: (await (await fetch('http://127.0.0.1:' + port + '/json/version')).json())
           .Browser,
+        editorOpeningMutex: true,
+        pendingOpenUnmount: true,
+        failedOpenRelease: true,
+        failedRefreshBlocked: true,
+        draftLeaveConfirmation: true,
         bookFirst: true,
         bookSecond: true,
         screeningClosedBlocked: true,

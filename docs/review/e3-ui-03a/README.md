@@ -59,3 +59,17 @@ Global filters use stable numeric application and position IDs plus the supporte
 Interview scheduling is entered from application detail. Feedback, advancement, closure, Offer, full history, Dashboard, account editing and production rollout remain separate tasks.
 
 The browser and unit evidence supports specific behaviors related to AC-04/09/21/22/36. Formal AC acceptance, real mobile hardware and independent design-side approval remain pending.
+
+## FIX-01 editor opening and read-failure boundaries
+
+The two editors share a synchronous lease owned by one operation. The lease is acquired before the opening HTTP requests, checked again after awaiting them, and released only by its owner. Closing waits for editor unmount before releasing the lease, preserving the other editor's draft protection. Route, component lifetime, session generation and ready identity are checked before mounting. Tests also prove an old lease cannot release a newer lease.
+
+Interview reload invalidates freshness and clears the old application authority immediately. Actions require a fully successful current application/interview read and ready identity. Opening an editor rereads and checks actual application/meeting eligibility, including existing scheduled appointments.
+
+The Chromium fixture holds an application-detail response until the test explicitly releases it. Both opening directions reject the opposite editor immediately. Single valid forms retain drafts and reject cancelled navigation. Navigating away while opening prevents late editor resurrection. A rejected opening releases its lease. An existing scheduled application's refresh is then forced to fail: no enabled booking action or editor appears. Successful reload restores the existing appointment and its valid reschedule action.
+
+[Interview editor owns the gate](interview-open-exclusive.png), [profile editor owns the gate](profile-open-exclusive.png), [failed refresh disables booking](failed-refresh-blocked.png), [serial-run assertions](fix01-results.json).
+
+The final UI-03A script passed without intervention when run serially, and the original UI-02 browser regression passed. A concurrent fixture run encountered a transient Vite dynamic-import startup problem. Final evidence uses the independent serial run. Browser polling deadlines now use performance.now so the fixture's fixed Date.now cannot prevent timeout reporting.
+
+Quality gates passed: 165 Node tests, type checking, lint, build, changed-file Prettier and git diff --check. Only the existing Dashboard attribute-order warning remains. Existing dropped-response cases still generate expected socket-hang-up diagnostics.

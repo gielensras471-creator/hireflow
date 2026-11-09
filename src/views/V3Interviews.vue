@@ -37,7 +37,15 @@
       <p>当前轮次 {{ label(application.stage) }} · {{ label(application.applicationStatus) }}</p>
       <el-button
         type="primary"
-        :disabled="disabled || loading || !!editor || !canSchedule(application, items)"
+        :disabled="
+          disabled ||
+          loading ||
+          !!error ||
+          !fresh ||
+          v3Session.state.status !== 'ready' ||
+          !!gate.current.value ||
+          !canSchedule(application, items)
+        "
         @click="openEditor(null, 'schedule')"
         >安排面试</el-button
       >
@@ -139,6 +147,11 @@
                     disabled ||
                     row.status !== 'scheduled' ||
                     row.applicationStatus !== 'active' ||
+                    !fresh ||
+                    !!error ||
+                    loading ||
+                    v3Session.state.status !== 'ready' ||
+                    !!gate.current.value ||
                     !!editor ||
                     opening
                   "
@@ -159,9 +172,10 @@
   </section>
 </template>
 <script setup lang="ts">
-import { computed, onUnmounted, ref, watch } from 'vue'
+import { computed, inject, nextTick, onUnmounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { readV3, v3Session } from '../api/request-v3'
+import { createEditorGate, editorGateKey } from '../utils/v3-editor-gate'
 import { latestRead } from '../api/v3-operation'
 import { label, type Application, type Page } from '../api/recruiting-v3'
 import {
@@ -177,6 +191,10 @@ import V3InterviewEditor from '../components/V3InterviewEditor.vue'
 import '../styles/v3-interviews.scss'
 const props = defineProps<{ applicationId?: number; disabled?: boolean }>()
 const emit = defineEmits<{ editing: [boolean]; updated: [] }>()
+const gate = inject(editorGateKey, null) ?? createEditorGate()
+let lease: symbol | null = null
+let alive = true
+const fresh = ref(false)
 const route = useRoute(),
   router = useRouter()
 const items = ref<Interview[]>([]),
@@ -209,6 +227,9 @@ let generation = 0,
   editorKey = 0
 const reads = latestRead()
 function load() {
+  if (editor.value || opening.value || props.disabled) return
+  fresh.value = false
+  application.value = null
   loading.value = true
   error.value = ''
   items.value = []
@@ -225,6 +246,7 @@ function load() {
       return { ...page, app: null }
     },
     (result) => {
+      fresh.value = true
       items.value = result.items
       total.value = result.total
       application.value = result.app
@@ -237,30 +259,73 @@ function load() {
   )
 }
 async function openEditor(row: Interview | null, action: InterviewAction) {
-  if (editor.value || opening.value || props.disabled) return
+  if (
+    editor.value ||
+    opening.value ||
+    props.disabled ||
+    !fresh.value ||
+    loading.value ||
+    error.value ||
+    v3Session.state.status !== 'ready'
+  )
+    return
+  const acquired = gate.acquire()
+  if (!acquired) return
+  lease = acquired
+  const path = route.fullPath
   const attempt = ++generation,
     owner = v3Session.version()
   opening.value = true
   operationError.value = ''
   try {
     const id = row?.applicationId ?? props.applicationId!
-    const [app, meeting] = await Promise.all([
+    const [app, meeting, appointments] = await Promise.all([
       readV3<Application>('/applications/' + id),
-      row ? readV3<Interview>('/interviews/' + row.id) : Promise.resolve(null)
+      row ? readV3<Interview>('/interviews/' + row.id) : Promise.resolve(null),
+      row
+        ? Promise.resolve([] as Interview[])
+        : readV3<Interview[]>('/applications/' + id + '/interviews')
     ])
-    if (attempt !== generation || owner !== v3Session.version()) return
+    if (
+      !alive ||
+      !gate.owns(acquired) ||
+      lease !== acquired ||
+      props.disabled ||
+      !fresh.value ||
+      !!error.value ||
+      route.fullPath !== path ||
+      attempt !== generation ||
+      owner !== v3Session.version() ||
+      v3Session.state.status !== 'ready'
+    )
+      return
+    if (
+      app.applicationStatus !== 'active' ||
+      (action === 'schedule' ? !canSchedule(app, appointments) : meeting?.status !== 'scheduled')
+    )
+      throw new Error('服务器当前状态不允许该面试操作，请刷新记录。')
     editor.value = { application: app, interview: meeting, action, key: ++editorKey }
     emit('editing', true)
   } catch (e) {
-    if (attempt === generation)
+    if (alive && attempt === generation && owner === v3Session.version() && route.fullPath === path)
       operationError.value = e instanceof Error ? e.message : '无法打开操作'
   } finally {
     if (attempt === generation) opening.value = false
+    if (!editor.value) {
+      gate.release(acquired)
+      if (lease === acquired) lease = null
+    }
   }
 }
-function closeEditor() {
+async function closeEditor() {
+  const releasing = lease
+  generation++
+  opening.value = false
   editor.value = null
   emit('editing', false)
+  await nextTick()
+  if (releasing) gate.release(releasing)
+  if (lease === releasing) lease = null
 }
 function saved() {
   closeEditor()
@@ -304,12 +369,15 @@ const refreshTimer = window.setInterval(() => {
     !editor.value &&
     !opening.value &&
     !props.disabled &&
+    !gate.current.value &&
     v3Session.state.status === 'ready' &&
     document.visibilityState === 'visible'
   )
     void load()
 }, 30000)
 onUnmounted(() => {
+  alive = false
+  if (lease) gate.release(lease)
   window.clearInterval(refreshTimer)
   generation++
   reads.invalidate()
