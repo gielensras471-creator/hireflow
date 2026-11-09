@@ -5,6 +5,7 @@ import { v3SessionKey } from '../utils/auth-v3'
 import V3Shell from '../layouts/V3Shell.vue'
 import V3Login from '../views/login/V3Login.vue'
 import V3Placeholder from '../layouts/V3Placeholder.vue'
+import V3Recruiting from '../views/V3Recruiting.vue'
 import { confirmV3Leave, v3DraftDirty } from './v3-drafts'
 import { safeReturn, tabInfo, v3Sections } from './v3-navigation'
 
@@ -17,8 +18,12 @@ const router = createRouter({
       component: V3Shell,
       redirect: '/dashboard',
       children: [
-        ...v3Sections.map(({ path, name }) => ({ path, name, component: V3Placeholder })),
-        { path: '/candidates/:id', name: 'candidate-detail', component: V3Placeholder },
+        ...v3Sections.map(({ path, name }) => ({
+          path,
+          name,
+          component: ['positions', 'candidates'].includes(name) ? V3Recruiting : V3Placeholder
+        })),
+        { path: '/candidates/:id', name: 'candidate-detail', component: V3Recruiting },
         { path: '/profile', name: 'v3-profile', component: V3Placeholder }
       ]
     },

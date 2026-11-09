@@ -134,3 +134,30 @@ test('identity network failures preserve the mounted user until recovery or real
   assert.equal(session.state.status, 'forbidden')
   assert.equal(session.state.user, null)
 })
+
+test('unmounted list readers ignore delayed successes and failures', async () => {
+  const reader = latestRead()
+  let resolve, reject
+  const success = reader.execute(
+    () =>
+      new Promise((done) => {
+        resolve = done
+      }),
+    assert.fail,
+    assert.fail
+  )
+  reader.invalidate()
+  resolve('late result')
+  await success
+  const failure = reader.execute(
+    () =>
+      new Promise((_done, fail) => {
+        reject = fail
+      }),
+    assert.fail,
+    assert.fail
+  )
+  reader.invalidate()
+  reject(new Error('late failure'))
+  await failure
+})

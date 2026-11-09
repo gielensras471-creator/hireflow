@@ -10,8 +10,15 @@ export function adaptV3Error(error: unknown): V3Error {
     const problem = error.response?.data?.error
     const code = typeof problem?.code === 'string' ? problem.code : 'REQUEST_FAILED'
     const requestId = typeof problem?.requestId === 'string' ? problem.requestId : undefined
+    const businessMessages: Record<string, string> = {
+      NO_CHANGE: '内容没有变化，请修改后再提交。',
+      POSITION_NOT_OPEN: '职位已关闭或归档，请重新选择开放职位。',
+      POSITION_DELETED: '职位已归档，无法继续修改。',
+      APPLICATION_CLOSED: '申请已结束，无法编辑普通资料。',
+      IDEMPOTENCY_CONFLICT: '提交标识与内容不一致，请先核对原操作结果。'
+    }
     const message =
-      status === 401
+      businessMessages[code] ?? status === 401
         ? '登录失效或账号密码有误，请重新登录。'
         : status === 403
           ? '当前账号没有招聘权限。'
@@ -78,7 +85,7 @@ async function authorized<T>(
         ...(idempotencyKey ? { 'Idempotency-Key': idempotencyKey } : {})
       }
     })
-    if (v3Session.version() === version && v3Session.state.status === 'unavailable')
+    if (v3Session.version() === version && String(v3Session.state.status) === 'unavailable')
       throw new V3Error(0, 'IDENTITY_UNAVAILABLE', '连接暂时中断，请重试。')
     if (
       v3Session.version() !== version ||
@@ -88,9 +95,18 @@ async function authorized<T>(
       throw new V3Error(401, 'AUTH_REQUIRED', '请重新登录。')
     return result.data
   } catch (error) {
-    const problem = error instanceof V3Error ? error : adaptV3Error(error)
+    let problem = error instanceof V3Error ? error : adaptV3Error(error)
     if (problem.status === 401) v3Session.reject(token, 401, version)
-    if (problem.status === 403 && v3Session.version() === version) await v3Session.refresh()
+    if (problem.status === 403 && v3Session.version() === version) {
+      await v3Session.refresh()
+      if (v3Session.version() === version && v3Session.state.status === 'ready')
+        problem = new V3Error(
+          403,
+          problem.code,
+          '当前操作未获允许，登录状态仍有效。',
+          problem.requestId
+        )
+    }
     throw problem
   }
 }
