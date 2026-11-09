@@ -92,3 +92,29 @@
     }
   }
 }
+
+.v3-recruiting .v3-application-loading {
+  table {
+    min-width: 730px;
+    table-layout: fixed;
+  }
+  td {
+    height: 70px;
+  }
+  .v3-loading-cell {
+    display: block;
+    width: 90%;
+    height: 12px;
+    border-radius: 6px;
+    background: var(--v3-border);
+  }
+  td:nth-child(4) .v3-loading-cell,
+  td:nth-child(6) .v3-loading-cell {
+    width: 65%;
+  }
+  p {
+    margin: 16px 0 0;
+    color: var(--v3-muted);
+    font-size: 12px;
+  }
+}

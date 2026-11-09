@@ -30,7 +30,7 @@ const { default: express } = await import(root('node_modules/express/index.js'))
 const wrapped = express()
 wrapped.use((req, res, next) => {
   if (req.method === 'GET' && req.path === '/api/v3/applications' && req.query.q === 'slow')
-    return setTimeout(next, 800)
+    return setTimeout(next, 2500)
   if (failMe && req.path === '/api/v3/auth/me')
     return res.status(503).json({ error: { code: 'TEST_BUSY', message: 'fixture' } })
   if (failList && req.method === 'GET' && req.path === '/api/v3/applications')
@@ -388,18 +388,57 @@ try {
   await input('搜索', 'slow')
   await evaluate('document.querySelector(".v3-filters").requestSubmit()')
   await check('document.body.innerText.includes("加载记录中")', 'loading state')
+  assert.deepEqual(
+    await evaluate(
+      '[...document.querySelectorAll(".v3-application-loading th")].map(e=>e.textContent)'
+    ),
+    ['候选人 / 申请', '应聘职位', '招聘阶段', '申请状态', '结果 / Offer', '操作']
+  )
+  assert.equal(await evaluate('document.querySelectorAll(".v3-loading-row").length'), 5)
+  assert.equal(await evaluate('document.querySelectorAll(".v3-loading-cell").length'), 30)
+  assert.equal(
+    await evaluate(
+      'document.querySelectorAll(".v3-application-loading button,.v3-application-loading a").length'
+    ),
+    0
+  )
+  assert.equal(await evaluate('document.querySelectorAll("tbody button").length'), 0)
+  assert.ok(
+    await evaluate(
+      'document.querySelector(".v3-application-loading").getAttribute("aria-busy")==="true" && document.querySelector(".v3-application-loading [role=status]") !== null'
+    )
+  )
+  assert.ok(
+    await evaluate('document.querySelector(".v3-filters [aria-label=搜索]").value==="slow"')
+  )
+  assert.ok(
+    await evaluate(
+      '!document.querySelector(".v3-application-loading").textContent.includes("共 22 条")'
+    )
+  )
   await snapshot('applications-loading')
+  await width(390)
+  await check('document.querySelector(".v3-shell").dataset.tier==="mobile"', 'mobile loading tier')
+  assert.ok(await evaluate('document.documentElement.scrollWidth <= 390'))
+  assert.ok(
+    await evaluate(
+      'document.querySelector(".v3-application-loading .v3-table-scroll").scrollWidth > document.querySelector(".v3-application-loading .v3-table-scroll").clientWidth'
+    )
+  )
+  await width(1440)
+
   await input('搜索', '分页申请')
   await evaluate('document.querySelector(".v3-filters").requestSubmit()')
   await check('document.querySelectorAll("tbody tr").length===20', 'newer filter result')
-  await sleep(1000)
+  await sleep(3000)
   assert.equal(await evaluate('document.querySelectorAll("tbody tr").length'), 20)
+  assert.equal(await evaluate('document.querySelectorAll(".v3-loading-cell").length'), 0)
   await input('搜索', 'slow')
   await evaluate('document.querySelector(".v3-filters").requestSubmit()')
   await check('document.body.innerText.includes("加载记录中")', 'pending read before unmount')
   await click('.v3-sidebar a[href="/positions"]')
   await h1('职位管理')
-  await sleep(1000)
+  await sleep(3000)
   assert.equal(await evaluate('document.querySelector("h1").textContent'), '职位管理')
   await button('关闭', 'document.querySelector("tbody tr")')
   await check(

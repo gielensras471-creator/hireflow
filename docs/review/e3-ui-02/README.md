@@ -45,3 +45,15 @@ The position filter uses a stable numeric ID. Department search uses the existin
 The draft survives temporary failures while mounted. Explicit confirmed navigation, logout or refresh can discard it. An unresolved write warns that the server may already have saved it and advises checking existing records before creating again. Drafts and command keys are not transferred to another account.
 
 Actual mobile hardware, complete AC acceptance and design-side visual approval remain pending.
+
+## D2-P1-01 loading fix evidence
+
+The application-list loading branch now retains the page heading, filter values and all six existing list columns. Five rows contain thirty skeleton cells. No record identities, counts, lifecycle values or actionable record buttons are shown in the loading region. The region uses aria-busy, a labelled table, hidden decorative rows and a loading status message.
+
+The isolated Chromium script was rerun after this fix. It asserts all six header labels, five rows and thirty cells, the absence of stale record actions, retained search context, loading semantics, removal of the skeleton after the newer result arrives, delayed-response rejection and unmount protection. The same loading table was tested at 390px with horizontal scrolling confined to its container. Existing failure/retry and SQL pagination assertions also passed.
+
+Only applications-loading.png was refreshed from that run. Its viewport is 1440 by 900 with DPR 1. The other screenshots remain evidence of the earlier UI-02 run.
+
+Quality gates for this fix passed: pnpm test 155/155, vue-tsc, lint, build, changed-file Prettier and git diff --check. Lint reports the existing Dashboard attribute-order warning. The deliberate dropped-response fixture continues to log expected socket-hang-up diagnostics.
+
+Position management and application-detail loading retain their existing branches. This evidence is submitted for control A and design-side confirmation of D2-P1-01.

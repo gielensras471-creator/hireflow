@@ -61,7 +61,36 @@
       @close="editor = null"
       @saved="saved"
     />
-    <V3Feedback v-if="loading" state="loading" :title="isDetail ? '读取详情中' : '加载记录中'" />
+    <section
+      v-if="loading && !positions && !isDetail"
+      class="v3-card v3-application-loading"
+      aria-busy="true"
+      aria-labelledby="application-loading-title"
+    >
+      <h2 id="application-loading-title">申请记录</h2>
+      <div class="v3-table-scroll">
+        <table aria-label="申请记录加载中">
+          <thead>
+            <tr>
+              <th v-for="column in applicationColumns" :key="column" scope="col">{{ column }}</th>
+            </tr>
+          </thead>
+          <tbody aria-hidden="true">
+            <tr v-for="row in 5" :key="row" class="v3-loading-row">
+              <td v-for="column in applicationColumns" :key="column">
+                <span class="v3-loading-cell" />
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+      <p role="status">加载记录中，请稍候…</p>
+    </section>
+    <V3Feedback
+      v-else-if="loading"
+      state="loading"
+      :title="isDetail ? '读取详情中' : '加载记录中'"
+    />
     <V3Feedback
       v-else-if="error"
       state="error"
@@ -248,6 +277,14 @@ const offset = computed(() =>
 const filtered = computed(() =>
   Object.keys(route.query).some((key) => key !== 'offset' && route.query[key])
 )
+const applicationColumns = [
+  '候选人 / 申请',
+  '应聘职位',
+  '招聘阶段',
+  '申请状态',
+  '结果 / Offer',
+  '操作'
+]
 const stages = ['screening', 'first_interview', 'second_interview', 'offer']
 const detailFields = [
   ['positionTitle', '应聘职位'],
