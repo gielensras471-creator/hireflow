@@ -84,7 +84,17 @@
           </details>
         </div>
 
-        <main class="v3-content"><RouterView /></main>
+        <main class="v3-content">
+          <V3Feedback
+            v-if="status === 'unavailable'"
+            state="error"
+            title="连接暂时中断，未保存内容已保留"
+            message="恢复连接后可继续编辑。"
+            action="重试连接"
+            @action="v3Session.refresh()"
+          />
+          <div :inert="status !== 'ready'"><RouterView /></div>
+        </main>
       </div>
 
       <dialog

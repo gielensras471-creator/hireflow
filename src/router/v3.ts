@@ -5,6 +5,7 @@ import { v3SessionKey } from '../utils/auth-v3'
 import V3Shell from '../layouts/V3Shell.vue'
 import V3Login from '../views/login/V3Login.vue'
 import V3Placeholder from '../layouts/V3Placeholder.vue'
+import V3Recruiting from '../views/V3Recruiting.vue'
 import { confirmV3Leave, v3DraftDirty } from './v3-drafts'
 import { safeReturn, tabInfo, v3Sections } from './v3-navigation'
 
@@ -17,8 +18,12 @@ const router = createRouter({
       component: V3Shell,
       redirect: '/dashboard',
       children: [
-        ...v3Sections.map(({ path, name }) => ({ path, name, component: V3Placeholder })),
-        { path: '/candidates/:id', name: 'candidate-detail', component: V3Placeholder },
+        ...v3Sections.map(({ path, name }) => ({
+          path,
+          name,
+          component: ['positions', 'candidates'].includes(name) ? V3Recruiting : V3Placeholder
+        })),
+        { path: '/candidates/:id', name: 'candidate-detail', component: V3Recruiting },
         { path: '/profile', name: 'v3-profile', component: V3Placeholder }
       ]
     },
@@ -33,6 +38,7 @@ router.beforeEach(async (to, from) => {
   if (v3Session.token()) await v3Session.refresh()
   const status = v3Session.state.status
   if (to.name === 'v3-login') return status === 'ready' ? safeReturn(to.query.redirect) : true
+  if (status === 'unavailable' && v3Session.state.user) return false
   if (status === 'ready' || status === 'unavailable') return true
   return { name: 'v3-login', query: { redirect: safeReturn(to.fullPath) } }
 })

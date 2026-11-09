@@ -1,0 +1,120 @@
+.v3-recruiting {
+  display: grid;
+  min-width: 0;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 16px;
+  > .v3-card {
+    min-width: 0;
+  }
+  .v3-page-heading {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 16px;
+  }
+  .v3-page-heading p,
+  small {
+    color: var(--v3-muted);
+  }
+  small {
+    display: block;
+    font-size: 12px;
+  }
+  .v3-filters {
+    display: flex;
+    gap: 12px;
+    flex-wrap: wrap;
+  }
+  input,
+  select,
+  textarea {
+    max-width: 100%;
+    min-width: 0;
+    padding: 10px;
+    border: 1px solid var(--v3-border);
+    border-radius: 8px;
+    background: var(--v3-page);
+    color: var(--v3-ink);
+  }
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    text-align: left;
+    white-space: nowrap;
+  }
+  th,
+  td {
+    padding: 14px 12px;
+    border-bottom: 1px solid var(--v3-border);
+  }
+  th {
+    color: var(--v3-muted);
+    font-size: 12px;
+    background: var(--v3-page);
+  }
+  tbody tr:nth-child(even) {
+    background: var(--v3-page);
+  }
+  .v3-pagination,
+  .v3-editor-actions {
+    display: flex;
+    gap: 12px;
+    align-items: center;
+    justify-content: flex-end;
+    margin-top: 16px;
+  }
+  .v3-editor fieldset {
+    display: grid;
+    min-width: 0;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 16px;
+    border: 0;
+    padding: 0;
+  }
+  .v3-editor label {
+    display: grid;
+    min-width: 0;
+    grid-template-columns: minmax(0, 1fr);
+    gap: 6px;
+  }
+}
+@media (max-width: 959px) {
+  .v3-recruiting {
+    .v3-page-heading {
+      flex-wrap: wrap;
+    }
+    .v3-editor fieldset {
+      grid-template-columns: 1fr;
+    }
+    .v3-filters > input,
+    .v3-filters > select {
+      width: 100%;
+    }
+  }
+}
+
+.v3-recruiting .v3-application-loading {
+  table {
+    min-width: 730px;
+    table-layout: fixed;
+  }
+  td {
+    height: 70px;
+  }
+  .v3-loading-cell {
+    display: block;
+    width: 90%;
+    height: 12px;
+    border-radius: 6px;
+    background: var(--v3-border);
+  }
+  td:nth-child(4) .v3-loading-cell,
+  td:nth-child(6) .v3-loading-cell {
+    width: 65%;
+  }
+  p {
+    margin: 16px 0 0;
+    color: var(--v3-muted);
+    font-size: 12px;
+  }
+}
