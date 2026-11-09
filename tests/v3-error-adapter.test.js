@@ -27,6 +27,10 @@ try {
 const { adaptV3Error, v3Session } = module
 
 const cases = [
+  [409, 'INTERVIEW_ALREADY_SCHEDULED', '该申请已有预约，请先完成或取消。'],
+  [409, 'INTERVIEW_VERSION_CONFLICT', '面试已有新进展，请核对当前状态。'],
+  [422, 'INVALID_TIME', '预约时间无效，请填写上海日期和时间。'],
+  [422, 'CANCEL_REASON_REQUIRED', '取消面试必须填写原因。'],
   [409, 'NO_CHANGE', '内容没有变化，请修改后再提交。'],
   [409, 'POSITION_NOT_OPEN', '职位已关闭或归档，请重新选择开放职位。'],
   [409, 'APPLICATION_CLOSED', '申请已结束，无法编辑普通资料。'],

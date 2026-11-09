@@ -107,9 +107,9 @@
           <dd>{{ display(selected, key) }}</dd></template
         >
       </dl>
-      <p>面试、评价、晋级、结案与 Offer 操作将在后续批次接入。</p>
+      <p>评价、晋级、结案与 Offer 操作将在后续批次接入。</p>
       <el-button
-        :disabled="(selected as Application).applicationStatus !== 'active'"
+        :disabled="interviewEditing || (selected as Application).applicationStatus !== 'active'"
         @click="openEditor(selected)"
         >编辑申请资料</el-button
       >
@@ -225,6 +225,14 @@
       </dl>
       <el-button @click="selected = null">收起</el-button>
     </section>
+    <V3Interviews
+      v-if="isDetail && selected && !loading && !error"
+      :key="selected.id"
+      :application-id="selected.id"
+      :disabled="!!editor"
+      @editing="interviewEditing = $event"
+      @updated="load"
+    />
   </section>
 </template>
 <script setup lang="ts">
@@ -245,8 +253,10 @@ import {
 } from '../api/recruiting-v3'
 import V3Feedback from '../components/V3Feedback.vue'
 import V3RecruitingEditor from '../components/V3RecruitingEditor.vue'
+import V3Interviews from './V3Interviews.vue'
 import { confirmV3Leave } from '../router/v3-drafts'
 import '../styles/v3-recruiting.scss'
+const interviewEditing = ref(false)
 const route = useRoute(),
   router = useRouter()
 const positions = computed(() => route.path === '/positions')

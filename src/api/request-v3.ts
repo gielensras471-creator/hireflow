@@ -11,6 +11,12 @@ export function adaptV3Error(error: unknown): V3Error {
     const code = typeof problem?.code === 'string' ? problem.code : 'REQUEST_FAILED'
     const requestId = typeof problem?.requestId === 'string' ? problem.requestId : undefined
     const businessMessages: Record<string, string> = {
+      INTERVIEW_ALREADY_SCHEDULED: '该申请已有预约，请先完成或取消。',
+      INVALID_INTERVIEW_STAGE: '当前申请阶段不能安排面试。',
+      INTERVIEW_NOT_SCHEDULED: '面试已不处于预约状态，请刷新查看。',
+      INTERVIEW_VERSION_CONFLICT: '面试已有新进展，请核对当前状态。',
+      INVALID_TIME: '预约时间无效，请填写上海日期和时间。',
+      CANCEL_REASON_REQUIRED: '取消面试必须填写原因。',
       NO_CHANGE: '内容没有变化，请修改后再提交。',
       POSITION_NOT_OPEN: '职位已关闭或归档，请重新选择开放职位。',
       POSITION_DELETED: '职位已归档，无法继续修改。',
