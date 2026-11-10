@@ -11,6 +11,14 @@ export function adaptV3Error(error: unknown): V3Error {
     const code = typeof problem?.code === 'string' ? problem.code : 'REQUEST_FAILED'
     const requestId = typeof problem?.requestId === 'string' ? problem.requestId : undefined
     const businessMessages: Record<string, string> = {
+      FEEDBACK_REVISION_CONFLICT: '面评已被更正，请核对最新内容与修订版本。',
+      FEEDBACK_ALREADY_EXISTS: '该面试已有当前有效面评，请查看或有痕更正。',
+      INTERVIEW_NOT_COMPLETED: '面试尚未完成，不能提交面评。',
+      HISTORICAL_FEEDBACK_NOT_ALLOWED: '旧轮次请先核对历史补录资格。',
+      HISTORICAL_WAIVER_REQUIRED: '没有真实晋级豁免证据，不能补录历史面评。',
+      CORRECTION_REASON_REQUIRED: '更正面评必须填写原因。',
+      INVALID_FEEDBACK: '请填写专业评价人和非空推荐依据。',
+      INVALID_RECOMMENDATION: '请选择有效的推荐意见。',
       INTERVIEW_ALREADY_SCHEDULED: '该申请已有预约，请先完成或取消。',
       INVALID_INTERVIEW_STAGE: '当前申请阶段不能安排面试。',
       INTERVIEW_NOT_SCHEDULED: '面试已不处于预约状态，请刷新查看。',
