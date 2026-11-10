@@ -27,6 +27,10 @@ try {
 const { adaptV3Error, v3Session } = module
 
 const cases = [
+  [409, 'FEEDBACK_REVISION_CONFLICT', '面评已被更正，请核对最新内容与修订版本。'],
+  [409, 'FEEDBACK_ALREADY_EXISTS', '该面试已有当前有效面评，请查看或有痕更正。'],
+  [409, 'HISTORICAL_WAIVER_REQUIRED', '没有真实晋级豁免证据，不能补录历史面评。'],
+  [422, 'CORRECTION_REASON_REQUIRED', '更正面评必须填写原因。'],
   [409, 'INTERVIEW_ALREADY_SCHEDULED', '该申请已有预约，请先完成或取消。'],
   [409, 'INTERVIEW_VERSION_CONFLICT', '面试已有新进展，请核对当前状态。'],
   [422, 'INVALID_TIME', '预约时间无效，请填写上海日期和时间。'],
