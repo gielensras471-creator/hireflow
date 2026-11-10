@@ -16,6 +16,7 @@
         />
       </label>
       <p v-if="error" class="v3-error" role="alert">{{ error }}</p>
+      <p v-if="writing" role="status">晋级请求正在执行，服务器可能已接收。离开页面不会撤销晋级。</p>
       <p v-if="uncertain" role="status">
         晋级结果尚未确定，请重试原请求确认结果；不会发起下一阶段晋级。
       </p>
@@ -73,6 +74,7 @@ const latest = ref<{ preflight: Preflight; feedback: FeedbackRecord[] } | null>(
 })
 const reason = ref(''),
   busy = ref(false),
+  writing = ref(false),
   uncertain = ref(false),
   conflict = ref(false),
   error = ref('')
@@ -87,10 +89,14 @@ const retryAllowed = computed(
     sameTransition(props.original, latest.value.preflight) &&
     canAdvance(latest.value.preflight)
 )
-watch([reason, uncertain], () => {
-  v3DraftDirty.value = !!reason.value || uncertain.value
-  v3UncertainWrite.value = uncertain.value
-})
+watch(
+  [reason, writing, uncertain],
+  () => {
+    v3DraftDirty.value = !!reason.value || writing.value || uncertain.value
+    v3UncertainWrite.value = writing.value || uncertain.value
+  },
+  { flush: 'sync' }
+)
 function clear() {
   v3DraftDirty.value = false
   v3UncertainWrite.value = false
@@ -180,6 +186,7 @@ async function submit() {
       }
     }
     const request = frozen
+    writing.value = true
     await intent.execute(
       request,
       (key) =>
@@ -192,6 +199,7 @@ async function submit() {
       (e) => (e instanceof V3Error ? e.status : 0)
     )
     if (current()) {
+      writing.value = false
       clear()
       emit('saved')
     }
@@ -207,6 +215,7 @@ async function submit() {
     if (current()) {
       busy.value = false
       uncertain.value = intent.uncertain
+      writing.value = false
     }
   }
 }

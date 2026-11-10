@@ -25,6 +25,9 @@ const password = randomBytes(18).toString('base64url')
 db.prepare(
   'INSERT INTO users (username,password_hash,name,role,department,email,phone) VALUES (?,?,?,?,?,?,?)'
 ).run(username, bcrypt.hashSync(password, 10), '本地演示 HR', 'hr', '', '', '')
+let holdResponse = false,
+  releaseResponse = null
+const dialogs = []
 let unauthorized = false
 let holdPath = null,
   releaseHeld = null,
@@ -69,6 +72,14 @@ wrapped.use(async (req, res, next) => {
       const action = raceAdvance
       raceAdvance = null
       await action()
+    }
+    if (holdResponse) {
+      holdResponse = false
+      const original = res.json.bind(res)
+      res.json = (body) => {
+        releaseResponse = () => original(body)
+        return res
+      }
     }
     if (drop) {
       drop = false
@@ -222,6 +233,7 @@ try {
       m.params.response.url.endsWith('/api/v3/auth/me')
     )
       meStatuses.push(m.params.response.status)
+    if (m.method === 'Page.javascriptDialogOpening') dialogs.push(m.params.message)
     if (m.method === 'Page.javascriptDialogOpening' && dialogMode !== null)
       void send('Page.handleJavaScriptDialog', { accept: dialogMode })
   }
@@ -410,9 +422,47 @@ try {
   await sleep(150)
   assert.equal((await apiGet('/applications/' + main)).stage, 'screening')
   dialogMode = true
+  const pendingBefore = count(),
+    writesBefore = browserWrites.length
+  holdResponse = true
   await Promise.all([save(), save()])
+  await until(() => releaseResponse, 'actual committed write response held')
+  assert.equal(browserWrites.length, writesBefore + 1)
+  assert.ok(!Object.hasOwn(JSON.parse(browserWrites.at(-1).body), 'reason'))
+  assert.deepEqual(
+    { ...count() },
+    { events: pendingBefore.events + 1, receipts: pendingBefore.receipts + 1 }
+  )
+  await check(ed + '.textContent.includes("离开页面不会撤销晋级")', 'pending status')
+  dialogMode = false
+  const dialogCount = dialogs.length
+  await click('.v3-sidebar a[href="/positions"]')
+  await until(() => dialogs.length > dialogCount, 'pending empty-reason leave dialog')
+  assert.match(dialogs.at(-1), /服务器可能已保存/)
+  await check(editors + '===1', 'cancel leave retains editor')
+  assert.equal(await evaluate('document.querySelector("h1").textContent'), '申请详情')
+  assert.equal(browserWrites.length, writesBefore + 1)
+  await snapshot('advance-pending-leave')
+  releaseResponse()
+  releaseResponse = null
   await done()
+  assert.deepEqual(
+    { ...count() },
+    { events: pendingBefore.events + 1, receipts: pendingBefore.receipts + 1 }
+  )
+  const protection = await evaluate(
+    'import("/src/router/v3-drafts.ts").then(m=>({dirty:m.v3DraftDirty.value,uncertain:m.v3UncertainWrite.value}))'
+  )
+  assert.deepEqual(protection, { dirty: false, uncertain: false })
+  const afterSuccessDialogs = dialogs.length
+  await click('.v3-sidebar a[href="/positions"]')
+  await h1('职位管理')
+  assert.equal(dialogs.length, afterSuccessDialogs)
   assert.equal((await apiGet('/applications/' + main)).stage, 'first_interview')
+  evidence.push(
+    'FIX-01 empty-reason in-flight navigation: one HTTP write/event/receipt, leave warning, cancel keeps intent, successful response clears dirty state'
+  )
+  dialogMode = true
   await book(main, true, 'recommend')
   assert.equal((await apiGet('/applications/' + main)).stage, 'first_interview')
   await detail(main)
@@ -731,6 +781,13 @@ try {
       {
         chromium: (await (await fetch('http://127.0.0.1:' + port + '/json/version')).json())
           .Browser,
+        pendingWriteEvidence: {
+          httpWrites: 1,
+          events: 1,
+          receipts: 1,
+          cancelLeaveRetainsEditor: true,
+          successClearsDirty: true
+        },
         passed: evidence.length,
         failed: 0,
         scenarios: evidence,

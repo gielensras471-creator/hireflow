@@ -1,8 +1,16 @@
 {
   "chromium": "Chrome/156.0.8078.81",
-  "passed": 9,
+  "pendingWriteEvidence": {
+    "httpWrites": 1,
+    "events": 1,
+    "receipts": 1,
+    "cancelLeaveRetainsEditor": true,
+    "successClearsDirty": true
+  },
+  "passed": 10,
   "failed": 0,
   "scenarios": [
+    "FIX-01 empty-reason in-flight navigation: one HTTP write/event/receipt, leave warning, cancel keeps intent, successful response clears dirty state",
     "three explicit sequential transitions, complete and recommend do not auto-advance, Offer preparing and no next-stage",
     "scheduled cannot be waived; closed, Offer and illegal jumps denied",
     "all missing IDs, negative recommendation does not veto, required reason, real immutable waiver/history after supplement, draft leave",
@@ -18,5 +26,11 @@
   "limitations": [
     "401 injected at HTTP boundary; real JWT validation covered by existing API tests",
     "formal AC and real-device acceptance not completed"
-  ]
+  ],
+  "fix01Regressions": {
+    "ui03b": "passed: 9 grouped Chromium scenarios",
+    "ui03a": "passed: full Chromium workflow",
+    "ui02": "passed: full Chromium workflow",
+    "v2Requests": 0
+  }
 }

@@ -23,7 +23,7 @@
 | pnpm lint                                            | 0 错误，1 个既有 src/views/dashboard/index.vue 属性顺序警告                 |
 | pnpm build                                           | 通过，仅本地构建                                                            |
 | 变更文件 Prettier 检查、git diff --check             | 通过                                                                        |
-| node tests/browser/v3-advancement.mjs <外部输出目录> | 9 组实际 Chromium 场景通过，详见 results.json                               |
+| node tests/browser/v3-advancement.mjs <外部输出目录> | 10 组实际 Chromium 场景通过，详见 results.json                              |
 | node tests/browser/v3-feedback.mjs <外部输出目录>    | UI-03B 回归通过                                                             |
 | node tests/browser/v3-interviews.mjs <外部输出目录>  | UI-03A 回归通过                                                             |
 | node tests/browser/v3-recruiting.mjs <外部输出目录>  | UI-02 回归见 regression-ui02-results.json                                   |
@@ -65,3 +65,11 @@
 - 390px 是 Chromium 视口验证，尚非真实手机 / 触屏 / 屏幕阅读器验收；长详情保留已批准纵向布局，面评读取扇出等既有 P2 未借本批调整。
 - 本批相关 AC-04/05/06/07/08/14/20/25/35 隔离路径有证据，不标记全量正式 AC 通过；Offer 生命周期与普通申请关闭 UI 仍未实施。
 - 当前交接：等待 A 源码审查及 03 设计复核。不得自行 Merge、部署或开始后续批次。
+
+## FIX-01 写入中离开保护
+
+授权 DEC-E3-UI-04A-CODE-REVIEW-01，原 HEAD 42079b44398c393f13ed8c8e950f30a168edbe8f。仅组件局部新增 writing 状态，和草稿 reason、未知结果 uncertain 区分。实际命令发送前同步设置离开保护；未知结果先交接给 uncertain 再清除 writing，避免保护空窗；确定成功或卸载时清理，确定失败保留原理由。未修改公共导航、后端、状态机或幂等契约。
+
+新增确定性响应延迟夹具：真实 screening → first_interview、理由为空，实际命令提交后拦截响应。此时切页出现服务器可能已保存提示，取消离开保留原编辑器及意图。释放响应后仅 1 次 HTTP 写入、1 个事件、1 个回执；全局 dirty/uncertain 均为 false，此后切页无残留提示。见 [新增截图](advance-pending-leave.png) 和 results.json 的 pendingWriteEvidence。完整 Chromium 为 10 组通过，原带理由、409、未决重试、身份与互斥场景均保留。
+
+FIX-01 质量门禁：pnpm test 176/176；类型检查、构建、Prettier、diff 检查通过；lint 只有既有 Dashboard 属性顺序警告。公共导航源码未变；额外运行 UI-03B、UI-03A、UI-02 浏览器回归，三批回归均通过，零 V2 API 请求；本轮结果另记在 results.json 的 fix01Regressions，既有回归文件保留原批次证据。
