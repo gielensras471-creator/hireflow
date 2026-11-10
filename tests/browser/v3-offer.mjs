@@ -99,6 +99,7 @@ const api = await new Promise((resolve) => {
   const server = wrapped.listen(0, '127.0.0.1', () => resolve(server))
 })
 const vite = await createServer({
+  cacheDir: join(profile, 'vite-cache'),
   mode: 'v3-local',
   server: {
     host: '127.0.0.1',
@@ -760,7 +761,7 @@ try {
   ).run('second-hr', bcrypt.hashSync(password, 10), '第二虚构 HR', 'hr', '', '', '')
   app.username = 'second-hr'
   await fill(app.password)
-  await h1('工作台')
+  await h1('招聘工作台')
   await detail(mutex)
   assert.equal(await evaluate(editorCount), 0)
   await open('结束招聘')
@@ -772,7 +773,7 @@ try {
   assert.deepEqual(count(), authBefore)
   app.username = username
   await fill(app.password)
-  await h1('工作台')
+  await h1('招聘工作台')
   await detail(mutex)
   await open('结束招聘')
   unauthorized = true
