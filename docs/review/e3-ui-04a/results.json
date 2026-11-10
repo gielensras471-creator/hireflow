@@ -1,0 +1,36 @@
+{
+  "chromium": "Chrome/156.0.8078.81",
+  "pendingWriteEvidence": {
+    "httpWrites": 1,
+    "events": 1,
+    "receipts": 1,
+    "cancelLeaveRetainsEditor": true,
+    "successClearsDirty": true
+  },
+  "passed": 10,
+  "failed": 0,
+  "scenarios": [
+    "FIX-01 empty-reason in-flight navigation: one HTTP write/event/receipt, leave warning, cancel keeps intent, successful response clears dirty state",
+    "three explicit sequential transitions, complete and recommend do not auto-advance, Offer preparing and no next-stage",
+    "scheduled cannot be waived; closed, Offer and illegal jumps denied",
+    "all missing IDs, negative recommendation does not veto, required reason, real immutable waiver/history after supplement, draft leave",
+    "skip evaluation requires explicit nonempty reason and real event",
+    "real HTTP 409 keeps draft and forbids next-stage chain; changed preflight requires new explicit confirmation",
+    "operation403 retains identity; identity outage blocks writing; same key/body uncertain replay produces one event",
+    "four-editor shared lease with deterministic delayed opens and unmount",
+    "structured loading, empty, separate error/retry, mobile390",
+    "account switch, revoked role and current-session 401 block old editors; zero V2 requests"
+  ],
+  "v2Requests": 0,
+  "fixtures": "fresh V3 memory DB, actual advancement/feedback/closure HTTP; concurrent command injected by test wrapper before actual browser write",
+  "limitations": [
+    "401 injected at HTTP boundary; real JWT validation covered by existing API tests",
+    "formal AC and real-device acceptance not completed"
+  ],
+  "fix01Regressions": {
+    "ui03b": "passed: 9 grouped Chromium scenarios",
+    "ui03a": "passed: full Chromium workflow",
+    "ui02": "passed: full Chromium workflow",
+    "v2Requests": 0
+  }
+}
