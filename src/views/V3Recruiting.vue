@@ -107,7 +107,7 @@
           <dd>{{ display(selected, key) }}</dd></template
         >
       </dl>
-      <p>晋级、结案与 Offer 操作将在后续批次接入。</p>
+      <p>结案与 Offer 操作将在后续批次接入。</p>
       <el-button
         :disabled="!!gate.current.value || (selected as Application).applicationStatus !== 'active'"
         @click="openEditor(selected)"
@@ -231,6 +231,12 @@
       </dl>
       <el-button @click="selected = null">收起</el-button>
     </section>
+    <V3AdvancementPanel
+      v-if="isDetail && selected && !loading && !error"
+      :key="'advance-' + selected.id"
+      :application-id="selected.id"
+      @updated="load"
+    />
     <V3FeedbackPanel
       v-if="isDetail && selected && !loading && !error"
       :key="'feedback-' + selected.id"
@@ -265,6 +271,7 @@ import {
 import V3Feedback from '../components/V3Feedback.vue'
 import V3RecruitingEditor from '../components/V3RecruitingEditor.vue'
 import V3Interviews from './V3Interviews.vue'
+import V3AdvancementPanel from '../components/V3AdvancementPanel.vue'
 import V3FeedbackPanel from '../components/V3FeedbackPanel.vue'
 import { createEditorGate, editorGateKey } from '../utils/v3-editor-gate'
 import '../styles/v3-recruiting.scss'
