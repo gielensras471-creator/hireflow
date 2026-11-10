@@ -107,7 +107,7 @@
           <dd>{{ display(selected, key) }}</dd></template
         >
       </dl>
-      <p>结案与 Offer 操作将在后续批次接入。</p>
+
       <el-button
         :disabled="!!gate.current.value || (selected as Application).applicationStatus !== 'active'"
         @click="openEditor(selected)"
@@ -231,6 +231,12 @@
       </dl>
       <el-button @click="selected = null">收起</el-button>
     </section>
+    <V3OfferPanel
+      v-if="isDetail && selected && !loading && !error"
+      :key="'offer-' + selected.id"
+      :application-id="selected.id"
+      @updated="load"
+    />
     <V3AdvancementPanel
       v-if="isDetail && selected && !loading && !error"
       :key="'advance-' + selected.id"
@@ -271,6 +277,7 @@ import {
 import V3Feedback from '../components/V3Feedback.vue'
 import V3RecruitingEditor from '../components/V3RecruitingEditor.vue'
 import V3Interviews from './V3Interviews.vue'
+import V3OfferPanel from '../components/V3OfferPanel.vue'
 import V3AdvancementPanel from '../components/V3AdvancementPanel.vue'
 import V3FeedbackPanel from '../components/V3FeedbackPanel.vue'
 import { createEditorGate, editorGateKey } from '../utils/v3-editor-gate'
@@ -331,6 +338,12 @@ const detailFields = [
 ]
 function display(row: RecruitingRow, key: string) {
   const value = (row as unknown as Record<string, unknown>)[key]
+  if (
+    key === 'offerStatus' &&
+    value === 'accepted' &&
+    (row as Application).applicationStatus === 'closed'
+  )
+    return '已接受（Offer 最后事实）'
   return ['stage', 'applicationStatus', 'outcome', 'offerStatus'].includes(key)
     ? label(value as string)
     : value ?? '—'

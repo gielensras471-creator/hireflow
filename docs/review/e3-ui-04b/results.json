@@ -1,0 +1,61 @@
+{
+  "confirmationEvidence": {
+    "send": "登记 Offer 已发送。确认该实际发送事实？申请 #1 · Offer 主流程虚构申请 · 虚构 Offer 职位",
+    "accept": "登记候选人接受 Offer。接受后申请仍为进行中，需要 HR 后续独立确认录用。申请 #1 · Offer 主流程虚构申请 · 虚构 Offer 职位",
+    "confirmHire": "HR 正式确认录用，完成后招聘申请将结束，结果为已录用。申请 #1 · Offer 主流程虚构申请 · 虚构 Offer 职位",
+    "decline": "登记候选人拒绝 Offer，并结束本次招聘申请。申请 #2 · 拒绝虚构申请 · 虚构 Offer 职位；结束原因：候选人明确拒绝（虚构）",
+    "company_rejected": "确认以“企业淘汰”结束当前申请。申请 #11 · 普通结案虚构 offer company_rejected · 虚构 Offer 职位；结束原因：真实业务原因（虚构）",
+    "candidate_withdrew": "确认以“候选人退出”结束当前申请。申请 #12 · 普通结案虚构 offer candidate_withdrew · 虚构 Offer 职位；结束原因：真实业务原因（虚构）"
+  },
+  "chromium": "Chrome/156.0.8078.81",
+  "passed": 8,
+  "failed": 0,
+  "scenarios": [
+    "preparing→sent→accepted stays active→explicit hired, default reason source; empty-reason pending leave and exactly-once",
+    "decline requires reason and atomically closes via one dedicated command; closed operations rejected",
+    "four stages × both explicit outcomes; Offer preparing/sent/accepted preserved; invalid close outcomes rejected",
+    "scheduled blocks close/decline/hire; send/accept allowed by own server policy; extreme fixture explicitly marked",
+    "409 cannot reinterpret send as accept; operation403/outage; unknown accept repeats exact intent once",
+    "five-editor async mutex both directions, draft confirmation, late unmount ignored",
+    "structured loading, true empty, separate errors/retry, mobile390",
+    "account isolation, actual role withdrawal, HTTP401 and zero V2 requests"
+  ],
+  "matrix": [
+    "screening/company_rejected",
+    "screening/candidate_withdrew",
+    "first_interview/company_rejected",
+    "first_interview/candidate_withdrew",
+    "second_interview/company_rejected",
+    "second_interview/candidate_withdrew",
+    "offer/company_rejected",
+    "offer/candidate_withdrew",
+    "offer/sent/candidate_withdrew",
+    "offer/accepted/candidate_withdrew"
+  ],
+  "v2Requests": 0,
+  "pendingWrite": {
+    "writes": 1,
+    "events": 1,
+    "receipts": 1
+  },
+  "fixtures": [
+    "fresh in-memory SQLite, real HTTP commands",
+    "scheduled+Offer extreme fixture uses explicit direct state preparation; does not represent legal advancement"
+  ],
+  "limitations": [
+    "real devices and formal full AC not completed",
+    "401 injected at HTTP boundary, JWT authenticity covered by API tests"
+  ],
+  "fix01": {
+    "cancelledSendNoEffects": true,
+    "cancelledDeclineNoEffects": true,
+    "confirmationCases": 6,
+    "regressions": {
+      "ui04a": "10 groups passed",
+      "ui03b": "9 groups passed",
+      "ui03a": "full workflow passed",
+      "ui02": "full workflow passed"
+    },
+    "v2Requests": 0
+  }
+}
