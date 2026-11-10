@@ -149,6 +149,39 @@ function confirmRetry() {
   conflict.value = false
   void submit()
 }
+function confirmationMessage() {
+  const subject =
+    '申请 #' +
+    props.original.state.applicationId +
+    ' · ' +
+    props.original.profile.name +
+    ' · ' +
+    props.original.profile.positionTitle
+  switch (props.action) {
+    case 'send':
+      return '登记 Offer 已发送。确认该实际发送事实？' + subject
+    case 'accept':
+      return '登记候选人接受 Offer。接受后申请仍为进行中，需要 HR 后续独立确认录用。' + subject
+    case 'decline':
+      return (
+        '登记候选人拒绝 Offer，并结束本次招聘申请。' +
+        subject +
+        '；结束原因：' +
+        reason.value.trim()
+      )
+    case 'confirmHire':
+      return 'HR 正式确认录用，完成后招聘申请将结束，结果为已录用。' + subject
+    case 'close':
+      return (
+        '确认以“' +
+        outcomes[outcome.value] +
+        '”结束当前申请。' +
+        subject +
+        '；结束原因：' +
+        reason.value.trim()
+      )
+  }
+}
 async function submit() {
   if (!current() || busy.value || conflict.value || v3Session.state.status !== 'ready') return
   busy.value = true
@@ -184,8 +217,7 @@ async function submit() {
         error.value = '请明确选择合法结束类型。'
         return
       }
-      if (!window.confirm(offerActions[props.action] + '：确认该实际事实？结束招聘不可撤销。'))
-        return
+      if (!window.confirm(confirmationMessage())) return
       const body: Record<string, string> = {}
       if (['close', 'decline', 'confirmHire'].includes(props.action) && reason.value.trim())
         body.reason = reason.value.trim()

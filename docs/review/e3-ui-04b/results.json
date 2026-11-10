@@ -1,4 +1,12 @@
 {
+  "confirmationEvidence": {
+    "send": "登记 Offer 已发送。确认该实际发送事实？申请 #1 · Offer 主流程虚构申请 · 虚构 Offer 职位",
+    "accept": "登记候选人接受 Offer。接受后申请仍为进行中，需要 HR 后续独立确认录用。申请 #1 · Offer 主流程虚构申请 · 虚构 Offer 职位",
+    "confirmHire": "HR 正式确认录用，完成后招聘申请将结束，结果为已录用。申请 #1 · Offer 主流程虚构申请 · 虚构 Offer 职位",
+    "decline": "登记候选人拒绝 Offer，并结束本次招聘申请。申请 #2 · 拒绝虚构申请 · 虚构 Offer 职位；结束原因：候选人明确拒绝（虚构）",
+    "company_rejected": "确认以“企业淘汰”结束当前申请。申请 #11 · 普通结案虚构 offer company_rejected · 虚构 Offer 职位；结束原因：真实业务原因（虚构）",
+    "candidate_withdrew": "确认以“候选人退出”结束当前申请。申请 #12 · 普通结案虚构 offer candidate_withdrew · 虚构 Offer 职位；结束原因：真实业务原因（虚构）"
+  },
   "chromium": "Chrome/156.0.8078.81",
   "passed": 8,
   "failed": 0,
@@ -37,5 +45,17 @@
   "limitations": [
     "real devices and formal full AC not completed",
     "401 injected at HTTP boundary, JWT authenticity covered by API tests"
-  ]
+  ],
+  "fix01": {
+    "cancelledSendNoEffects": true,
+    "cancelledDeclineNoEffects": true,
+    "confirmationCases": 6,
+    "regressions": {
+      "ui04a": "10 groups passed",
+      "ui03b": "9 groups passed",
+      "ui03a": "full workflow passed",
+      "ui02": "full workflow passed"
+    },
+    "v2Requests": 0
+  }
 }

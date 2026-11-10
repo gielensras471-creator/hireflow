@@ -65,3 +65,17 @@ results.json 为 UI-04B；regression-ui04a/03b/03a/02-results.json 为本轮实�
 - 390px 为 Chromium 视口，不是实机、触屏、屏幕阅读器或生产验收；保留既有长详情布局，P2 未扩展。
 - 相关 AC-10/11/12/13/20/26/27/33 有本批隔离证据，不标记 AC-01～36 正式全量通过。
 - 下一步仅交总控 A 与对话 03 审查；禁止自行 Merge、部署、真实迁移或启动下一批。
+
+## FIX-01 操作确认语义
+
+授权 DEC-E3-UI-04B-CODE-REVIEW-01，原 HEAD 7b5763fa970b23d4bc2d4a3056eda7353d7da476。产品代码只新增 confirmationMessage() 并替换原统一 window.confirm 文案，writing / frozen / 幂等 / 409 / 编辑租约 / API 均未改动。
+
+- send：只登记已发送事实，不含结束招聘或已录用信息。
+- accept：登记接受，明确仍进行中、后续需 HR 独立确认录用，不含结束招聘信息。
+- decline：拒绝 Offer 并结束本次申请，包含实际申请、候选人、职位与非空原因。
+- confirmHire：HR 正式录用，明确申请结束且结果为已录用。
+- close：按实际已选 outcome 显示企业淘汰或候选人退出，包含申请和原因，不默认类型。
+
+Chromium 使用 CDP Page.javascriptDialogOpening 读取真正 window.confirm 消息，逐项断言六种提示（close 两种结果）。实际弹窗原文记录在 results.json.confirmationEvidence；没有用常量或模拟函数代替。取消 send 与 decline 后分别核对事件、回执及 HTTP 写入数均未增加。接受确认后的真值仍由原服务端命令验证。
+
+FIX-01 主流程完整 8 组通过；pnpm test 179/179，类型检查、Lint、构建、Prettier、Diff 检查通过，Lint 仅保留既有 Dashboard 警告。共享状态/租约未改；另外串行执行 UI-04A、03B、03A、02 实际 Chromium 回归，四批回归均已通过且零 V2 请求；FIX-01 结果摘要另见 results.json.fix01，原回归 JSON 保持原批次记录。无需为本次原生弹窗文案重生成既有整页截图。

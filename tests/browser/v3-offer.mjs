@@ -390,8 +390,24 @@ try {
   assert.equal((await perform(main, 'decline', { reason: '非法' })).status, 409)
   await check(panel + '.textContent.includes("暂无 Offer 或结案事件")', 'empty')
   await snapshot('offer-empty')
-  dialogMode = true
+  const confirmationEvidence = {}
+  dialogMode = false
   await open('登记 Offer 已发送')
+  const cancelBefore = count(),
+    cancelWrites = browserWrites.length,
+    cancelDialogs = dialogs.length
+  await save()
+  await until(() => dialogs.length > cancelDialogs, 'cancel actual send confirmation')
+  assert.match(dialogs.at(-1), /登记 Offer 已发送/)
+  assert.doesNotMatch(dialogs.at(-1), /结束招聘|已录用/)
+  await check(
+    '!document.querySelector(".v3-offer-editor button.is-loading")',
+    'cancelled confirmation settled'
+  )
+  assert.deepEqual(count(), cancelBefore)
+  assert.equal(browserWrites.length, cancelWrites)
+  confirmationEvidence.send = dialogs.at(-1)
+  dialogMode = true
   const before = count(),
     writes = browserWrites.length
   holdResponse = true
@@ -421,6 +437,10 @@ try {
   await open('登记候选人接受 Offer')
   await save()
   await done()
+  assert.match(dialogs.at(-1), /登记候选人接受 Offer/)
+  assert.match(dialogs.at(-1), /仍为进行中.*HR 后续独立确认录用/)
+  assert.doesNotMatch(dialogs.at(-1), /结束招聘/)
+  confirmationEvidence.accept = dialogs.at(-1)
   const accepted = await apiGet('/applications/' + main)
   assert.equal(accepted.offerStatus, 'accepted')
   assert.equal(accepted.applicationStatus, 'active')
@@ -431,6 +451,8 @@ try {
   holdResponse = true
   await save()
   await until(() => releaseResponse, 'held empty-reason hiring response')
+  assert.match(dialogs.at(-1), /HR 正式确认录用.*招聘申请将结束.*结果为已录用/)
+  confirmationEvidence.confirmHire = dialogs.at(-1)
   assert.ok(
     await evaluate(
       'import("/src/router/v3-drafts.ts").then(m=>m.v3DraftDirty.value&&m.v3UncertainWrite.value)'
@@ -471,6 +493,23 @@ try {
   await save()
   await check(ed + '.textContent.includes("非空结束原因")', 'decline reason')
   await input('结束原因', '候选人明确拒绝（虚构）')
+  dialogMode = false
+  const cancelledDecline = count(),
+    declineWrites = browserWrites.length,
+    declineDialogs = dialogs.length
+  await save()
+  await until(() => dialogs.length > declineDialogs, 'decline confirmation cancellation')
+  assert.match(dialogs.at(-1), /登记候选人拒绝 Offer，并结束本次招聘申请/)
+  assert.ok(dialogs.at(-1).includes('申请 #' + reject))
+  assert.match(dialogs.at(-1), /候选人明确拒绝（虚构）/)
+  confirmationEvidence.decline = dialogs.at(-1)
+  await check(
+    '!document.querySelector(".v3-offer-editor button.is-loading")',
+    'decline cancellation settled'
+  )
+  assert.deepEqual(count(), cancelledDecline)
+  assert.equal(browserWrites.length, declineWrites)
+  dialogMode = true
   const declinedBefore = count(),
     closedRequests = browserWrites.filter((w) => w.path.endsWith('/close')).length
   await save()
@@ -502,6 +541,9 @@ try {
       await save()
       await done()
       const a = await apiGet('/applications/' + id)
+      assert.match(dialogs.at(-1), /结束当前申请/)
+      assert.ok(dialogs.at(-1).includes(outcome === 'company_rejected' ? '企业淘汰' : '候选人退出'))
+      confirmationEvidence[outcome] = dialogs.at(-1)
       assert.equal(a.stage, stage)
       assert.equal(a.outcome, outcome)
       assert.equal(a.offerStatus, stage === 'offer' ? 'preparing' : null)
@@ -743,6 +785,7 @@ try {
     join(output, 'results.json'),
     JSON.stringify(
       {
+        confirmationEvidence,
         chromium: (await (await fetch('http://127.0.0.1:' + port + '/json/version')).json())
           .Browser,
         passed: evidence.length,
