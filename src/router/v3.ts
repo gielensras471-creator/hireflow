@@ -6,6 +6,7 @@ import V3Shell from '../layouts/V3Shell.vue'
 import V3Login from '../views/login/V3Login.vue'
 import V3Placeholder from '../layouts/V3Placeholder.vue'
 import V3Recruiting from '../views/V3Recruiting.vue'
+import V3Dashboard from '../views/V3Dashboard.vue'
 import V3Interviews from '../views/V3Interviews.vue'
 import { confirmV3Leave, v3DraftDirty } from './v3-drafts'
 import { safeReturn, tabInfo, v3Sections } from './v3-navigation'
@@ -26,7 +27,9 @@ const router = createRouter({
             ? V3Recruiting
             : name === 'interviews'
               ? V3Interviews
-              : V3Placeholder
+              : name === 'dashboard'
+                ? V3Dashboard
+                : V3Placeholder
         })),
         { path: '/candidates/:id', name: 'candidate-detail', component: V3Recruiting },
         { path: '/profile', name: 'v3-profile', component: V3Placeholder }

@@ -53,6 +53,7 @@ const api = await new Promise((resolve) => {
   const server = wrapped.listen(0, '127.0.0.1', () => resolve(server))
 })
 const vite = await createServer({
+  cacheDir: join(profile, 'vite-cache'),
   mode: 'v3-local',
   server: {
     host: '127.0.0.1',
@@ -479,7 +480,7 @@ try {
   ).run('second-hr', bcrypt.hashSync(password, 10), '第二位演示 HR', 'hr', '', '', '')
   app.username = 'second-hr'
   await fill(app.password)
-  await h1('工作台')
+  await h1('招聘工作台')
   assert.ok(
     await evaluate('document.querySelector(".v3-account").textContent.includes("第二位演示 HR")')
   )
