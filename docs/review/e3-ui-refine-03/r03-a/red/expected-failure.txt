@@ -1,0 +1,25 @@
+-   '.v3-feedback-panel': 28,
+-   '.v3-interviews': 30,
+-   '.v3-offer': 21
+  }
+
+    at file:///E:/FIFile/Documents/Codex/hireflow-v3-refine-03/tests/browser/v3-feedback.mjs:449:12 {
+  generatedMessage: false,
+  code: 'ERR_ASSERTION',
+  actual: {
+    '.v3-offer': 51,
+    '.v3-advancement': 55,
+    '.v3-feedback-panel': 58,
+    '.v3-interviews': 60
+  },
+  expected: {
+    '.v3-offer': 21,
+    '.v3-advancement': 25,
+    '.v3-feedback-panel': 28,
+    '.v3-interviews': 30
+  },
+  operator: 'deepStrictEqual',
+  diff: 'simple'
+}
+
+Node.js v24.17.0

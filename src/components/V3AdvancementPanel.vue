@@ -128,7 +128,7 @@ import V3Feedback from './V3Feedback.vue'
 import V3AdvancementFacts from './V3AdvancementFacts.vue'
 import V3AdvancementEditor from './V3AdvancementEditor.vue'
 import '../styles/v3-advancement.scss'
-const props = defineProps<{ applicationId: number }>()
+const props = defineProps<{ applicationId: number; disabled?: boolean; refreshToken?: number }>()
 const emit = defineEmits<{ updated: [] }>()
 const route = useRoute(),
   gate = inject(editorGateKey, null) ?? createEditorGate()
@@ -149,6 +149,7 @@ let alive = true,
   lease: symbol | null = null
 const blocked = computed(
   () =>
+    props.disabled ||
     loading.value ||
     !!error.value ||
     opening.value ||
@@ -165,7 +166,7 @@ async function readState() {
   return { application, preflight, feedback }
 }
 function load() {
-  if (gate.current.value || v3Session.state.status !== 'ready') return
+  if (props.disabled || gate.current.value || v3Session.state.status !== 'ready') return
   loading.value = true
   error.value = ''
   state.value = null
@@ -256,6 +257,15 @@ watch(
     void loadHistory()
   },
   { immediate: true }
+)
+watch(
+  () => props.refreshToken,
+  () => {
+    if (!props.disabled && !gate.current.value) {
+      void load()
+      void loadHistory()
+    }
+  }
 )
 onUnmounted(() => {
   alive = false

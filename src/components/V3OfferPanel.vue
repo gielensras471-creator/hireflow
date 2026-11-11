@@ -159,7 +159,7 @@ import V3Feedback from './V3Feedback.vue'
 import V3OfferState from './V3OfferState.vue'
 import V3OfferEditor from './V3OfferEditor.vue'
 import '../styles/v3-offer.scss'
-const props = defineProps<{ applicationId: number }>(),
+const props = defineProps<{ applicationId: number; disabled?: boolean; refreshToken?: number }>(),
   emit = defineEmits<{ updated: [] }>()
 const route = useRoute(),
   gate = inject(editorGateKey, null) ?? createEditorGate()
@@ -177,6 +177,7 @@ const reads = latestRead(),
 const offerKeys = ['send', 'accept', 'decline', 'confirmHire'] as const
 const blocked = computed(
   () =>
+    props.disabled ||
     loading.value ||
     !!error.value ||
     opening.value ||
@@ -187,7 +188,7 @@ let alive = true,
   attempt = 0,
   lease: symbol | null = null
 function load() {
-  if (gate.current.value || v3Session.state.status !== 'ready') return
+  if (props.disabled || gate.current.value || v3Session.state.status !== 'ready') return
   loading.value = true
   error.value = ''
   state.value = null
@@ -277,6 +278,15 @@ watch(
     void loadHistory()
   },
   { immediate: true }
+)
+watch(
+  () => props.refreshToken,
+  () => {
+    if (!props.disabled && !gate.current.value) {
+      void load()
+      void loadHistory()
+    }
+  }
 )
 onUnmounted(() => {
   alive = false

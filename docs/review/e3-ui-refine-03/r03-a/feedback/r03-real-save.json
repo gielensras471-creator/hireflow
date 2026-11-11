@@ -1,0 +1,19 @@
+{
+  "before": {
+    ".v3-offer": 21,
+    ".v3-advancement": 25,
+    ".v3-feedback-panel": 28,
+    ".v3-interviews": 30
+  },
+  "after": {
+    ".v3-offer": 21,
+    ".v3-advancement": 25,
+    ".v3-feedback-panel": 28,
+    ".v3-interviews": 30
+  },
+  "counts": {
+    "feedback": 2,
+    "events": 31,
+    "receipts": 31
+  }
+}

@@ -226,7 +226,7 @@ import {
 import V3Feedback from '../components/V3Feedback.vue'
 import V3InterviewEditor from '../components/V3InterviewEditor.vue'
 import '../styles/v3-interviews.scss'
-const props = defineProps<{ applicationId?: number; disabled?: boolean }>()
+const props = defineProps<{ applicationId?: number; disabled?: boolean; refreshToken?: number }>()
 const emit = defineEmits<{ editing: [boolean]; updated: [] }>()
 const gate = inject(editorGateKey, null) ?? createEditorGate()
 let lease: symbol | null = null
@@ -421,6 +421,12 @@ const refreshTimer = window.setInterval(() => {
   )
     void load()
 }, 30000)
+watch(
+  () => props.refreshToken,
+  () => {
+    if (!props.disabled && !gate.current.value) void load()
+  }
+)
 onUnmounted(() => {
   alive = false
   if (lease) gate.release(lease)

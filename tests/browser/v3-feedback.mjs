@@ -33,13 +33,16 @@ let holdPath = null,
   failMe = false,
   slowFeedback = false,
   failFeedback = false,
-  failHistory = false
+  failHistory = false,
+  failParent = false
 const browserWrites = [],
   errors = []
 const { default: express } = await import(root('node_modules/express/index.js'))
 const wrapped = express()
 wrapped.use(express.json())
 wrapped.use((req, res, next) => {
+  if (failParent && req.method === 'GET' && /^\/api\/v3\/applications\/\d+$/.test(req.path))
+    return res.status(503).json({ error: { code: 'FIXTURE_PARENT', message: 'fixture' } })
   if (req.method === 'GET' && req.path === holdPath) {
     holdPath = null
     releaseHeld = () => next()
@@ -410,10 +413,15 @@ try {
   }
   const done = async () => {
     await check('!document.querySelector(".v3-feedback-editor")', 'saved')
-    await check(
-      '!!document.querySelector(".v3-feedback-card")&&!document.querySelector(".v3-feedback-loading")',
-      'refreshed'
-    )
+    try {
+      await check(
+        '!!document.querySelector(".v3-feedback-card")&&!document.querySelector(".v3-feedback-loading")',
+        'refreshed'
+      )
+    } catch (e) {
+      console.log('R03 DEBUG', await evaluate('document.body.innerText'))
+      throw e
+    }
   }
   const count = () =>
     db
@@ -436,6 +444,193 @@ try {
   await check(panel + '.textContent.includes("暂无可关联的面试评价")', 'empty')
   await snapshot('feedback-empty')
   await detailPage(main)
+
+  if (process.env.R03_A === '1') {
+    const ids = () =>
+      evaluate(
+        'Object.fromEntries([".v3-offer",".v3-advancement",".v3-feedback-panel",".v3-interviews"].map(s=>[s,document.querySelector(s)?.__vueParentComponent?.uid]))'
+      )
+    const beforeIds = await ids()
+    await evaluate(
+      'window.__r03events=[];for(const s of [".v3-offer",".v3-advancement",".v3-feedback-panel",".v3-interviews"]){const vm=document.querySelector(s).__vueParentComponent;window.__r03events.push({event:"mount-observed",selector:s,uid:vm.uid});(vm.um??=[]).push(()=>window.__r03events.push({event:"unmount",selector:s,uid:vm.uid}))}'
+    )
+    await evaluate(
+      'document.querySelector(".v3-recruiting").__vueParentComponent.setupState.load()'
+    )
+    await check('!!document.querySelector(".v3-feedback-card")', 'parent refresh settled')
+    const afterIds = await ids()
+    await writeFile(
+      join(output, 'r03-lifecycle.json'),
+      JSON.stringify(
+        {
+          trigger:
+            'existing parent load callback; controlled integration entry, not a claimed pre-existing refresh button',
+          beforeIds,
+          afterIds,
+          events: await evaluate('window.__r03events')
+        },
+        null,
+        2
+      )
+    )
+    assert.deepEqual(
+      afterIds,
+      beforeIds,
+      'R03 same application refresh must retain all four panel instances'
+    )
+    await button('填写面评', card(meeting))
+    await fillReview('R03待保存草稿')
+    const editorUid = await evaluate(ed + '.__vueParentComponent.uid')
+    await evaluate(
+      'document.querySelector(".v3-recruiting").__vueParentComponent.setupState.load()'
+    )
+    assert.equal(await evaluate(ed + '.__vueParentComponent.uid'), editorUid)
+    assert.equal(
+      await evaluate('document.querySelector("[aria-label=推荐依据]").value'),
+      'R03待保存草稿'
+    )
+    assert.ok(
+      await evaluate(
+        '[...document.querySelectorAll("button")].find(e=>e.textContent.trim()==="编辑申请资料").disabled'
+      )
+    )
+    await snapshot('r03-deferred-draft')
+    dialogMode = true
+    await button('返回', ed)
+    await check('!document.querySelector(".v3-feedback-editor")', 'draft close')
+    await check(
+      '!document.querySelector(".v3-recruiting").__vueParentComponent.setupState.loading',
+      'deferred refresh completes'
+    )
+    assert.deepEqual(await ids(), beforeIds)
+    await snapshot('r03-refreshed')
+
+    await button('填写面评', card(meeting))
+    await fillReview('R03刷新失败前的草稿')
+    const failedEditor = await evaluate(ed + '.__vueParentComponent.uid')
+    failParent = true
+    await evaluate(
+      'document.querySelector(".v3-recruiting").__vueParentComponent.setupState.load()'
+    )
+    assert.equal(await evaluate(ed + '.__vueParentComponent.uid'), failedEditor)
+    assert.equal(
+      await evaluate('document.querySelector("[aria-label=推荐依据]").value'),
+      'R03刷新失败前的草稿'
+    )
+    dialogMode = true
+    await button('返回', ed)
+    await check(
+      'document.querySelector(".v3-recruiting").__vueParentComponent.setupState.error.length>0',
+      'queued refresh failure visible'
+    )
+    assert.deepEqual(await ids(), beforeIds)
+    assert.ok(
+      await evaluate(
+        '[...document.querySelectorAll(".v3-advancement button")].find(e=>e.textContent.includes("核验并决定晋级")).disabled'
+      )
+    )
+    await snapshot('r03-refresh-failed-blocked')
+    failParent = false
+    await evaluate(
+      'document.querySelector(".v3-recruiting").__vueParentComponent.setupState.load()'
+    )
+    await check(
+      '!document.querySelector(".v3-recruiting").__vueParentComponent.setupState.error',
+      'retry recovers'
+    )
+    await check('!!document.querySelector(".v3-feedback-card")', 'recovered panel context')
+    assert.deepEqual(await ids(), beforeIds)
+
+    await button('填写面评', card(meeting))
+    await fillReview('身份暂不可用时保留的草稿')
+    await evaluate(
+      'document.querySelector(".v3-recruiting").__vueParentComponent.setupState.load()'
+    )
+    failMe = true
+    await evaluate('import("/src/api/request-v3.ts").then(m=>m.v3Session.refresh())')
+    assert.equal(
+      await evaluate('document.querySelector("[aria-label=推荐依据]").value'),
+      '身份暂不可用时保留的草稿'
+    )
+    dialogMode = true
+    await button('返回', ed)
+    assert.equal(
+      await evaluate(
+        'document.querySelector(".v3-recruiting").__vueParentComponent.setupState.refreshPending'
+      ),
+      true
+    )
+    failMe = false
+    await evaluate('import("/src/api/request-v3.ts").then(m=>m.v3Session.refresh())')
+    await check(
+      '!document.querySelector(".v3-recruiting").__vueParentComponent.setupState.refreshPending && !document.querySelector(".v3-recruiting").__vueParentComponent.setupState.loading',
+      'queued refresh resumes after identity recovery'
+    )
+    assert.deepEqual(await ids(), beforeIds)
+    await check('!!document.querySelector(".v3-feedback-card")', 'identity recovered panel')
+    await snapshot('r03-identity-recovery-resumes-refresh')
+
+    holdPath = '/api/v3/applications/' + main
+    await evaluate(
+      'void document.querySelector(".v3-recruiting").__vueParentComponent.setupState.load()'
+    )
+    await until(() => releaseHeld, 'held parent application read')
+    await evaluate(
+      'import("/src/router/v3.ts").then(m=>m.default.push("/candidates/' + empty + '"))'
+    )
+    await check(
+      'document.querySelector(".v3-recruiting").__vueParentComponent.setupState.selected?.id===' +
+        empty,
+      'new application loaded'
+    )
+    releaseHeld()
+    releaseHeld = null
+    await evaluate('new Promise(resolve=>setTimeout(resolve,100))')
+    assert.equal(
+      await evaluate(
+        'document.querySelector(".v3-recruiting").__vueParentComponent.setupState.selected.id'
+      ),
+      empty
+    )
+    await snapshot('r03-late-parent-response-isolated')
+    await evaluate(
+      'import("/src/router/v3.ts").then(m=>m.default.push("/candidates/' + main + '"))'
+    )
+    await check('!!document.querySelector(".v3-feedback-card")', 'main restored')
+
+    db.prepare(
+      'INSERT INTO users (username,password_hash,name,role,department,email,phone) VALUES (?,?,?,?,?,?,?)'
+    ).run('r03-other', bcrypt.hashSync(password, 10), 'R03另一位虚构HR', 'hr', '', '', '')
+    holdPath = '/api/v3/applications/' + main
+    await evaluate(
+      'void document.querySelector(".v3-recruiting").__vueParentComponent.setupState.load()'
+    )
+    await until(() => releaseHeld, 'old account parent held')
+    await click('.v3-account button')
+    await h1('登录招聘工作台')
+    app.username = 'r03-other'
+    await fill(app.password)
+    await h1('招聘工作台')
+    await detailPage(empty)
+    releaseHeld()
+    releaseHeld = null
+    await evaluate('new Promise(resolve=>setTimeout(resolve,100))')
+    assert.equal(
+      await evaluate(
+        'document.querySelector(".v3-recruiting").__vueParentComponent.setupState.selected.id'
+      ),
+      empty
+    )
+    assert.equal(await evaluate(activeEditors), 0)
+    await snapshot('r03-cross-account-old-response')
+    await click('.v3-account button')
+    await h1('登录招聘工作台')
+    app.username = username
+    await fill(app.password, true)
+    await h1('招聘工作台')
+    await detailPage(main)
+    dialogMode = null
+  }
 
   // Claim-before-read in both directions; held HTTP reads are released deterministically.
   holdPath = '/api/v3/applications/' + main + '/feedback'
@@ -521,20 +716,73 @@ try {
   assert.ok(await evaluate(ed + '.querySelector("fieldset").disabled'))
   failMe = false
   await evaluate('import("/src/api/request-v3.ts").then(m=>m.v3Session.refresh())')
+
+  if (process.env.R03_A === '1')
+    await evaluate(
+      'window.__r03realSave=Object.fromEntries([".v3-offer",".v3-advancement",".v3-feedback-panel",".v3-interviews"].map(s=>[s,document.querySelector(s).__vueParentComponent.uid]))'
+    )
   const before = count()
   drop = true
   await save()
   await check(ed + '.textContent.includes("本次操作结果尚未确认")', 'uncertain')
   assert.ok(await evaluate(ed + '.querySelector("fieldset").disabled'))
   await snapshot('feedback-uncertain')
+
+  if (process.env.R03_A === '1') {
+    const uid = await evaluate(ed + '.__vueParentComponent.uid')
+    const writesBefore = browserWrites.length
+    await evaluate(
+      'document.querySelector(".v3-recruiting").__vueParentComponent.setupState.load()'
+    )
+    assert.equal(await evaluate(ed + '.__vueParentComponent.uid'), uid)
+    assert.equal(browserWrites.length, writesBefore)
+    await snapshot('r03-uncertain-refresh-keeps-intent')
+  }
+
   assert.equal(count().feedback, before.feedback + 1)
   await button('重试原请求', ed)
   await done()
+
+  if (process.env.R03_A === '1') {
+    await check(
+      '!document.querySelector(".v3-recruiting").__vueParentComponent.setupState.loading',
+      'real save parent refresh settled'
+    )
+    const now = await evaluate(
+      'Object.fromEntries([".v3-offer",".v3-advancement",".v3-feedback-panel",".v3-interviews"].map(s=>[s,document.querySelector(s).__vueParentComponent.uid]))'
+    )
+    assert.deepEqual(
+      now,
+      await evaluate('window.__r03realSave'),
+      'real save updated event retains sibling instances'
+    )
+    await writeFile(
+      join(output, 'r03-real-save.json'),
+      JSON.stringify(
+        { before: await evaluate('window.__r03realSave'), after: now, counts: count() },
+        null,
+        2
+      )
+    )
+  }
   assert.equal(count().feedback, before.feedback + 1)
   assert.equal(count().events, before.events + 1)
   assert.equal(count().receipts, before.receipts + 1)
   assert.equal(browserWrites.at(-1).key, browserWrites.at(-2).key)
   assert.equal(browserWrites.at(-1).body, browserWrites.at(-2).body)
+  if (process.env.R03_A === '1')
+    await writeFile(
+      join(output, 'r03-write-evidence.json'),
+      JSON.stringify(
+        {
+          lastWrites: browserWrites.slice(-2),
+          counts: count(),
+          lifecycleEvents: await evaluate('window.__r03events')
+        },
+        null,
+        2
+      )
+    )
   const currentRecord = (await apiGet('/applications/' + main + '/feedback'))[0]
   assert.equal(currentRecord.recommendation, 'recommend')
   assert.equal(currentRecord.recordedByUserId, 1)
@@ -789,6 +1037,7 @@ try {
           .Browser,
         fixtures:
           'fresh V3 memory DB; real advancement/waiver/closure HTTP; no-waiver row is deliberately inconsistent fixture only',
+        r03Lifecycle: process.env.R03_A === '1',
         scenarios: evidence,
         passed: evidence.length,
         failed: 0,

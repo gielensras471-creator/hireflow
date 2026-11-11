@@ -148,7 +148,7 @@ import V3FeedbackEditor from './V3FeedbackEditor.vue'
 import V3FeedbackSnapshot from './V3FeedbackSnapshot.vue'
 import V3FeedbackHistory from './V3FeedbackHistory.vue'
 import '../styles/v3-feedback.scss'
-const props = defineProps<{ applicationId: number }>()
+const props = defineProps<{ applicationId: number; disabled?: boolean; refreshToken?: number }>()
 const emit = defineEmits<{ updated: [] }>()
 const route = useRoute()
 const gate = inject(editorGateKey, null) ?? createEditorGate()
@@ -176,6 +176,7 @@ const historyId = ref<number | null>(null),
 const history = ref<Awaited<ReturnType<typeof readFeedbackHistory>> | null>(null)
 const blocked = computed(
   () =>
+    props.disabled ||
     loading.value ||
     !!error.value ||
     !context.value ||
@@ -194,7 +195,7 @@ function allowed(action: FeedbackAction, meeting: Interview) {
   )
 }
 function load() {
-  if (gate.current.value || v3Session.state.status !== 'ready') return
+  if (props.disabled || gate.current.value || v3Session.state.status !== 'ready') return
   loading.value = true
   error.value = ''
   context.value = null
@@ -304,6 +305,14 @@ watch(
     void load()
   },
   { immediate: true }
+)
+watch(
+  () => props.refreshToken,
+  () => {
+    if (!props.disabled && !gate.current.value) {
+      void load()
+    }
+  }
 )
 onUnmounted(() => {
   alive = false

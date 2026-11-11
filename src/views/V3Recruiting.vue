@@ -240,29 +240,48 @@
       </dl>
       <el-button @click="selected = null">收起</el-button>
     </section>
+    <p v-if="isDetail && selected && refreshPending" role="status">
+      刷新已登记，当前编辑或请求结束后读取最新资料；草稿不会清除。
+    </p>
+    <p v-if="isDetail && selected && (loading || error)" role="status">
+      以下为上次已核实资料，当前正在刷新或刷新失败，新的业务操作暂不可用。
+    </p>
     <V3OfferPanel
-      v-if="isDetail && selected && !loading && !error"
+      v-if="isDetail && selected"
       :key="'offer-' + selected.id"
+      :disabled="loading || !!error || refreshPending"
+      :refresh-token="detailRevision"
       :application-id="selected.id"
       @updated="load"
     />
     <V3AdvancementPanel
-      v-if="isDetail && selected && !loading && !error"
+      v-if="isDetail && selected"
       :key="'advance-' + selected.id"
+      :disabled="loading || !!error || refreshPending"
+      :refresh-token="detailRevision"
       :application-id="selected.id"
       @updated="load"
     />
     <V3FeedbackPanel
-      v-if="isDetail && selected && !loading && !error"
+      v-if="isDetail && selected"
       :key="'feedback-' + selected.id"
+      :disabled="loading || !!error || refreshPending"
+      :refresh-token="detailRevision"
       :application-id="selected.id"
       @updated="load"
     />
     <V3Interviews
-      v-if="isDetail && selected && !loading && !error"
+      v-if="isDetail && selected"
       :key="selected.id"
+      :refresh-token="detailRevision"
       :application-id="selected.id"
-      :disabled="!!editor || (gate.current.value !== null && gate.current.value === profileLease)"
+      :disabled="
+        loading ||
+        !!error ||
+        refreshPending ||
+        !!editor ||
+        (gate.current.value !== null && gate.current.value === profileLease)
+      "
       @updated="load"
     />
   </section>
@@ -310,6 +329,8 @@ const items = ref<RecruitingRow[]>([]),
   total = ref(0),
   loading = ref(false),
   error = ref('')
+const refreshPending = ref(false),
+  detailRevision = ref(0)
 const selected = ref<RecruitingRow | null>(null),
   options = ref<Position[]>([])
 const editor = ref<{
@@ -360,10 +381,18 @@ function display(row: RecruitingRow, key: string) {
     : value ?? '—'
 }
 function load() {
+  if (!alive || v3Session.state.status !== 'ready') return
+  if (isDetail.value && gate.current.value) {
+    refreshPending.value = true
+    return
+  }
+  refreshPending.value = false
+  const path = route.fullPath,
+    owner = v3Session.version()
   loading.value = true
   error.value = ''
   items.value = []
-  selected.value = null
+  if (!isDetail.value) selected.value = null
   return query.execute<RecruitingRow | Page<RecruitingRow>>(
     () =>
       isDetail.value
@@ -372,13 +401,16 @@ function load() {
             '/' + resource.value + '?' + pageQuery(route.query, positions.value)
           ),
     (data) => {
+      if (!alive || path !== route.fullPath || owner !== v3Session.version()) return
       if ('items' in data) {
         items.value = data.items
         total.value = data.total
       } else selected.value = data
       loading.value = false
+      if (isDetail.value) detailRevision.value++
     },
     (e) => {
+      if (!alive || path !== route.fullPath || owner !== v3Session.version()) return
       error.value = e instanceof Error ? e.message : '读取失败'
       loading.value = false
     }
@@ -405,7 +437,15 @@ async function openEditor(
   row: RecruitingRow | null,
   action: 'edit' | 'status' | 'archive' = 'edit'
 ) {
-  if (!alive || gate.current.value || v3Session.state.status !== 'ready') return
+  if (
+    !alive ||
+    loading.value ||
+    !!error.value ||
+    refreshPending.value ||
+    gate.current.value ||
+    v3Session.state.status !== 'ready'
+  )
+    return
   const lease = gate.acquire()
   if (!lease) return
   profileLease = lease
@@ -463,10 +503,12 @@ function saved() {
   void load()
 }
 watch(
-  () => route.fullPath,
+  [() => route.fullPath, () => v3Session.state.user?.id],
   () => {
     query.invalidate()
     selection.invalidate()
+    selected.value = null
+    refreshPending.value = false
     void closeProfile()
     search.value = String(route.query.q ?? '')
     status.value = String(route.query[positions.value ? 'status' : 'applicationStatus'] ?? '')
@@ -475,6 +517,13 @@ watch(
     void load()
   },
   { immediate: true }
+)
+watch(
+  [() => gate.current.value, () => v3Session.state.status],
+  ([lease, status]) => {
+    if (!lease && status === 'ready' && refreshPending.value) void load()
+  },
+  { flush: 'post' }
 )
 onUnmounted(() => {
   alive = false
