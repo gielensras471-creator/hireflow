@@ -1,5 +1,8 @@
 <template>
   <section class="v3-advancement" aria-label="招聘阶段与 HR 决策">
+    <p v-if="props.disabled" role="status">
+      申请详情正在读取、读取失败或等待编辑结束，请先完成当前编辑或重新加载申请详情。
+    </p>
     <header>
       <h2>招聘阶段与 HR 决策</h2>
       <p>阶段由 HR 明确决定，面试完成或面评推荐不会自动晋级。</p>
@@ -23,7 +26,7 @@
       state="error"
       title="暂时无法核验晋级资格"
       :message="error"
-      action="重试晋级资格"
+      :action="props.disabled ? undefined : '重试晋级资格'"
       @action="load"
     />
     <section v-else-if="state" class="v3-card">
@@ -35,7 +38,7 @@
       <V3AdvancementFacts :facts="state.preflight" :feedback="state.feedback" />
       <div class="v3-advance-actions">
         <el-button
-          :disabled="!!gate.current.value || v3Session.state.status !== 'ready'"
+          :disabled="props.disabled || !!gate.current.value || v3Session.state.status !== 'ready'"
           @click="load"
           >刷新晋级资格</el-button
         ><el-button type="primary" :disabled="blocked || !canAdvance(state.preflight)" @click="open"

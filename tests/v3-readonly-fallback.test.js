@@ -51,6 +51,7 @@ async function render(name, ctx) {
     data: () => ({
       load() {},
       loadHistory() {},
+      props: { disabled: false },
       loading: false,
       error: '',
       state: null,

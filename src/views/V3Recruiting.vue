@@ -99,17 +99,56 @@
       action="重新加载"
       @action="load"
     />
-    <section v-else-if="isDetail && selected" class="v3-card">
-      <h2>{{ (selected as Application).name }} · 申请 #{{ selected.id }}</h2>
-      <dl class="v3-profile">
-        <template v-for="[key, text] in detailFields" :key="key"
-          ><dt>{{ text }}</dt>
-          <dd>{{ display(selected, key) }}</dd></template
-        >
+    <section
+      v-else-if="isDetail && selected"
+      class="v3-card v3-detail-summary"
+      aria-label="申请业务摘要"
+    >
+      <h2>{{ (selected as Application).name || '姓名未记录' }} · 申请 #{{ selected.id }}</h2>
+      <p>
+        {{ (selected as Application).positionTitle || '职位名称未记录' }} · 职位 #{{
+          (selected as Application).positionId
+        }}
+      </p>
+      <dl class="v3-detail-states">
+        <dt>招聘阶段</dt>
+        <dd>{{ label((selected as Application).stage) }}</dd>
+        <dt>申请状态</dt>
+        <dd>{{ label((selected as Application).applicationStatus) }}</dd>
+        <dt>结束结果</dt>
+        <dd>{{ applicationOutcomeText(selected as Application) }}</dd>
+        <dt>Offer 状态</dt>
+        <dd>{{ applicationOfferText(selected as Application) }}</dd>
       </dl>
-
+      <ol class="v3-detail-stages" aria-label="招聘阶段位置，不代表事件历史">
+        <li
+          v-for="s in stages"
+          :key="s"
+          :aria-current="(selected as Application).stage === s ? 'step' : undefined"
+        >
+          {{ label(s) }}
+        </li>
+      </ol>
+      <section class="v3-detail-task" aria-label="当前任务导览">
+        <h3>当前任务</h3>
+        <p v-if="(selected as Application).applicationStatus === 'closed'">
+          本次申请已结束：{{ applicationOutcomeText(selected as Application) }}。结束原因：{{
+            (selected as Application).closedReason || '未记录'
+          }}。可查看历史及已有评价允许的有痕更正。
+        </p>
+        <p v-else>
+          查看当前阶段操作与资格，以对应模块重新核实的服务器事实为准；此处不确认可写资格。
+        </p>
+        <el-button type="primary" @click="goToTask">查看当前阶段操作与资格</el-button>
+      </section>
       <el-button
-        :disabled="!!gate.current.value || (selected as Application).applicationStatus !== 'active'"
+        :disabled="
+          loading ||
+          !!error ||
+          refreshPending ||
+          !!gate.current.value ||
+          (selected as Application).applicationStatus !== 'active'
+        "
         @click="openEditor(selected)"
         >编辑申请资料</el-button
       >
@@ -246,44 +285,62 @@
     <p v-if="isDetail && selected && (loading || error)" role="status">
       以下为上次已核实资料，当前正在刷新或刷新失败，新的业务操作暂不可用。
     </p>
-    <V3OfferPanel
-      v-if="isDetail && selected"
-      :key="'offer-' + selected.id"
-      :disabled="loading || !!error || refreshPending"
-      :refresh-token="detailRevision"
-      :application-id="selected.id"
-      @updated="load"
-    />
-    <V3AdvancementPanel
-      v-if="isDetail && selected"
-      :key="'advance-' + selected.id"
-      :disabled="loading || !!error || refreshPending"
-      :refresh-token="detailRevision"
-      :application-id="selected.id"
-      @updated="load"
-    />
-    <V3FeedbackPanel
-      v-if="isDetail && selected"
-      :key="'feedback-' + selected.id"
-      :disabled="loading || !!error || refreshPending"
-      :refresh-token="detailRevision"
-      :application-id="selected.id"
-      @updated="load"
-    />
-    <V3Interviews
-      v-if="isDetail && selected"
-      :key="selected.id"
-      :refresh-token="detailRevision"
-      :application-id="selected.id"
-      :disabled="
-        loading ||
-        !!error ||
-        refreshPending ||
-        !!editor ||
-        (gate.current.value !== null && gate.current.value === profileLease)
-      "
-      @updated="load"
-    />
+    <div v-if="isDetail && selected" class="v3-detail-grid">
+      <section class="v3-detail-main" aria-label="招聘业务任务">
+        <V3Interviews
+          v-if="isDetail && selected"
+          :key="selected.id"
+          :refresh-token="detailRevision"
+          :application-id="selected.id"
+          data-detail-target="Interviews"
+          :disabled="
+            loading ||
+            !!error ||
+            refreshPending ||
+            !!editor ||
+            (gate.current.value !== null && gate.current.value === profileLease)
+          "
+          @updated="load"
+        />
+        <V3FeedbackPanel
+          v-if="isDetail && selected"
+          :key="'feedback-' + selected.id"
+          :disabled="loading || !!error || refreshPending"
+          :refresh-token="detailRevision"
+          :application-id="selected.id"
+          data-detail-target="FeedbackPanel"
+          @updated="load"
+        />
+        <V3AdvancementPanel
+          v-if="isDetail && selected"
+          :key="'advance-' + selected.id"
+          :disabled="loading || !!error || refreshPending"
+          :refresh-token="detailRevision"
+          :application-id="selected.id"
+          data-detail-target="AdvancementPanel"
+          @updated="load"
+        />
+        <V3OfferPanel
+          v-if="isDetail && selected"
+          :key="'offer-' + selected.id"
+          :disabled="loading || !!error || refreshPending"
+          :refresh-token="detailRevision"
+          :application-id="selected.id"
+          data-detail-target="OfferPanel"
+          @updated="load"
+        />
+      </section>
+      <aside class="v3-card v3-detail-aside" aria-label="申请资料">
+        <h2>申请资料</h2>
+        <dl class="v3-profile">
+          <template v-for="[key, text] in applicationFields" :key="key"
+            ><dt>{{ text }}</dt>
+            <dd>{{ display(selected, key) }}</dd></template
+          >
+        </dl>
+        <p>完整真实历史保留在各业务模块中，可使用原历史入口查看。</p>
+      </aside>
+    </div>
   </section>
 </template>
 <script setup lang="ts">
@@ -357,17 +414,7 @@ const applicationColumns = [
   '操作'
 ]
 const stages = ['screening', 'first_interview', 'second_interview', 'offer']
-const detailFields = [
-  ['positionTitle', '应聘职位'],
-  ['positionId', '职位 ID'],
-  ['stage', '招聘阶段'],
-  ['applicationStatus', '申请状态'],
-  ['outcome', '结束结果'],
-  ['offerStatus', 'Offer 状态'],
-  ...applicationFields,
-  ['closedReason', '结束原因'],
-  ['version', '版本']
-]
+
 function display(row: RecruitingRow, key: string) {
   const value = (row as unknown as Record<string, unknown>)[key]
   if (
@@ -415,6 +462,23 @@ function load() {
       loading.value = false
     }
   )
+}
+function goToTask() {
+  if (!selected.value) return
+  const row = selected.value as Application
+  const target =
+    row.applicationStatus === 'closed'
+      ? 'FeedbackPanel'
+      : row.stage === 'offer'
+        ? 'OfferPanel'
+        : row.stage === 'screening'
+          ? 'AdvancementPanel'
+          : 'Interviews'
+  const section = document.querySelector('[data-detail-target="' + target + '"]')
+  section?.scrollIntoView({ block: 'start' })
+  const heading = section?.querySelector<HTMLElement>('h2')
+  heading?.setAttribute('tabindex', '-1')
+  heading?.focus({ preventScroll: true })
 }
 function filter() {
   return router.push({

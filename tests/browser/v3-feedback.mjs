@@ -1,3 +1,4 @@
+import { checkSummary } from './r03b-summary-checks.mjs'
 import assert from 'node:assert/strict'
 import { spawn } from 'node:child_process'
 import { mkdir, mkdtemp, readFile, writeFile } from 'node:fs/promises'
@@ -181,6 +182,7 @@ const width = (w) =>
     mobile: false
   })
 async function snapshot(name) {
+  await checkSummary({ evaluate, db, output, name })
   const metrics = await send('Page.getLayoutMetrics')
   const { data } = await send('Page.captureScreenshot', {
     format: 'png',
@@ -473,6 +475,25 @@ try {
         2
       )
     )
+
+    if (process.env.R03_B === '1') {
+      holdPath = '/api/v3/applications/' + main
+      await evaluate(
+        'void document.querySelector(".v3-recruiting").__vueParentComponent.setupState.load()'
+      )
+      await until(() => releaseHeld, 'parent loading')
+      await check(
+        '[...document.querySelectorAll("button")].filter(b=>["刷新 Offer 状态","刷新晋级资格","刷新面评","刷新面试记录"].includes(b.textContent.trim())).every(b=>b.disabled)',
+        'loading disables local refresh'
+      )
+      await snapshot('r03b-loading-refresh-disabled')
+      releaseHeld()
+      releaseHeld = null
+      await check(
+        '!document.querySelector(".v3-recruiting").__vueParentComponent.setupState.loading',
+        'parent load recovered'
+      )
+    }
     assert.deepEqual(
       afterIds,
       beforeIds,
@@ -494,6 +515,74 @@ try {
         '[...document.querySelectorAll("button")].find(e=>e.textContent.trim()==="编辑申请资料").disabled'
       )
     )
+
+    if (process.env.R03_B === '1') {
+      const source = await apiGet('/applications/' + main)
+      const summary = await evaluate('document.querySelector(".v3-detail-summary").innerText')
+      assert.ok(
+        summary.includes(source.name) &&
+          summary.includes(source.positionTitle) &&
+          summary.includes('申请 #' + source.id)
+      )
+      assert.ok(
+        summary.includes('招聘阶段') &&
+          summary.includes('申请状态') &&
+          summary.includes('结束结果') &&
+          summary.includes('Offer 状态')
+      )
+      const startPath = await evaluate('location.href')
+      const writesBeforeGuide = browserWrites.length
+      const records = []
+      for (const size of [1440, 1100, 390, 1440]) {
+        await width(size)
+        await check('window.innerWidth===' + size, 'R03B viewport')
+        assert.equal(await evaluate(ed + '.__vueParentComponent.uid'), editorUid)
+        assert.equal(
+          await evaluate('document.querySelector("[aria-label=推荐依据]").value'),
+          'R03待保存草稿'
+        )
+        assert.deepEqual(await ids(), beforeIds)
+        assert.equal(
+          await evaluate(
+            'document.querySelectorAll(".v3-offer,.v3-advancement,.v3-feedback-panel,.v3-interviews").length'
+          ),
+          4
+        )
+        assert.ok(await evaluate('document.documentElement.scrollWidth<=window.innerWidth'))
+        await evaluate('window.scrollTo(0,0)')
+        records.push(
+          await evaluate(
+            '(()=>{const s=document.querySelector(".v3-detail-summary"),t=document.querySelector(".v3-detail-task"),g=document.querySelector(".v3-detail-grid");return {width:innerWidth,page:document.documentElement.scrollWidth,summaryBottom:s.getBoundingClientRect().bottom,taskBottom:t.getBoundingClientRect().bottom,columns:getComputedStyle(g).gridTemplateColumns}})()'
+          )
+        )
+        await snapshot('r03b-layout-' + size)
+      }
+      assert.ok(records[0].taskBottom <= 900, 'identity and task visible in desktop first screen')
+      await evaluate('document.querySelector(".v3-detail-task button").click()')
+      assert.equal(await evaluate('location.href'), startPath)
+      assert.equal(await evaluate('document.activeElement?.tagName'), 'H2')
+      assert.equal(
+        browserWrites.length,
+        writesBeforeGuide,
+        'task guide and CSS breakpoints never submit commands'
+      )
+      assert.equal(await evaluate(ed + '.__vueParentComponent.uid'), editorUid)
+      await writeFile(
+        join(output, 'r03b-layout.json'),
+        JSON.stringify({ records, beforeIds, editorUid, urlUnchanged: true }, null, 2)
+      )
+    }
+
+    if (process.env.R03_B === '1') {
+      const disabled = await evaluate(
+        '["刷新 Offer 状态","刷新晋级资格","刷新面评","刷新面试记录"].map(text=>[text,[...document.querySelectorAll("button")].find(b=>b.textContent.trim()===text)?.disabled])'
+      )
+      assert.ok(disabled.every(([, value]) => value === true))
+      await writeFile(
+        join(output, 'r03b-queued-refresh-buttons.json'),
+        JSON.stringify(disabled, null, 2)
+      )
+    }
     await snapshot('r03-deferred-draft')
     dialogMode = true
     await button('返回', ed)
@@ -529,6 +618,12 @@ try {
         '[...document.querySelectorAll(".v3-advancement button")].find(e=>e.textContent.includes("核验并决定晋级")).disabled'
       )
     )
+    if (process.env.R03_B === '1')
+      assert.ok(
+        await evaluate(
+          '[...document.querySelectorAll("button")].filter(b=>["刷新 Offer 状态","刷新晋级资格","刷新面评","刷新面试记录"].includes(b.textContent.trim())).every(b=>b.disabled)'
+        )
+      )
     await snapshot('r03-refresh-failed-blocked')
     failParent = false
     await evaluate(
@@ -540,6 +635,13 @@ try {
     )
     await check('!!document.querySelector(".v3-feedback-card")', 'recovered panel context')
     assert.deepEqual(await ids(), beforeIds)
+    if (process.env.R03_B === '1') {
+      await check(
+        '[...document.querySelectorAll("button")].filter(b=>["刷新 Offer 状态","刷新晋级资格","刷新面评","刷新面试记录"].includes(b.textContent.trim())).length===4 && [...document.querySelectorAll("button")].filter(b=>["刷新 Offer 状态","刷新晋级资格","刷新面评","刷新面试记录"].includes(b.textContent.trim())).every(b=>!b.disabled)',
+        'all four local refresh controls recover'
+      )
+      await snapshot('r03b-local-refresh-recovered')
+    }
 
     await button('填写面评', card(meeting))
     await fillReview('身份暂不可用时保留的草稿')

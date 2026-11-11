@@ -1,0 +1,40 @@
+{
+  "records": [
+    {
+      "width": 1440,
+      "page": 1432,
+      "summaryBottom": 627.734375,
+      "taskBottom": 570.734375,
+      "columns": "750.656px 375.344px"
+    },
+    {
+      "width": 1100,
+      "page": 1092,
+      "summaryBottom": 627.734375,
+      "taskBottom": 570.734375,
+      "columns": "960px"
+    },
+    {
+      "width": 390,
+      "page": 382,
+      "summaryBottom": 757.265625,
+      "taskBottom": 700.265625,
+      "columns": "350px"
+    },
+    {
+      "width": 1440,
+      "page": 1432,
+      "summaryBottom": 627.734375,
+      "taskBottom": 570.734375,
+      "columns": "750.656px 375.344px"
+    }
+  ],
+  "beforeIds": {
+    ".v3-offer": 30,
+    ".v3-advancement": 27,
+    ".v3-feedback-panel": 25,
+    ".v3-interviews": 22
+  },
+  "editorUid": 94,
+  "urlUnchanged": true
+}

@@ -4,7 +4,9 @@
       <h1 v-if="!applicationId">面试管理</h1>
       <h2 v-else>面试活动</h2>
       <p>预约时间均为上海时间。到时仅提示，完成需要 HR 确认。</p>
-      <el-button :disabled="loading || !!editor || opening" @click="load">刷新面试记录</el-button>
+      <el-button :disabled="props.disabled || loading || !!editor || opening" @click="load"
+        >刷新面试记录</el-button
+      >
     </header>
     <form v-if="!applicationId" class="v3-card v3-interview-filters" @submit.prevent="filter">
       <label

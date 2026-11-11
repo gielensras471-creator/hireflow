@@ -1,9 +1,14 @@
 <template>
   <section class="v3-feedback-panel" aria-label="面试评价管理">
+    <p v-if="props.disabled" role="status">
+      申请详情正在读取、读取失败或等待编辑结束，请先完成当前编辑或重新加载申请详情。
+    </p>
     <header>
       <h2>面试评价</h2>
       <p>评价独立于面试状态和 HR 决策；历史缺评与当前轮次分别展示。</p>
-      <el-button :disabled="loading || !!gate.current.value" @click="load">刷新面评</el-button>
+      <el-button :disabled="props.disabled || loading || !!gate.current.value" @click="load"
+        >刷新面评</el-button
+      >
     </header>
     <V3FeedbackEditor
       v-if="editor"
@@ -26,7 +31,7 @@
       state="error"
       title="暂时无法查看面评"
       :message="error"
-      action="重新加载"
+      :action="props.disabled ? undefined : '重新加载'"
       @action="load"
     />
     <V3Feedback

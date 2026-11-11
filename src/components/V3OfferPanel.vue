@@ -1,5 +1,8 @@
 <template>
   <section class="v3-offer" aria-label="Offer 与招聘结案">
+    <p v-if="props.disabled" role="status">
+      申请详情正在读取、读取失败或等待编辑结束，请先完成当前编辑或重新加载申请详情。
+    </p>
     <header>
       <h2>Offer 与招聘结案</h2>
       <p>仅手工登记实际事实；接受 Offer 不等于已录用。</p>
@@ -14,7 +17,7 @@
       state="error"
       title="暂时无法查看 Offer 与结案资格"
       :message="error"
-      action="重试 Offer 状态"
+      :action="props.disabled ? undefined : '重试 Offer 状态'"
       @action="load"
     />
     <template v-else-if="state">
@@ -63,7 +66,9 @@
       </section>
     </template>
     <el-button
-      :disabled="loading || !!gate.current.value || v3Session.state.status !== 'ready'"
+      :disabled="
+        props.disabled || loading || !!gate.current.value || v3Session.state.status !== 'ready'
+      "
       @click="load"
       >刷新 Offer 状态</el-button
     >
