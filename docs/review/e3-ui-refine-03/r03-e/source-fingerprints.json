@@ -1,0 +1,13 @@
+{
+  "normalization": "UTF-8 CRLF normalized LF",
+  "files": {
+    "src/api/history-display.ts": "cac524034e70ec562d1b11249a474337239cc105d2094a5ff5ee25586378adc5",
+    "src/components/V3FeedbackHistory.vue": "95f1e8bbe640ff3bc48ce8d7517781bad78cff3fc37c5feda161b60f3cf67e4e",
+    "src/components/V3OfferPanel.vue": "6fb848c88887321d43386a72b8173f4e58c9ffb318a31d662c36dc12e881728b",
+    "src/components/V3AdvancementPanel.vue": "2d9d34f9b01340cc1fdcdeb21548f0b68b74095984c045c433dc731e02f85fcc",
+    "src/components/V3FeedbackSnapshot.vue": "16779aaad11316b233493c15d74d212c631aae3b0f1333c50d0b8565851b7eb1",
+    "src/components/V3OfferState.vue": "9057443e47c59dc20fa591a1f790dee7df3534b3292a518f8ee2193dc5cdbdf9",
+    "tests/v3-readonly-fallback.test.js": "827539531c9cf4c6c8447a008bd91a88d91b5f93b13286e4d9919e09c681c408",
+    "tests/browser/r03d-history-checks.mjs": "690979fff0e71de18cc2372c82b83d792ea535796275b276d6216d40dac954f2"
+  }
+}

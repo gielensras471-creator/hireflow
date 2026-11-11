@@ -96,10 +96,9 @@
                 : '未知，待核实'
               : '未记录晋级类型'
           }}
-          · 事件 #{{ event.eventId }} · {{ feedbackTime(event.occurredAt) }} · 实际 HR：{{
-            event.actorName || '未记录操作者'
-          }}
-          · 账号 #{{ event.actorUserId }} · {{ event.reason || '未记录附加原因' }}
+          · 事件 #{{ event.eventId }} · {{ safeHistoryTime(event.occurredAt, feedbackTime) }} · 实际
+          HR：{{ event.actorName || '未记录操作者' }} · 账号 #{{ event.actorUserId }} ·
+          {{ event.reason || '未记录附加原因' }}
         </summary>
         <p>
           {{
@@ -110,7 +109,7 @@
                 : '未记录事件类型'
           }}
           · 实际 HR：{{ event.actorName }} · 账号 #{{ event.actorUserId }} ·
-          {{ feedbackTime(event.occurredAt) }}
+          {{ safeHistoryTime(event.occurredAt, feedbackTime) }}
         </p>
         <p>晋级理由：{{ event.reason || '正常晋级，无附加理由' }}</p>
         <p v-if="event.missingInterviews.length">
@@ -130,7 +129,7 @@
   </section>
 </template>
 <script setup lang="ts">
-import { orderHistory, historyCaption } from '../api/history-display'
+import { orderHistory, historyCaption, safeHistoryTime } from '../api/history-display'
 import { computed, inject, nextTick, onUnmounted, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import { readV3, v3Session } from '../api/request-v3'

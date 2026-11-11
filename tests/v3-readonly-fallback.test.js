@@ -31,12 +31,12 @@ function component(name) {
   code = code.replace('export function render', 'function render')
   return new Function('Vue', code + ';return render')(Vue)
 }
-const { orderHistory, historyCaption, sortableHistory } = await mappings(
-  '../src/api/history-display.ts'
-)
+const { orderHistory, historyCaption, sortableHistory, safeHistoryTime, validHistoryTime } =
+  await mappings('../src/api/history-display.ts')
 const stateRender = component('V3OfferState')
 const renderers = {
   V3OfferState: stateRender,
+  V3FeedbackSnapshot: component('V3FeedbackSnapshot'),
   V3FeedbackHistory: component('V3FeedbackHistory'),
   V3OfferPanel: component('V3OfferPanel'),
   V3AdvancementPanel: component('V3AdvancementPanel')
@@ -64,6 +64,7 @@ async function render(name, ctx) {
       history: [],
       historyExpanded: false,
       toggleHistory() {},
+      safeHistoryTime,
       orderHistory,
       historyCaption,
       items: [],
@@ -78,6 +79,7 @@ async function render(name, ctx) {
       outcomes,
       offerStatuses,
       label: (v) => v ?? '—',
+      safeHistoryTime,
       feedbackTime: () => '2030-01-01',
       ...ctx
     }),
@@ -290,5 +292,86 @@ test('feedback history actual summary template guards unknown and prototype name
     )
     assert.match(html, /虚构HR/)
     assert.match(html, /事件 #9/)
+  }
+})
+
+test('safe historical timestamp types and Date boundaries', () => {
+  let calls = 0
+  const f = (v) => {
+    calls++
+    return String(v)
+  }
+  for (const v of [
+    null,
+    undefined,
+    NaN,
+    Infinity,
+    '2030',
+    '',
+    {},
+    1.5,
+    8640000000000001,
+    -8640000000000001
+  ]) {
+    assert.equal(safeHistoryTime(v, f), '发生时间未记录，待核实')
+    assert.equal(validHistoryTime(v), false)
+  }
+  assert.equal(calls, 0)
+  for (const v of [0, 1794384001000, 8640000000000000, -8640000000000000])
+    assert.equal(safeHistoryTime(v, f), String(v))
+  assert.equal(
+    safeHistoryTime(0, () => {
+      throw Error()
+    }),
+    '发生时间未记录，待核实'
+  )
+})
+test('real Vue domain templates reject missing historical times without fake dates', async () => {
+  for (const time of [null, undefined, NaN, 'bad', 8640000000000001]) {
+    const e = {
+      eventId: 1,
+      eventType: 'unknown_legacy',
+      kind: 'normal',
+      occurredAt: time,
+      actorName: '虚构HR',
+      actorUserId: 1,
+      fromStage: 'screening',
+      toStage: 'first_interview',
+      missingInterviews: [],
+      before: base,
+      after: base
+    }
+    for (const name of ['V3OfferPanel', 'V3AdvancementPanel', 'V3FeedbackHistory']) {
+      const html = await render(name, { history: [e], items: [e] })
+      assert.match(html, /发生时间未记录，待核实/)
+      assert.doesNotMatch(html, /2030-01-01|1970/)
+    }
+    const html = await render('V3OfferState', {
+      state: { ...base, applicationStatus: 'closed', closedAt: time }
+    })
+    assert.match(html, /发生时间未记录，待核实/)
+  }
+})
+
+test('snapshot original submission time and real Shanghai second precision', async () => {
+  const { feedbackTime } = await mappings('../src/api/feedback-v3.ts')
+  const ms = Date.parse('2026-11-11T14:00:01+08:00')
+  assert.equal(safeHistoryTime(ms, feedbackTime), feedbackTime(ms))
+  assert.match(safeHistoryTime(ms, feedbackTime), /14:00:01/)
+  for (const time of [null, undefined, NaN, 'bad']) {
+    const html = await render('V3FeedbackSnapshot', {
+      value: {
+        reviewerName: '虚构',
+        recommendation: 'recommend',
+        reason: '记录',
+        recordedByUserId: 1,
+        submittedAt: time,
+        id: 1,
+        revision: 1
+      },
+      recommendations: { recommend: '推荐通过' }
+    })
+    assert.match(html, /发生时间未记录，待核实/)
+    assert.doesNotMatch(html, /1970|2030-01-01/)
   }
 })

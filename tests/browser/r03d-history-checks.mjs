@@ -44,7 +44,11 @@ export async function runR03D({
             feedbackRevision: f.revision,
             reviewerName: '专业评价人（虚构）',
             recommendation: revision % 2 ? 'undecided' : 'recommend',
-            reason: '修订' + revision + '完整理由（虚构）',
+            reason:
+              '修订' +
+              revision +
+              '完整理由（虚构）' +
+              (process.env.R03_E === '1' ? '长原因与原始快照验证。'.repeat(40) : ''),
             correctionReason: '第' + revision + '次真实核对'
           })
         ).status,
@@ -175,6 +179,22 @@ export async function runR03D({
     },
     counts
   )
+  if (process.env.R03_E === '1') {
+    await evaluate(
+      'document.querySelector(".v3-recruiting").__vueParentComponent.setupState.load()'
+    )
+    await check(
+      'document.querySelector(".v3-recruiting").__vueParentComponent.setupState.refreshPending',
+      'history draft defers parent refresh'
+    )
+    await button('收起本组全部（7 条）', scope)
+    await button('查看本组全部（7 条）', scope)
+    assert.equal(
+      await evaluate('document.querySelector(".v3-feedback-editor").__vueParentComponent.uid'),
+      editorUid
+    )
+    await snapshot('r03e-history-draft-parent-refresh')
+  }
   setDialogMode(true)
   await button('返回', 'document.querySelector(".v3-feedback-editor")')
   await check('!document.querySelector(".v3-feedback-editor")', 'draft editor closes normally')

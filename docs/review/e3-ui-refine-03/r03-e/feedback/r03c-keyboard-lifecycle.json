@@ -1,0 +1,131 @@
+{
+  "passed": true,
+  "log": [
+    {
+      "case": "mobile first screen/order",
+      "metrics": {
+        "taskBottom": 712.265625,
+        "identityTop": 275.8125,
+        "width": 390,
+        "height": 844,
+        "scrollWidth": 382
+      },
+      "order": [
+        {
+          "selector": ".v3-interviews",
+          "top": 917.265625
+        },
+        {
+          "selector": ".v3-feedback-panel",
+          "top": 1487.890625
+        },
+        {
+          "selector": ".v3-advancement",
+          "top": 1840.21875
+        },
+        {
+          "selector": ".v3-offer",
+          "top": 2701.484375
+        },
+        {
+          "selector": ".v3-detail-aside",
+          "top": 3900.1875
+        },
+        {
+          "selector": ".v3-detail-history-entry",
+          "top": 4329.265625
+        }
+      ]
+    },
+    {
+      "case": "resize/navigation",
+      "size": 1440,
+      "uid": 50,
+      "panelIds": {
+        ".v3-interviews": 21,
+        ".v3-feedback-panel": 24,
+        ".v3-advancement": 26,
+        ".v3-offer": 29
+      },
+      "urlUnchanged": true
+    },
+    {
+      "case": "resize/navigation",
+      "size": 390,
+      "uid": 50,
+      "panelIds": {
+        ".v3-interviews": 21,
+        ".v3-feedback-panel": 24,
+        ".v3-advancement": 26,
+        ".v3-offer": 29
+      },
+      "urlUnchanged": true
+    },
+    {
+      "case": "resize/navigation",
+      "size": 1100,
+      "uid": 50,
+      "panelIds": {
+        ".v3-interviews": 21,
+        ".v3-feedback-panel": 24,
+        ".v3-advancement": 26,
+        ".v3-offer": 29
+      },
+      "urlUnchanged": true
+    },
+    {
+      "case": "resize/navigation",
+      "size": 1440,
+      "uid": 50,
+      "panelIds": {
+        ".v3-interviews": 21,
+        ".v3-feedback-panel": 24,
+        ".v3-advancement": 26,
+        ".v3-offer": 29
+      },
+      "urlUnchanged": true
+    },
+    {
+      "case": "keyboard/folding",
+      "keys": ["Tab", "Shift+Tab", "Space", "Escape", "Enter"],
+      "realCdpInput": true,
+      "fullTextVerified": true,
+      "focusRestored": true,
+      "editorUid": 50,
+      "countsBefore": {
+        "events": 38,
+        "receipts": 38
+      },
+      "countsAfter": {
+        "events": 38,
+        "receipts": 38
+      }
+    },
+    {
+      "case": "closed existing evaluation",
+      "actualFeedbackTarget": true,
+      "noNewEligibilityClaim": true
+    },
+    {
+      "case": "closed/no feedback/unknown history",
+      "projection": "isolated GET response fixture only; no DB constraints changed",
+      "fabricatedEvents": false
+    },
+    {
+      "case": "unavailable DOM target",
+      "fixture": "test removes readonly target; no simulated successful navigation",
+      "explicitFeedback": true
+    },
+    {
+      "case": "current round first",
+      "pastMeeting": 7,
+      "currentMeeting": 8,
+      "historyStillPresent": true
+    }
+  ],
+  "limitations": [
+    "no hardware touch/screen reader",
+    "unknown legacy fields are explicitly isolated response projection",
+    "six business regression scripts cover 403/409/401 and uncertain replay separately"
+  ]
+}

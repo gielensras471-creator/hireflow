@@ -26,10 +26,8 @@
               : '未知，待核实'
             : '未记录事件类型'
         }}
-        · 事件 #{{ event.eventId }} · {{ feedbackTime(event.occurredAt) }} · 实际 HR：{{
-          event.actorName || '未记录操作者'
-        }}
-        · 账号 #{{ event.actorUserId }} · 面评 #{{
+        · 事件 #{{ event.eventId }} · {{ safeHistoryTime(event.occurredAt, feedbackTime) }} · 实际
+        HR：{{ event.actorName || '未记录操作者' }} · 账号 #{{ event.actorUserId }} · 面评 #{{
           event.after?.id ?? event.before?.id ?? '未记录'
         }}
         · 面试 #{{ event.after?.interviewId ?? event.before?.interviewId ?? '未记录' }} ·
@@ -63,7 +61,7 @@
   </section>
 </template>
 <script setup lang="ts">
-import { orderHistory, historyCaption } from '../api/history-display'
+import { orderHistory, historyCaption, safeHistoryTime } from '../api/history-display'
 import { feedbackTime, type FeedbackEvent } from '../api/feedback-v3'
 import V3FeedbackSnapshot from './V3FeedbackSnapshot.vue'
 const props = defineProps<{ items: FeedbackEvent[]; decisions: Record<number, number> }>()
