@@ -7,20 +7,22 @@
       <el-button :disabled="loading || !!editor || opening" @click="load">刷新面试记录</el-button>
     </header>
     <form v-if="!applicationId" class="v3-card v3-interview-filters" @submit.prevent="filter">
-      <input
-        v-model="applicationFilter"
-        type="number"
-        min="1"
-        aria-label="申请 ID"
-        placeholder="申请 ID"
-      />
-      <input
-        v-model="positionFilter"
-        type="number"
-        min="1"
-        aria-label="职位 ID"
-        placeholder="职位 ID"
-      />
+      <label
+        >申请编号（ID）<input
+          v-model="applicationFilter"
+          type="number"
+          min="1"
+          aria-label="申请 ID"
+          placeholder="输入申请编号（精确匹配）"
+      /></label>
+      <label
+        >职位编号（ID）<input
+          v-model="positionFilter"
+          type="number"
+          min="1"
+          aria-label="职位 ID"
+          placeholder="输入职位编号（精确匹配）"
+      /></label>
       <select v-model="stage" aria-label="面试轮次">
         <option value="">全部轮次</option>
         <option value="first_interview">初面</option>
@@ -30,9 +32,16 @@
         <option value="">全部状态</option>
         <option v-for="(text, key) in interviewStatus" :key="key" :value="key">{{ text }}</option>
       </select>
-      <el-button native-type="submit">筛选</el-button
+      <el-button type="primary" native-type="submit">筛选</el-button
       ><el-button @click="router.push('/interviews')">清除筛选</el-button>
+      <p class="v3-filter-help">编号用于精确查找，不按姓名搜索。清除筛选可查看全部面试。</p>
     </form>
+    <p v-if="!applicationId" class="v3-applied-filters" role="status">
+      已应用：申请 {{ route.query.applicationId || '全部' }} · 职位
+      {{ route.query.positionId || '全部' }} · 轮次
+      {{ route.query.stageScope ? label(route.query.stageScope as string) : '全部' }} · 状态
+      {{ interviewStatus[route.query.status as keyof typeof interviewStatus] || '全部' }}
+    </p>
     <div v-if="applicationId && application" class="v3-card">
       <p>当前轮次 {{ label(application.stage) }} · {{ label(application.applicationStatus) }}</p>
       <el-button
@@ -74,7 +83,7 @@
       aria-labelledby="interview-loading-title"
     >
       <h2 id="interview-loading-title">面试记录</h2>
-      <div class="v3-table-scroll">
+      <V3TableScroll name="面试记录表格">
         <table aria-label="面试记录加载中">
           <thead>
             <tr>
@@ -89,7 +98,7 @@
             </tr>
           </tbody>
         </table>
-      </div>
+      </V3TableScroll>
       <p role="status">加载面试记录中，请稍候…</p>
     </section>
     <V3Feedback v-else-if="loading" state="loading" title="加载面试记录中" />
@@ -119,17 +128,17 @@
       <h2>
         面试记录 <small>共 {{ total }} 场</small>
       </h2>
-      <div class="v3-table-scroll">
-        <table>
+      <V3TableScroll name="面试记录表格">
+        <table aria-label="面试记录">
           <thead>
             <tr>
-              <th>面试 / 申请</th>
-              <th>应聘职位</th>
-              <th>轮次</th>
-              <th>预约开始时间（上海）</th>
-              <th>面试官</th>
-              <th>状态</th>
-              <th>操作</th>
+              <th scope="col">面试 / 申请</th>
+              <th scope="col">应聘职位</th>
+              <th scope="col">轮次</th>
+              <th scope="col">预约开始时间（上海）</th>
+              <th scope="col">面试官</th>
+              <th scope="col">状态</th>
+              <th scope="col">操作</th>
             </tr>
           </thead>
           <tbody>
@@ -189,7 +198,7 @@
             </tr>
           </tbody>
         </table>
-      </div>
+      </V3TableScroll>
       <div v-if="!applicationId" class="v3-interview-actions">
         <el-button :disabled="offset === 0" @click="page(-20)">上一页</el-button
         ><span>{{ offset + 1 }}–{{ Math.min(offset + 20, total) }} / {{ total }}</span
@@ -199,6 +208,7 @@
   </section>
 </template>
 <script setup lang="ts">
+import V3TableScroll from '../components/V3TableScroll.vue'
 import { computed, inject, nextTick, onUnmounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { readV3, v3Session } from '../api/request-v3'

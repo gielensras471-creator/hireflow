@@ -1,0 +1,25 @@
+{
+  "chromium": "Chrome/156.0.8078.81",
+  "fixtures": "fresh V3 memory DB; real advancement/waiver/closure HTTP; no-waiver row is deliberately inconsistent fixture only",
+  "scenarios": [
+    "scheduled interview cannot submit",
+    "shared editor lease, both profile/interview directions, draft leave and late unmount",
+    "first submit recommend, distinct reviewer/HR, no advancement, duplicate rejected, same-key uncertain replay, operation403 and identity outage",
+    "correction reason, NO_CHANGE no effects, original ID/time/HR, complete real history snapshots",
+    "real aggregate VERSION_CONFLICT and feedback FEEDBACK_REVISION_CONFLICT, draft and latest history, explicit cancel/confirm",
+    "no waiver denied; real waiver active historical supplement; unchanged original waiver; actual supplement time; closed missing denied",
+    "closed existing correction preserves lifecycle, evidence-based post-decision notice, mobile390",
+    "loading keeps structure no stale operations, true empty, errors/retry for feedback and history",
+    "account switch and role revocation discard old ownership; zero V2 requests"
+  ],
+  "passed": 9,
+  "failed": 0,
+  "v2Requests": 0,
+  "revisionConflictFixture": "only expectedVersion aligned in test wrapper after real concurrent correction to independently exercise feedbackRevision rejection",
+  "uncertainReplay": "same key and byte-identical body, one feedback/event/receipt",
+  "limitations": [
+    "no real device or production data",
+    "no HR advancement UI or Dashboard UI",
+    "formal AC suite not completed"
+  ]
+}

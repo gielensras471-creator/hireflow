@@ -1,3 +1,4 @@
+import { tableChecks, observerProbe } from './refine-list-checks.mjs'
 import assert from 'node:assert/strict'
 import { spawn } from 'node:child_process'
 import { mkdir, mkdtemp, readFile, writeFile } from 'node:fs/promises'
@@ -196,6 +197,7 @@ try {
   }
   await Promise.all([send('Page.enable'), send('Network.enable'), width(1440)])
 
+  await send('Page.addScriptToEvaluateOnNewDocument', { source: observerProbe })
   await go('/positions')
   await h1('登录招聘工作台')
   await fill(app.password, true)
@@ -328,6 +330,17 @@ try {
   assert.equal(db.prepare('SELECT phone FROM candidates WHERE id=1').get().phone, '13800000000')
   assert.equal(db.prepare('SELECT position_id FROM candidates WHERE id=1').get().position_id, 1)
   await snapshot('applications')
+  const refineMetrics = await tableChecks(
+    { evaluate, send, width, check, snapshot },
+    'recruiting-table',
+    '.v3-table-scroll'
+  )
+  await writeFile(join(output, 'scroll-keyboard.json'), JSON.stringify(refineMetrics, null, 2))
+  await check(
+    'document.querySelector("tbody")?.textContent.includes("尚未结束") && document.querySelector("tbody")?.textContent.includes("未进入 Offer")',
+    'legal null application copy'
+  )
+
   await width(390)
   await check('document.querySelector(".v3-shell").dataset.tier==="mobile"', 'mobile list')
   assert.ok(await evaluate('document.documentElement.scrollWidth <= 390'))
@@ -495,6 +508,15 @@ try {
   await h1('登录招聘工作台')
   await check('document.body.innerText.includes("当前账号没有招聘权限")', 'revocation')
   assert.equal(requests.filter((url) => /^\/api\/(?!v3\/)/.test(new URL(url).pathname)).length, 0)
+
+  await width(1440)
+  await evaluate('document.querySelector(".v3-account a")?.click()')
+  await check('document.querySelectorAll(".v3-table-scroll").length===0', 'table route unmounted')
+  assert.equal(
+    await evaluate('window.__tableObservers?.size ?? 0'),
+    0,
+    'scroll ResizeObservers disconnected'
+  )
   await writeFile(
     join(output, 'results.json'),
     JSON.stringify(

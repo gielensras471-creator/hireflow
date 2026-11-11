@@ -1,13 +1,13 @@
 <template>
-  <div class="v3-table-scroll">
-    <table>
+  <V3TableScroll :name="today ? '今日面试表格' : '招聘待办表格'">
+    <table :aria-label="today ? '今日面试' : '招聘待办'">
       <thead>
         <tr>
-          <th>申请 / 职位</th>
-          <th>阶段 / 状态</th>
-          <th>业务提示</th>
-          <th>业务时间（上海）</th>
-          <th>操作</th>
+          <th scope="col">申请 / 职位</th>
+          <th scope="col">阶段 / 状态</th>
+          <th scope="col">业务提示</th>
+          <th scope="col">业务时间（上海）</th>
+          <th scope="col">操作</th>
         </tr>
       </thead>
       <tbody v-if="loading" aria-hidden="true">
@@ -22,7 +22,8 @@
           :data-application="row.applicationId"
         >
           <td>
-            申请 #{{ row.applicationId }}<small>职位 #{{ row.positionId }}</small
+            <strong class="v3-record-primary">申请 #{{ row.applicationId }}</strong
+            ><small>职位 #{{ row.positionId }}</small
             ><small v-if="row.interviewId">面试 #{{ row.interviewId }}</small>
           </td>
           <td>
@@ -42,15 +43,16 @@
           </td>
           <td>
             <RouterLink :to="'/candidates/' + row.applicationId"
-              >查看申请 #{{ row.applicationId }}</RouterLink
+              >打开申请 #{{ row.applicationId }}</RouterLink
             >
           </td>
         </tr>
       </tbody>
     </table>
-  </div>
+  </V3TableScroll>
 </template>
 <script setup lang="ts">
+import V3TableScroll from './V3TableScroll.vue'
 import { label } from '../api/recruiting-v3'
 import { feedbackTime } from '../api/feedback-v3'
 import { interviewStatus } from '../api/interview-v3'
