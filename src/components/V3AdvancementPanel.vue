@@ -72,10 +72,24 @@
       >
         <summary>
           {{ label(event.fromStage) }} → {{ label(event.toStage) }} ·
-          {{ kinds[event.kind] ?? event.kind }} · 事件 #{{ event.eventId }}
+          {{
+            event.kind
+              ? Object.hasOwn(kinds, event.kind)
+                ? kinds[event.kind]
+                : '未知，待核实'
+              : '未记录晋级类型'
+          }}
+          · 事件 #{{ event.eventId }}
         </summary>
         <p>
-          阶段晋级 · 实际 HR：{{ event.actorName }} · 账号 #{{ event.actorUserId }} ·
+          {{
+            event.eventType === 'stage_advanced'
+              ? '阶段晋级'
+              : event.eventType
+                ? '未知，待核实'
+                : '未记录事件类型'
+          }}
+          · 实际 HR：{{ event.actorName }} · 账号 #{{ event.actorUserId }} ·
           {{ feedbackTime(event.occurredAt) }}
         </p>
         <p>晋级理由：{{ event.reason || '正常晋级，无附加理由' }}</p>

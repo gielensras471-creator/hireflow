@@ -10,12 +10,22 @@
         state.offerStatus
           ? state.offerStatus === 'accepted' && state.applicationStatus === 'closed'
             ? '已接受（Offer 最后事实）'
-            : offerStatuses[state.offerStatus]
-          : '未进入 Offer'
+            : Object.hasOwn(offerStatuses, state.offerStatus)
+              ? offerStatuses[state.offerStatus]
+              : '未知，待核实'
+          : '未记录 Offer 状态'
       }}
     </dd>
     <dt>最终结果</dt>
-    <dd>{{ state.outcome ? outcomes[state.outcome] : '尚未结束' }}</dd>
+    <dd>
+      {{
+        state.outcome
+          ? Object.hasOwn(outcomes, state.outcome)
+            ? outcomes[state.outcome]
+            : '未知，待核实'
+          : '未记录结束结果'
+      }}
+    </dd>
     <dt>结束时间（上海）</dt>
     <dd>{{ state.closedAt === null ? '—' : feedbackTime(state.closedAt) }}</dd>
     <dt>结束原因</dt>

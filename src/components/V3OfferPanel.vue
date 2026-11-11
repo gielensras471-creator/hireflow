@@ -94,7 +94,16 @@
           :data-offer-event="event.eventId"
           open
         >
-          <summary>{{ eventNames[event.eventType] }} · 事件 #{{ event.eventId }}</summary>
+          <summary>
+            {{
+              event.eventType
+                ? Object.hasOwn(eventNames, event.eventType)
+                  ? eventNames[event.eventType]
+                  : '未知，待核实'
+                : '未记录事件类型'
+            }}
+            · 事件 #{{ event.eventId }}
+          </summary>
           <p>
             实际 HR：{{ event.actorName }} · 账号 #{{ event.actorUserId }} ·
             {{ feedbackTime(event.occurredAt) }}
@@ -102,7 +111,11 @@
           <p v-if="event.reason">实际原因：{{ event.reason }}</p>
           <p v-if="event.reasonSource">
             原因来源：{{
-              event.reasonSource === 'system_default' ? '服务器默认原因' : 'HR 手工输入'
+              event.reasonSource === 'system_default'
+                ? '服务器默认原因'
+                : event.reasonSource === 'hr_input'
+                  ? 'HR 手工输入'
+                  : '未知，待核实'
             }}
           </p>
           <div class="v3-offer-compare">
