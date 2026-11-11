@@ -75,7 +75,7 @@
           {{ kinds[event.kind] ?? event.kind }} · 事件 #{{ event.eventId }}
         </summary>
         <p>
-          stage_advanced · 实际 HR：{{ event.actorName }} · 账号 #{{ event.actorUserId }} ·
+          阶段晋级 · 实际 HR：{{ event.actorName }} · 账号 #{{ event.actorUserId }} ·
           {{ feedbackTime(event.occurredAt) }}
         </p>
         <p>晋级理由：{{ event.reason || '正常晋级，无附加理由' }}</p>

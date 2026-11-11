@@ -33,7 +33,7 @@
         </article>
       </div>
       <p class="v3-dashboard-note">
-        开放职位含 {{ summary.openPositions.softDeletedOpen }} 个已软删除但仍为 open
+        开放职位含 {{ summary.openPositions.softDeletedOpen }} 个已归档、状态仍为开放
         的记录，不等于可投递职位。申请数为职位申请记录，不是去重人数。指标读取时间：{{
           feedbackTime(summary.now)
         }}。
@@ -111,7 +111,12 @@
       <V3DashboardTable v-else :items="work.items" :loading="false" />
       <div v-if="work" class="v3-dashboard-pager">
         <el-button :disabled="offset === 0 || workLoading" @click="page(-10)">上一页待办</el-button
-        ><span>共 {{ work.total }} {{ unitLabel(work.unit) }} · 偏移 {{ offset }}</span
+        ><span
+          >{{
+            work.items.length
+              ? '第 ' + (offset + 1) + '–' + (offset + work.items.length) + ' 条，'
+              : '本页暂无记录，'
+          }}共 {{ work.total }} {{ unitLabel(work.unit) }}</span
         ><el-button :disabled="offset + 10 >= work.total || workLoading" @click="page(10)"
           >下一页待办</el-button
         >

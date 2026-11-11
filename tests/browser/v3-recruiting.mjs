@@ -307,7 +307,7 @@ try {
   drop = true
   await save()
   await check(
-    'document.querySelector(".v3-editor")?.textContent.includes("提交结果尚未确定")',
+    'document.querySelector(".v3-editor")?.textContent.includes("本次操作结果尚未确认")',
     'lost response'
   )
   assert.equal(db.prepare('SELECT COUNT(*) n FROM candidates').get().n, 1)
@@ -393,7 +393,7 @@ try {
     await evaluate(
       '[...document.querySelectorAll(".v3-application-loading th")].map(e=>e.textContent)'
     ),
-    ['候选人 / 申请', '应聘职位', '招聘阶段', '申请状态', '结果 / Offer', '操作']
+    ['候选人 / 申请', '应聘职位', '招聘阶段', '申请状态', '招聘结果与 Offer', '操作']
   )
   assert.equal(await evaluate('document.querySelectorAll(".v3-loading-row").length'), 5)
   assert.equal(await evaluate('document.querySelectorAll(".v3-loading-cell").length'), 30)
@@ -470,7 +470,7 @@ try {
   drop = true
   await save()
   await check(
-    'document.querySelector(".v3-editor")?.textContent.includes("提交结果尚未确定")',
+    'document.querySelector(".v3-editor")?.textContent.includes("本次操作结果尚未确认")',
     'second uncertain write'
   )
   await click('.v3-account button')

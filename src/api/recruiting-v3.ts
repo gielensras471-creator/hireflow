@@ -68,11 +68,14 @@ export const labels: Record<string, string> = {
   accepted: '已接受，待 HR 确认',
   declined: '已拒绝',
   hired: '已录用',
+  company_rejected: '企业淘汰',
+  candidate_withdrew: '候选人退出',
   rejected: '企业淘汰',
   withdrawn: '候选人退出',
   offer_declined: 'Offer 被拒'
 }
-export const label = (value: string | null | undefined) => (value ? labels[value] ?? value : '—')
+export const label = (value: string | null | undefined) =>
+  value ? labels[value] ?? '未知，待核实' : '—'
 export function pageQuery(query: Record<string, unknown>, positions: boolean) {
   const values = new URLSearchParams()
   const allowed = positions ? ['q', 'status'] : ['q', 'positionId', 'stage', 'applicationStatus']

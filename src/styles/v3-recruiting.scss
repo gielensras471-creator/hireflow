@@ -118,3 +118,33 @@
     font-size: 12px;
   }
 }
+
+.v3-ui .v3-conflict-summary {
+  padding: 12px;
+  border-left: 3px solid var(--v3-warning);
+  background: var(--v3-warning-soft);
+  color: var(--v3-ink);
+}
+
+.v3-ui .v3-state-label {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 7px;
+  background: var(--v3-page);
+  color: var(--v3-ink);
+  font-size: 12px;
+}
+
+.v3-ui .v3-state-label[data-state='completed'] {
+  color: var(--v3-positive);
+  background: var(--v3-positive-soft);
+}
+.v3-ui .v3-state-label[data-state='scheduled'] {
+  color: var(--v3-warning);
+  background: var(--v3-warning-soft);
+}
+
+.v3-ui .v3-state-label[data-state='active'] {
+  color: var(--v3-positive);
+  background: var(--v3-positive-soft);
+}

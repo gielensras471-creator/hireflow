@@ -625,7 +625,7 @@ try {
   const replayCount = count()
   drop = true
   await save()
-  await check(ed + '.textContent.includes("结果尚未确定")', 'unknown')
+  await check(ed + '.textContent.includes("本次操作结果尚未确认")', 'unknown')
   await snapshot('offer-uncertain')
   await button('重试原操作', ed)
   await done()

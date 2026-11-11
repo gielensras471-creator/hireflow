@@ -44,9 +44,12 @@
         </p>
         <p v-if="error" class="v3-error" role="alert">{{ error }}</p>
         <p v-if="uncertain" role="status">
-          提交结果尚未确定，服务器可能已保存。请使用原请求确认结果，不要另建评价。
+          本次操作结果尚未确认，服务器可能已经保存。请先核实结果；如需重试，请使用原请求，不要另建操作。
         </p>
         <section v-if="conflict" class="v3-feedback-conflict">
+          <p class="v3-conflict-summary" role="status">
+            这条记录已有新的业务进展。草稿已保留，请先查看最新状态，再决定是否继续操作。
+          </p>
           <h3>草稿已保留，请核对服务器最新事实</h3>
           <p v-if="latest">
             当前申请 {{ label(latest.application.stage) }} ·
@@ -55,7 +58,10 @@
           </p>
           <V3FeedbackSnapshot v-if="latestFeedback" :value="latestFeedback" />
           <p v-if="latest && !retryAllowed">服务器当前状态不允许该操作，请返回查看。</p>
-          <el-button :disabled="busy || v3Session.state.status !== 'ready'" @click="refreshConflict"
+          <el-button
+            type="primary"
+            :disabled="busy || v3Session.state.status !== 'ready'"
+            @click="refreshConflict"
             >重新读取服务器状态</el-button
           >
           <el-button

@@ -425,7 +425,7 @@ try {
   await selection('screening')
   await button('下一页待办')
   await check(
-    'document.querySelector(".v3-dashboard-pager")?.textContent.includes("偏移 10")',
+    'document.querySelector(".v3-dashboard-pager")?.textContent.includes("第 11–20 条")',
     'next page'
   )
   const page = await apiGet('/dashboard/work-items/screening?limit=10&offset=10')
@@ -435,6 +435,12 @@ try {
     ),
     page.items.map((r) => r.applicationId)
   )
+  await button('下一页待办')
+  await check(
+    'document.querySelector(".v3-dashboard-pager")?.textContent.includes("第 21–22 条")',
+    'last page actual item range'
+  )
+  await snapshot('dashboard-last-page')
   holdPath = '/api/v3/dashboard/work-items/screening'
   await button('刷新待办')
   await until(() => releaseHeld, 'held old read')

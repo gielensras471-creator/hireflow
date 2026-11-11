@@ -160,8 +160,10 @@
               </td>
               <td>{{ row.interviewerName }}</td>
               <td>
-                {{ interviewStatus[row.status]
-                }}<small v-if="row.cancelReason">原因 {{ row.cancelReason }}</small>
+                <span class="v3-state-label" :data-state="row.status">{{
+                  interviewStatus[row.status]
+                }}</span
+                ><small v-if="row.cancelReason">原因 {{ row.cancelReason }}</small>
               </td>
               <td>
                 <el-button

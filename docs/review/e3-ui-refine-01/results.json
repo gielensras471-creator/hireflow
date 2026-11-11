@@ -1,0 +1,17 @@
+{
+  "base": "c0c5ce09084b8c16a7199ac6a45bbc18f783f0e5",
+  "tests": {
+    "pass": 184,
+    "fail": 0,
+    "skip": 0
+  },
+  "typecheck": "pass",
+  "lint": {
+    "errors": 0,
+    "warnings": 1,
+    "existing": "V2 dashboard attributes-order"
+  },
+  "build": "pass",
+  "chromium": ["recruiting", "interviews", "feedback", "advancement", "offer", "dashboard"],
+  "notExecuted": ["real mobile", "screen reader", "formal AC acceptance"]
+}

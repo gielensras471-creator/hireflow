@@ -39,9 +39,12 @@
       </fieldset>
       <p v-if="error" role="alert" class="v3-error">{{ error }}</p>
       <p v-if="uncertain" role="status">
-        提交结果尚未确定。请使用原请求重试确认，期间不能修改内容。
+        本次操作结果尚未确认，服务器可能已经保存。请先核实结果；如需重试，请使用原请求，不要另建操作。
       </p>
       <div v-if="conflict" class="v3-conflict">
+        <p class="v3-conflict-summary" role="status">
+          这条记录已有新的业务进展。草稿已保留，请先查看最新状态，再决定是否继续操作。
+        </p>
         <p>
           草稿已保留。{{
             latest ? '已读取服务器最新版本 ' + latest.version : '需重新读取服务器状态后再确认'
@@ -53,7 +56,7 @@
             <dd>{{ serverValue(key) }}</dd>
           </template>
         </dl>
-        <el-button :disabled="busy" @click="refreshConflict">重新读取</el-button>
+        <el-button type="primary" :disabled="busy" @click="refreshConflict">重新读取</el-button>
         <el-button :disabled="!latest || busy" @click="confirmConflict"
           >确认按新版本提交草稿</el-button
         >

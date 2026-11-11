@@ -18,12 +18,22 @@
           >备注<textarea v-model="note" aria-label="面试备注" />
         </label>
         <label v-if="action === 'cancel'"
-          >取消原因<textarea v-model="reason" required aria-label="取消原因" />
+          >取消原因<textarea
+            v-model="reason"
+            required
+            aria-label="取消原因"
+            @input="clearResolvedReasonError"
+          />
         </label>
       </fieldset>
       <p v-if="error" class="v3-error" role="alert">{{ error }}</p>
-      <p v-if="uncertain" role="status">提交结果尚未确定，请使用原请求确认结果。</p>
+      <p v-if="uncertain" role="status">
+        本次操作结果尚未确认，服务器可能已经保存。请先核实结果；如需重试，请使用原请求，不要另建操作。
+      </p>
       <div v-if="conflict">
+        <p class="v3-conflict-summary" role="status">
+          这条记录已有新的业务进展。草稿已保留，请先查看最新状态，再决定是否继续操作。
+        </p>
         <p>草稿已保留，请核对服务器当前状态后决定是否重新提交。</p>
         <p v-if="latestApplication">
           当前申请阶段 {{ label(latestApplication.stage) }} ·
@@ -37,7 +47,9 @@
         <p v-if="latestApplication && !retryAllowed">
           当前状态已不允许该操作，请保留原事实并返回查看。
         </p>
-        <el-button :disabled="busy" @click="refreshConflict">重新读取服务器状态</el-button>
+        <el-button type="primary" :disabled="busy" @click="refreshConflict"
+          >重新读取服务器状态</el-button
+        >
         <el-button :disabled="!retryAllowed || busy" @click="confirmRetry"
           >确认按新版本重新提交</el-button
         >
@@ -150,6 +162,15 @@ function confirmRetry() {
   frozen = null
   conflict.value = false
   void submit()
+}
+function clearResolvedReasonError() {
+  if (
+    reason.value.trim() &&
+    error.value === '请填写取消原因。' &&
+    !conflict.value &&
+    !uncertain.value
+  )
+    error.value = ''
 }
 async function submit() {
   if (busy.value || conflict.value) return
