@@ -82,6 +82,18 @@
     />
     <section class="v3-card" data-detail-history="offer">
       <h3>Offer 与结案真实历史</h3>
+      <p v-if="!historyLoading && !historyError">
+        {{ historyCaption(history) }} 旧版历史未核实；本来源记录不代表旧版历史完整。
+      </p>
+      <button
+        v-if="history.length > 3 && !historyLoading && !historyError"
+        type="button"
+        class="v3-history-toggle"
+        :aria-expanded="historyExpanded"
+        @click="toggleHistory"
+      >
+        {{ historyExpanded ? '收起本组全部' : '查看本组全部' }}（{{ history.length }} 条）
+      </button>
       <V3Feedback v-if="historyLoading" state="loading" title="读取 Offer 历史中" />
       <V3Feedback
         v-else-if="historyError"
@@ -91,13 +103,15 @@
         action="重试 Offer 历史"
         @action="loadHistory"
       />
-      <p v-else-if="!history.length">暂无 Offer 或结案事件，不根据当前状态补造历史。</p>
+      <p v-else-if="!history.length">
+        暂无 Offer 或结案事件；当前已读取的该来源未记录可核实的业务事件，不根据当前状态补造历史。
+      </p>
       <template v-else
         ><details
-          v-for="event in history"
+          v-for="(event, index) in orderHistory(history)"
+          v-show="historyExpanded || index < 3"
           :key="event.eventId"
           :data-offer-event="event.eventId"
-          open
         >
           <summary>
             {{
@@ -107,7 +121,10 @@
                   : '未知，待核实'
                 : '未记录事件类型'
             }}
-            · 事件 #{{ event.eventId }}
+            · 事件 #{{ event.eventId }} · {{ feedbackTime(event.occurredAt) }} · 实际 HR：{{
+              event.actorName || '未记录操作者'
+            }}
+            · 账号 #{{ event.actorUserId }} · {{ event.reason || '未记录附加原因' }}
           </summary>
           <p>
             实际 HR：{{ event.actorName }} · 账号 #{{ event.actorUserId }} ·
@@ -143,6 +160,7 @@
   </section>
 </template>
 <script setup lang="ts">
+import { orderHistory, historyCaption } from '../api/history-display'
 import { readOfferContext } from '../api/offer-read'
 import { computed, inject, nextTick, onUnmounted, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
@@ -300,4 +318,20 @@ onUnmounted(() => {
   historyReads.invalidate()
   if (lease) gate.release(lease)
 })
+
+const historyExpanded = ref(false)
+async function toggleHistory(event: Event) {
+  const control = event.currentTarget as HTMLButtonElement
+  historyExpanded.value = !historyExpanded.value
+  if (!historyExpanded.value) {
+    await nextTick()
+    control.focus({ preventScroll: true })
+  }
+}
+watch(
+  () => history.value,
+  () => {
+    historyExpanded.value = false
+  }
+)
 </script>

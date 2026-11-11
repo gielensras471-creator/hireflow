@@ -1,11 +1,39 @@
 <template>
   <section class="v3-feedback-history" aria-label="面评真实历史">
     <h3>面评真实历史</h3>
-    <p v-if="!items.length">尚无面评事件。</p>
-    <details v-for="event in items" :key="event.eventId" :data-feedback-event="event.eventId" open>
+    <p>{{ historyCaption(items) }} 旧版历史未核实；本来源记录不代表旧版历史完整。</p>
+    <button
+      v-if="items.length > 3"
+      type="button"
+      class="v3-history-toggle"
+      :aria-expanded="historyExpanded"
+      @click="toggleHistory"
+    >
+      {{ historyExpanded ? '收起本组全部' : '查看本组全部' }}（{{ items.length }} 条）
+    </button>
+    <p v-if="!items.length">当前已读取的该来源未记录可核实的业务事件。</p>
+    <details
+      v-for="(event, index) in orderHistory(items)"
+      v-show="historyExpanded || index < 3"
+      :key="event.eventId"
+      :data-feedback-event="event.eventId"
+    >
       <summary>
-        {{ eventNames[event.eventType] ?? '面评记录' }} · 事件 #{{ event.eventId }} ·
-        {{ feedbackTime(event.occurredAt) }}
+        {{
+          event.eventType
+            ? Object.hasOwn(eventNames, event.eventType)
+              ? eventNames[event.eventType]
+              : '未知，待核实'
+            : '未记录事件类型'
+        }}
+        · 事件 #{{ event.eventId }} · {{ feedbackTime(event.occurredAt) }} · 实际 HR：{{
+          event.actorName || '未记录操作者'
+        }}
+        · 账号 #{{ event.actorUserId }} · 面评 #{{
+          event.after?.id ?? event.before?.id ?? '未记录'
+        }}
+        · 面试 #{{ event.after?.interviewId ?? event.before?.interviewId ?? '未记录' }} ·
+        {{ event.reason || '未记录附加原因' }}
       </summary>
       <p>实际操作 HR：{{ event.actorName }} · 账号 #{{ event.actorUserId }}</p>
       <p v-if="event.reason">更正原因：{{ event.reason }}</p>
@@ -35,12 +63,30 @@
   </section>
 </template>
 <script setup lang="ts">
+import { orderHistory, historyCaption } from '../api/history-display'
 import { feedbackTime, type FeedbackEvent } from '../api/feedback-v3'
 import V3FeedbackSnapshot from './V3FeedbackSnapshot.vue'
-defineProps<{ items: FeedbackEvent[]; decisions: Record<number, number> }>()
+const props = defineProps<{ items: FeedbackEvent[]; decisions: Record<number, number> }>()
+import { ref, nextTick, watch } from 'vue'
 const eventNames: Record<string, string> = {
   feedback_submitted: '首次提交',
   feedback_supplemented: '晋级后补录',
   feedback_corrected: '有痕更正'
 }
+
+const historyExpanded = ref(false)
+async function toggleHistory(event: Event) {
+  const control = event.currentTarget as HTMLButtonElement
+  historyExpanded.value = !historyExpanded.value
+  if (!historyExpanded.value) {
+    await nextTick()
+    control.focus({ preventScroll: true })
+  }
+}
+watch(
+  () => props.items,
+  () => {
+    historyExpanded.value = false
+  }
+)
 </script>

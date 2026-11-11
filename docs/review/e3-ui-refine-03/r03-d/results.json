@@ -1,0 +1,65 @@
+{
+  "task": "R03-D",
+  "startingHead": "c0f9a9d2e9db44866ed0943b35baca3f41d3f32f",
+  "status": "isolated implementation verified; awaiting A review",
+  "node": {
+    "passed": 192,
+    "failed": 0,
+    "skipped": 0
+  },
+  "typecheck": "passed",
+  "lint": {
+    "errors": 0,
+    "existingV2Warnings": 1
+  },
+  "build": "passed",
+  "prettier": "checked changed source/test and evidence files",
+  "diffCheck": "working tree passed; staged check enforced before commit",
+  "browser": [
+    {
+      "suite": "recruiting",
+      "passed": true,
+      "file": "recruiting/results.json"
+    },
+    {
+      "suite": "interviews",
+      "passed": true,
+      "file": "interviews/results.json"
+    },
+    {
+      "suite": "feedback",
+      "passed": true,
+      "file": "feedback/results.json"
+    },
+    {
+      "suite": "advancement",
+      "passed": true,
+      "file": "advancement/results.json"
+    },
+    {
+      "suite": "offer",
+      "passed": true,
+      "file": "offer/results.json"
+    },
+    {
+      "suite": "dashboard",
+      "passed": true,
+      "file": "dashboard/results.json"
+    }
+  ],
+  "specialHistory": {
+    "events": 7,
+    "corrections": 6,
+    "allEvidenceExpanded": true,
+    "history503And403Retry": true,
+    "httpWritesAdded": 0,
+    "editorUid": 74
+  },
+  "limits": [
+    "no 4+ legal advancement lifecycle fabricated",
+    "no full production legacy data assurance",
+    "no per-source exhaustive late history response/account switching injection",
+    "no very large DOM performance test",
+    "no real device/screen reader/formal AC or R03-E"
+  ]
+}

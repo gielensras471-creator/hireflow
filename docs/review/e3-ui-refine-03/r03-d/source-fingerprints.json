@@ -1,0 +1,13 @@
+{
+  "normalization": "UTF-8, CRLF normalized to LF",
+  "files": {
+    "src/api/history-display.ts": "e86b797e67969076ef2cc3b2d50b9b0e996dded07b40e96473cdf0fda512739f",
+    "src/components/V3FeedbackHistory.vue": "6db270cb0d5cb2c2e2969e138d2325b1b244f884ff9c7b5393f2e4f0c058334a",
+    "src/components/V3OfferPanel.vue": "29fe09e5143a6b5f2ff29e4db4b9b10fd9d40db468d46e56daf7d14fbba303d8",
+    "src/components/V3AdvancementPanel.vue": "1001464c6e2ddf027d72e6f98bafffba6133773f5d73f46834a4c1ad11279769",
+    "src/styles/v3-recruiting.scss": "9474c4f051dfc9df375b76595f6b8d5cdc539389cdaa5d006d7c34a591a65009",
+    "tests/browser/r03d-history-checks.mjs": "e0e4b0aaa7070bc2b56ee3cb79f050494975b30e27943c0fa12ce7696d0a54a6",
+    "tests/browser/v3-feedback.mjs": "59efce1067457747ffb5a9ad1ad2aa79d07445590239673e350f79492eabe23a",
+    "tests/v3-readonly-fallback.test.js": "234eb9b3fd8e45ca2b4db8efa5926b83c79d6014c0f5c4a8ecc6e0ae91cf404e"
+  }
+}

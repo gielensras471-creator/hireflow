@@ -1,3 +1,4 @@
+import { runR03D } from './r03d-history-checks.mjs'
 import { runR03C } from './r03c-detail-checks.mjs'
 import { checkSummary } from './r03b-summary-checks.mjs'
 import assert from 'node:assert/strict'
@@ -27,6 +28,7 @@ const password = randomBytes(18).toString('base64url')
 db.prepare(
   'INSERT INTO users (username,password_hash,name,role,department,email,phone) VALUES (?,?,?,?,?,?,?)'
 ).run(username, bcrypt.hashSync(password, 10), '本地演示 HR', 'hr', '', '', '')
+let historyFailureStatus = 503
 let legacyProjectionId = null
 let holdPath = null,
   releaseHeld = null,
@@ -82,7 +84,12 @@ wrapped.use((req, res, next) => {
     req.path.endsWith('/history') &&
     failHistory
   )
-    return res.status(503).json({ error: { code: 'FIXTURE_HISTORY', message: 'fixture' } })
+    return res.status(historyFailureStatus).json({
+      error: {
+        code: historyFailureStatus === 403 ? 'OPERATION_DENIED' : 'FIXTURE_HISTORY',
+        message: 'fixture'
+      }
+    })
   if (failMe && req.path === '/api/v3/auth/me')
     return res.status(503).json({ error: { code: 'TEST_BUSY', message: 'fixture' } })
   const write = req.method === 'POST' && req.path.includes('/feedback')
@@ -1166,6 +1173,37 @@ try {
     'loading keeps structure no stale operations, true empty, errors/retry for feedback and history'
   )
 
+  if (process.env.R03_D === '1')
+    await runR03D({
+      create,
+      advance,
+      book,
+      submitApi,
+      apiGet,
+      apiPost,
+      detailPage,
+      button,
+      evaluate,
+      send,
+      check,
+      width,
+      snapshot,
+      db,
+      output,
+      closed,
+      closedMeeting,
+      setDialogMode: (value) => {
+        dialogMode = value
+      },
+      setHistoryError: (status) => {
+        failHistory = !!status
+        historyFailureStatus = status || 503
+      },
+      httpWriteCount: () =>
+        requestMethods.filter(
+          (r) => r.path.startsWith('/api/v3/') && !['GET', 'HEAD', 'OPTIONS'].includes(r.method)
+        ).length
+    })
   await button('更正面评', card(closedMeeting))
   await input('推荐依据', '不得串入其他账号的草稿')
   await input('更正原因', '账号边界验证')

@@ -31,9 +31,13 @@ function component(name) {
   code = code.replace('export function render', 'function render')
   return new Function('Vue', code + ';return render')(Vue)
 }
+const { orderHistory, historyCaption, sortableHistory } = await mappings(
+  '../src/api/history-display.ts'
+)
 const stateRender = component('V3OfferState')
 const renderers = {
   V3OfferState: stateRender,
+  V3FeedbackHistory: component('V3FeedbackHistory'),
   V3OfferPanel: component('V3OfferPanel'),
   V3AdvancementPanel: component('V3AdvancementPanel')
 }
@@ -58,6 +62,12 @@ async function render(name, ctx) {
       historyLoading: false,
       historyError: '',
       history: [],
+      historyExpanded: false,
+      toggleHistory() {},
+      orderHistory,
+      historyCaption,
+      items: [],
+      decisions: {},
       operationError: '',
       editor: null,
       gate: { current: { value: null } },
@@ -228,5 +238,57 @@ test('OfferState distinguishes legal nulls from missing legacy facts', async () 
       assert.ok(html.includes(value), JSON.stringify(state) + ' missing ' + value)
     for (const value of forbidden)
       assert.ok(!html.includes(value), JSON.stringify(state) + ' unexpected ' + value)
+  }
+})
+
+test('history source sorting: 0/1/3/4+, equal timestamps, missing fields and immutability', () => {
+  for (const size of [0, 1, 3, 4, 7]) {
+    const rows = Array.from({ length: size }, (_, i) => ({
+      eventId: i + 1,
+      occurredAt: i < 3 ? 10 : 20
+    }))
+    const before = JSON.stringify(rows)
+    assert.deepEqual(
+      orderHistory(rows).map((x) => x.eventId),
+      rows.map((x) => x.eventId).reverse()
+    )
+    assert.equal(JSON.stringify(rows), before)
+    assert.ok(sortableHistory(rows))
+  }
+  const bad = [
+    { eventId: 1, occurredAt: null },
+    { eventId: 2, occurredAt: 2 }
+  ]
+  assert.equal(sortableHistory(bad), false)
+  assert.deepEqual(orderHistory(bad), bad)
+  assert.match(historyCaption(bad), /已加载/)
+})
+test('feedback history actual summary template guards unknown and prototype names', async () => {
+  for (const type of ['feedback_submitted', 'unknown_legacy', 'toString', '']) {
+    const html = await render('V3FeedbackHistory', {
+      eventNames: {
+        feedback_submitted: '首次提交',
+        feedback_supplemented: '晋级后补录',
+        feedback_corrected: '有痕更正'
+      },
+      items: [
+        {
+          eventId: 9,
+          eventType: type,
+          occurredAt: 1,
+          actorName: '虚构HR',
+          actorUserId: 1,
+          reason: null,
+          before: null,
+          after: null
+        }
+      ]
+    })
+    assert.match(
+      html,
+      type === 'feedback_submitted' ? /首次提交/ : type ? /未知，待核实/ : /未记录事件类型/
+    )
+    assert.match(html, /虚构HR/)
+    assert.match(html, /事件 #9/)
   }
 })

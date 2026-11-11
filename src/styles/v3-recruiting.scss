@@ -303,3 +303,22 @@
     grid-template-columns: minmax(0, 1fr);
   }
 }
+
+.v3-history-toggle {
+  min-height: 44px;
+  max-width: 100%;
+  padding: 8px 12px;
+  margin: 8px 0;
+  border: 1px solid var(--v3-border);
+  border-radius: 8px;
+  background: var(--v3-surface);
+  color: var(--v3-ink);
+  cursor: pointer;
+}
+[data-feedback-event] summary,
+[data-offer-event] summary,
+[data-advancement-event] summary {
+  overflow-wrap: anywhere;
+  padding: 8px 0;
+  cursor: pointer;
+}
