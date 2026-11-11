@@ -29,7 +29,7 @@ function component(name) {
     (_, spec) => 'const {' + spec.replace(/ as /g, ':') + '}=Vue'
   )
   code = code.replace('export function render', 'function render')
-  return new Function('Vue', code + ';return render')(Vue)
+  return new Function('Vue', stripTypeScriptTypes(code, { mode: 'strip' }) + ';return render')(Vue)
 }
 const { orderHistory, historyCaption, sortableHistory, safeHistoryTime, validHistoryTime } =
   await mappings('../src/api/history-display.ts')
@@ -38,6 +38,7 @@ const renderers = {
   V3OfferState: stateRender,
   V3FeedbackSnapshot: component('V3FeedbackSnapshot'),
   V3FeedbackHistory: component('V3FeedbackHistory'),
+  V3FeedbackPanel: component('V3FeedbackPanel'),
   V3OfferPanel: component('V3OfferPanel'),
   V3AdvancementPanel: component('V3AdvancementPanel')
 }
@@ -373,5 +374,51 @@ test('snapshot original submission time and real Shanghai second precision', asy
     })
     assert.match(html, /发生时间未记录，待核实/)
     assert.doesNotMatch(html, /1970|2030-01-01/)
+  }
+})
+
+test('actual feedback panel renders real supplement and waiver times safely', async () => {
+  const { feedbackTime } = await mappings('../src/api/feedback-v3.ts')
+  const valid = Date.parse('2026-11-11T14:00:01+08:00')
+  for (const time of [valid, null, undefined, NaN, 'bad', '1794384001000', 8640000000000001]) {
+    const fact = {
+      supplementEventId: 73,
+      supplementedAt: time,
+      waivers: [
+        {
+          eventId: 42,
+          occurredAt: time,
+          stageScope: 'first_interview',
+          toStage: 'second_interview',
+          reason: '实际原因'
+        }
+      ]
+    }
+    const html = await render('V3FeedbackPanel', {
+      context: {
+        application: { stage: 'first_interview' },
+        interviews: [{ id: 8, status: 'completed', stageScope: 'first_interview' }]
+      },
+      displayedMeetings: [{ id: 8, status: 'completed', stageScope: 'first_interview' }],
+      record: () => ({ id: 3 }),
+      facts: () => fact,
+      feedbackTime,
+      interviewStatus: { completed: '已完成' },
+      blocked: false,
+      allowed: () => false,
+      historyId: null,
+      blockedMessages: {}
+    })
+    assert.match(html, /补录事件 #73/)
+    assert.match(html, /事件 #42/)
+    assert.match(html, /实际原因/)
+    if (time === valid) {
+      assert.ok(html.includes(feedbackTime(valid)))
+      assert.match(html, /14:00:01/)
+      assert.match(html, /2026/)
+    } else {
+      assert.equal((html.match(/发生时间未记录，待核实/g) || []).length, 2)
+      assert.doesNotMatch(html, /1970|2026/)
+    }
   }
 })

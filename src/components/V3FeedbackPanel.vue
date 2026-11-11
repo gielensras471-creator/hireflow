@@ -59,9 +59,8 @@
         <template v-if="record(meeting.id)">
           <V3FeedbackSnapshot :value="record(meeting.id)!" />
           <p v-if="facts(meeting.id)?.supplementEventId" class="v3-feedback-notice">
-            晋级后补录 · {{ feedbackTime(facts(meeting.id)!.supplementedAt!) }} · 补录事件 #{{
-              facts(meeting.id)!.supplementEventId
-            }}
+            晋级后补录 · {{ safeHistoryTime(facts(meeting.id)!.supplementedAt, feedbackTime) }} ·
+            补录事件 #{{ facts(meeting.id)!.supplementEventId }}
           </p>
           <div class="v3-feedback-actions">
             <el-button :disabled="blocked" @click="showHistory(record(meeting.id)!)"
@@ -103,7 +102,7 @@
         <details v-if="facts(meeting.id)?.waivers.length" class="v3-feedback-waivers" open>
           <summary>已说明原因推进 · 原晋级豁免事实</summary>
           <p v-for="waiver in facts(meeting.id)!.waivers" :key="waiver.eventId">
-            事件 #{{ waiver.eventId }} · {{ feedbackTime(waiver.occurredAt) }} ·
+            事件 #{{ waiver.eventId }} · {{ safeHistoryTime(waiver.occurredAt, feedbackTime) }} ·
             {{ label(waiver.stageScope) }} → {{ label(waiver.toStage) }} · 原因：{{ waiver.reason }}
           </p>
         </details>
@@ -130,6 +129,7 @@
   </section>
 </template>
 <script setup lang="ts">
+import { safeHistoryTime } from '../api/history-display'
 import { computed, inject, nextTick, onUnmounted, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import {
