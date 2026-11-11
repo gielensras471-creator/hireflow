@@ -9,7 +9,7 @@ const code = stripTypeScriptTypes(
     'const readV3 = () => { throw new Error("Not a request test") }'
   )
 )
-const { label } = await import(
+const { label, applicationOutcomeText, applicationOfferText } = await import(
   'data:text/javascript;base64,' + Buffer.from(code).toString('base64')
 )
 test('known outcomes and independent state dimensions retain business meaning', () => {
@@ -59,4 +59,69 @@ test('resolved cancel validation never hides server or conflict errors', () => {
     run({ value: '原因' }, { value: '请填写取消原因。' }, { value: false }, { value: true }),
     '请填写取消原因。'
   )
+})
+
+test('shared label rejects prototype properties and preserves empty behavior', () => {
+  for (const v of ['unknown', 'toString', 'constructor', '__proto__'])
+    assert.equal(label(v), '未知，待核实')
+  for (const v of [null, undefined, '']) assert.equal(label(v), '—')
+  assert.equal(label('active'), '进行中')
+})
+test('application list helpers preserve legal empty and historical states', () => {
+  const cases = [
+    [
+      { stage: 'screening', applicationStatus: 'active', offerStatus: null, outcome: null },
+      '尚未结束',
+      '未进入 Offer'
+    ],
+    [
+      { stage: 'offer', applicationStatus: 'active', offerStatus: 'preparing', outcome: null },
+      '尚未结束',
+      '准备中'
+    ],
+    [
+      { stage: 'offer', applicationStatus: 'active', offerStatus: 'sent', outcome: null },
+      '尚未结束',
+      '已发送'
+    ],
+    [
+      { stage: 'offer', applicationStatus: 'active', offerStatus: 'accepted', outcome: null },
+      '尚未结束',
+      '已接受，待 HR 确认'
+    ],
+    [
+      {
+        stage: 'screening',
+        applicationStatus: 'closed',
+        offerStatus: null,
+        outcome: 'company_rejected'
+      },
+      '企业淘汰',
+      '未进入 Offer'
+    ],
+    [
+      { stage: 'offer', applicationStatus: 'closed', offerStatus: 'accepted', outcome: 'hired' },
+      '已录用',
+      '已接受（历史事实）'
+    ],
+    [
+      { stage: 'unknown', applicationStatus: 'closed', offerStatus: null, outcome: null },
+      '未记录结束结果',
+      '未记录 Offer 状态'
+    ],
+    [
+      {
+        stage: 'unknown',
+        applicationStatus: 'closed',
+        offerStatus: '__proto__',
+        outcome: 'constructor'
+      },
+      '未知，待核实',
+      '未知，待核实'
+    ]
+  ]
+  for (const [row, outcome, offer] of cases) {
+    assert.equal(applicationOutcomeText(row), outcome)
+    assert.equal(applicationOfferText(row), offer)
+  }
 })

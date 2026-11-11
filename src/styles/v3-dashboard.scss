@@ -189,3 +189,18 @@
 .v3-dashboard meter::-webkit-meter-optimum-value {
   background: var(--v3-brand);
 }
+
+.v3-dashboard [data-work].is-selected {
+  outline: 2px solid var(--v3-brand);
+  outline-offset: -2px;
+}
+.v3-dashboard .v3-work-selection {
+  display: block;
+  font-size: 12px;
+  font-weight: 650;
+  min-height: 20px;
+}
+.v3-dashboard .v3-record-primary {
+  font-size: 14px;
+  font-weight: 650;
+}

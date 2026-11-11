@@ -68,7 +68,7 @@
       aria-labelledby="application-loading-title"
     >
       <h2 id="application-loading-title">申请记录</h2>
-      <div class="v3-table-scroll">
+      <V3TableScroll name="职位与申请记录表格">
         <table aria-label="申请记录加载中">
           <thead>
             <tr>
@@ -83,7 +83,7 @@
             </tr>
           </tbody>
         </table>
-      </div>
+      </V3TableScroll>
       <p role="status">加载记录中，请稍候…</p>
     </section>
     <V3Feedback
@@ -136,16 +136,16 @@
       <h2>
         {{ positions ? '职位' : '申请' }}记录 <small>共 {{ total }} 条</small>
       </h2>
-      <div class="v3-table-scroll">
-        <table>
+      <V3TableScroll name="职位与申请记录表格">
+        <table aria-label="职位与申请记录">
           <thead>
             <tr>
-              <th>{{ positions ? '职位 / 部门' : '候选人 / 申请' }}</th>
-              <th>{{ positions ? '职位标识' : '应聘职位' }}</th>
-              <th>{{ positions ? '状态' : '招聘阶段' }}</th>
-              <th>{{ positions ? '申请总数' : '申请状态' }}</th>
-              <th>{{ positions ? '活跃申请' : '招聘结果与 Offer' }}</th>
-              <th>操作</th>
+              <th scope="col">{{ positions ? '职位 / 部门' : '候选人 / 申请' }}</th>
+              <th scope="col">{{ positions ? '职位标识' : '应聘职位' }}</th>
+              <th scope="col">{{ positions ? '状态' : '招聘阶段' }}</th>
+              <th scope="col">{{ positions ? '申请总数' : '申请状态' }}</th>
+              <th scope="col">{{ positions ? '活跃申请' : '招聘结果与 Offer' }}</th>
+              <th scope="col">操作</th>
             </tr>
           </thead>
           <tbody>
@@ -185,15 +185,8 @@
                 <template v-if="positions">{{ (row as Position).activeApplications }}</template
                 ><template v-else
                   ><span class="v3-state-label"
-                    >结果：{{ label((row as Application).outcome) }}</span
-                  ><small
-                    >Offer：{{
-                      (row as Application).offerStatus === 'accepted' &&
-                      (row as Application).applicationStatus === 'closed'
-                        ? '已接受（历史事实）'
-                        : label((row as Application).offerStatus)
-                    }}</small
-                  ></template
+                    >结果：{{ applicationOutcomeText(row as Application) }}</span
+                  ><small>Offer：{{ applicationOfferText(row as Application) }}</small></template
                 >
               </td>
               <td>
@@ -230,7 +223,7 @@
             </tr>
           </tbody>
         </table>
-      </div>
+      </V3TableScroll>
       <div class="v3-pagination">
         <el-button :disabled="offset === 0" @click="page(-20)">上一页</el-button
         ><span>{{ offset + 1 }}–{{ Math.min(offset + 20, total) }} / {{ total }}</span
@@ -275,6 +268,8 @@
   </section>
 </template>
 <script setup lang="ts">
+import { applicationOutcomeText, applicationOfferText } from '../api/recruiting-v3'
+import V3TableScroll from '../components/V3TableScroll.vue'
 import { computed, nextTick, onUnmounted, provide, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { readV3, v3Session } from '../api/request-v3'

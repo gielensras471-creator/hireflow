@@ -1,3 +1,4 @@
+import { tableChecks, selectedChecks, observerProbe } from './refine-list-checks.mjs'
 import assert from 'node:assert/strict'
 import { spawn } from 'node:child_process'
 import { mkdir, mkdtemp, readFile, writeFile } from 'node:fs/promises'
@@ -255,6 +256,7 @@ try {
     )
     await check('!document.querySelector(".v3-dashboard-details [role=status]")', 'work settled')
   }
+  await send('Page.addScriptToEvaluateOnNewDocument', { source: observerProbe })
   await go('/dashboard')
   await h1('登录招聘工作台')
   await fill(app.password, true)
@@ -398,6 +400,15 @@ try {
     assert.equal((await apiGet('/interviews/' + dueMeeting)).status, 'scheduled')
   }
   await snapshot('dashboard-desktop')
+  const refineMetrics = await tableChecks(
+    { evaluate, send, width, check, snapshot },
+    'dashboard-table',
+    '.v3-dashboard-details .v3-table-scroll'
+  )
+  await writeFile(join(output, 'scroll-keyboard.json'), JSON.stringify(refineMetrics, null, 2))
+  await selectedChecks({ evaluate, send, check, snapshot })
+  await selection('screening')
+
   const firstScreen = await send('Page.captureScreenshot', {
     format: 'png',
     captureBeyondViewport: false
@@ -543,6 +554,15 @@ try {
   await h1('登录招聘工作台')
   assert.equal(await evaluate('document.querySelectorAll("[data-metric]").length'), 0)
   assert.equal(requests.filter((u) => /^\/api\/(?!v3\/)/.test(new URL(u).pathname)).length, 0)
+
+  await width(1440)
+  await evaluate('document.querySelector(".v3-account a")?.click()')
+  await check('document.querySelectorAll(".v3-table-scroll").length===0', 'table route unmounted')
+  assert.equal(
+    await evaluate('window.__tableObservers?.size ?? 0'),
+    0,
+    'scroll ResizeObservers disconnected'
+  )
   await writeFile(
     join(output, 'results.json'),
     JSON.stringify(

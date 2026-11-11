@@ -46,9 +46,11 @@
             :key="key"
             :data-work="key"
             :aria-pressed="type === key"
+            :class="{ 'is-selected': type === key }"
             @click="select(key)"
           >
-            <span>{{ workLabels[key] }}</span
+            <span class="v3-work-selection">{{ type === key ? '✓ 已选中' : '选择此类' }}</span
+            ><span>{{ workLabels[key] }}</span
             ><strong>{{ summary.work[key].count }}</strong
             ><small>{{ unitLabel(summary.work[key].unit) }}</small>
           </button>
@@ -59,9 +61,11 @@
             :key="key"
             :data-work="key"
             :aria-pressed="type === key"
+            :class="{ 'is-selected': type === key }"
             @click="select(key)"
           >
-            {{ workLabels[key] }} · {{ summary.work[key].count }}
+            <span class="v3-work-selection">{{ type === key ? '✓ 已选中' : '选择此类' }}</span
+            >{{ workLabels[key] }} · {{ summary.work[key].count }}
             {{ unitLabel(summary.work[key].unit) }}
           </button>
         </div>

@@ -75,7 +75,7 @@ export const labels: Record<string, string> = {
   offer_declined: 'Offer 被拒'
 }
 export const label = (value: string | null | undefined) =>
-  value ? labels[value] ?? '未知，待核实' : '—'
+  value ? (Object.hasOwn(labels, value) ? labels[value] : '未知，待核实') : '—'
 export function pageQuery(query: Record<string, unknown>, positions: boolean) {
   const values = new URLSearchParams()
   const allowed = positions ? ['q', 'status'] : ['q', 'positionId', 'stage', 'applicationStatus']
@@ -89,3 +89,21 @@ export function pageQuery(query: Record<string, unknown>, positions: boolean) {
 }
 export const detail = (resource: string, id: number) =>
   readV3<RecruitingRow>('/' + resource + '/' + id)
+
+export const applicationOutcomeText = (row: Pick<Application, 'applicationStatus' | 'outcome'>) =>
+  row.outcome
+    ? label(row.outcome)
+    : row.outcome === null && row.applicationStatus === 'active'
+      ? '尚未结束'
+      : '未记录结束结果'
+export const applicationOfferText = (
+  row: Pick<Application, 'stage' | 'applicationStatus' | 'offerStatus'>
+) =>
+  row.offerStatus
+    ? row.offerStatus === 'accepted' && row.applicationStatus === 'closed'
+      ? '已接受（历史事实）'
+      : label(row.offerStatus)
+    : row.offerStatus === null &&
+        ['screening', 'first_interview', 'second_interview'].includes(row.stage)
+      ? '未进入 Offer'
+      : '未记录 Offer 状态'
