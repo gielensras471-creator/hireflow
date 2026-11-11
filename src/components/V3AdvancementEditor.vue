@@ -18,14 +18,20 @@
       <p v-if="error" class="v3-error" role="alert">{{ error }}</p>
       <p v-if="writing" role="status">晋级请求正在执行，服务器可能已接收。离开页面不会撤销晋级。</p>
       <p v-if="uncertain" role="status">
-        晋级结果尚未确定，请重试原请求确认结果；不会发起下一阶段晋级。
+        本次操作结果尚未确认，服务器可能已经保存。请先核实结果；如需重试，请使用原请求，不要另建操作。
       </p>
       <div v-if="conflict" class="v3-advance-conflict">
+        <p class="v3-conflict-summary" role="status">
+          这条记录已有新的业务进展。草稿已保留，请先查看最新状态，再决定是否继续操作。
+        </p>
         <h3>这条申请已有新进展，晋级理由草稿已保留</h3>
         <p v-if="latest && !sameTransition(original, latest.preflight)">
           原阶段已变化，不能把旧决定变成下一次晋级。请返回查看。
         </p>
-        <el-button :disabled="busy || v3Session.state.status !== 'ready'" @click="refresh"
+        <el-button
+          type="primary"
+          :disabled="busy || v3Session.state.status !== 'ready'"
+          @click="refresh"
           >刷新最新资格</el-button
         >
         <el-button

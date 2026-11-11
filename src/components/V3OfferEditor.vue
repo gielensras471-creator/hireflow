@@ -39,15 +39,21 @@
       </fieldset>
       <p v-if="writing" role="status">请求正在执行，服务器可能已接收。离开页面不会撤销操作。</p>
       <p v-if="uncertain" role="status">
-        结果尚未确定，请使用原动作、原内容和原标识重试，不要发起下一操作。
+        本次操作结果尚未确认，服务器可能已经保存。请先核实结果；如需重试，请使用原请求，不要另建操作。
       </p>
       <p v-if="error" role="alert" class="v3-error">{{ error }}</p>
       <section v-if="conflict">
+        <p class="v3-conflict-summary" role="status">
+          这条记录已有新的业务进展。草稿已保留，请先查看最新状态，再决定是否继续操作。
+        </p>
         <h3>记录已有新进展，原操作与理由已保留</h3>
         <p v-if="latest && !sameOfferIntent(original, latest)">
           原操作前提已变化，不能自动改为下一动作或再次结束。请返回查看。
         </p>
-        <el-button :disabled="busy || v3Session.state.status !== 'ready'" @click="refresh"
+        <el-button
+          type="primary"
+          :disabled="busy || v3Session.state.status !== 'ready'"
+          @click="refresh"
           >重新读取当前资格</el-button
         ><el-button
           :disabled="!retryAllowed || busy || v3Session.state.status !== 'ready'"

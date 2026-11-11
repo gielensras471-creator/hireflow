@@ -118,7 +118,13 @@
       v-else-if="!items.length"
       state="empty"
       :title="total > 0 ? '本页暂无记录' : filtered ? '没有匹配的记录' : '暂时没有记录'"
-      :message="filtered ? '请调整筛选条件，或清除筛选。' : '可以添加第一条真实业务记录。'"
+      :message="
+        filtered
+          ? '请调整筛选条件，或清除筛选。'
+          : positions
+            ? '新建职位后即可接收申请。'
+            : '添加申请，开始跟进招聘进展。'
+      "
       :action="offset > 0 ? '返回第一页' : filtered ? '清除筛选' : undefined"
       @action="
         offset > 0
@@ -138,7 +144,7 @@
               <th>{{ positions ? '职位标识' : '应聘职位' }}</th>
               <th>{{ positions ? '状态' : '招聘阶段' }}</th>
               <th>{{ positions ? '申请总数' : '申请状态' }}</th>
-              <th>{{ positions ? '活跃申请' : '结果 / Offer' }}</th>
+              <th>{{ positions ? '活跃申请' : '招聘结果与 Offer' }}</th>
               <th>操作</th>
             </tr>
           </thead>
@@ -156,29 +162,39 @@
                 }}
               </td>
               <td>
-                {{
+                <span class="v3-state-label">{{
                   positions
                     ? (row as Position).deletedAt
                       ? '已归档'
                       : label((row as Position).status)
                     : label((row as Application).stage)
-                }}
+                }}</span>
               </td>
               <td>
-                {{
-                  positions
-                    ? (row as Position).applicationRecords
-                    : label((row as Application).applicationStatus)
-                }}
+                <span
+                  class="v3-state-label"
+                  :data-state="positions ? undefined : (row as Application).applicationStatus"
+                  >{{
+                    positions
+                      ? (row as Position).applicationRecords
+                      : label((row as Application).applicationStatus)
+                  }}</span
+                >
               </td>
               <td>
-                {{
-                  positions
-                    ? (row as Position).activeApplications
-                    : label((row as Application).outcome) +
-                      ' / ' +
-                      label((row as Application).offerStatus)
-                }}
+                <template v-if="positions">{{ (row as Position).activeApplications }}</template
+                ><template v-else
+                  ><span class="v3-state-label"
+                    >结果：{{ label((row as Application).outcome) }}</span
+                  ><small
+                    >Offer：{{
+                      (row as Application).offerStatus === 'accepted' &&
+                      (row as Application).applicationStatus === 'closed'
+                        ? '已接受（历史事实）'
+                        : label((row as Application).offerStatus)
+                    }}</small
+                  ></template
+                >
               </td>
               <td>
                 <el-button text @click="showDetail(row)">查看详情</el-button>
@@ -321,7 +337,7 @@ const applicationColumns = [
   '应聘职位',
   '招聘阶段',
   '申请状态',
-  '结果 / Offer',
+  '招聘结果与 Offer',
   '操作'
 ]
 const stages = ['screening', 'first_interview', 'second_interview', 'offer']

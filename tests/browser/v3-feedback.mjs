@@ -524,7 +524,7 @@ try {
   const before = count()
   drop = true
   await save()
-  await check(ed + '.textContent.includes("提交结果尚未确定")', 'uncertain')
+  await check(ed + '.textContent.includes("本次操作结果尚未确认")', 'uncertain')
   assert.ok(await evaluate(ed + '.querySelector("fieldset").disabled'))
   await snapshot('feedback-uncertain')
   assert.equal(count().feedback, before.feedback + 1)
@@ -692,7 +692,7 @@ try {
   const correctionCount = count()
   drop = true
   await save()
-  await check(ed + '.textContent.includes("提交结果尚未确定")', 'uncertain correction')
+  await check(ed + '.textContent.includes("本次操作结果尚未确认")', 'uncertain correction')
   assert.equal(count().events, correctionCount.events + 1)
   await button('重试原请求', ed)
   await done()

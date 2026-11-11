@@ -621,7 +621,7 @@ try {
   drop = true
   await save()
   await check(
-    'document.querySelector(".v3-interview-editor")?.textContent.includes("提交结果尚未确定")',
+    'document.querySelector(".v3-interview-editor")?.textContent.includes("本次操作结果尚未确认")',
     'uncertain schedule'
   )
   await snapshot('uncertain-schedule')

@@ -646,7 +646,7 @@ try {
   const beforeDrop = count()
   drop = true
   await save()
-  await check(ed + '.textContent.includes("晋级结果尚未确定")', 'uncertain')
+  await check(ed + '.textContent.includes("本次操作结果尚未确认")', 'uncertain')
   await snapshot('advance-uncertain')
   await button('重试原晋级请求', ed)
   await done()
