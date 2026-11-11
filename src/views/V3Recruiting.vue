@@ -1,5 +1,5 @@
 <template>
-  <section class="v3-recruiting">
+  <section ref="detailRoot" class="v3-recruiting">
     <header class="v3-page-heading">
       <div>
         <h1>{{ isDetail ? '申请详情' : positions ? '职位管理' : '候选人管理' }}</h1>
@@ -139,8 +139,25 @@
         <p v-else>
           查看当前阶段操作与资格，以对应模块重新核实的服务器事实为准；此处不确认可写资格。
         </p>
-        <el-button type="primary" @click="goToTask">查看当前阶段操作与资格</el-button>
+        <el-button type="primary" @click="goToTask">{{
+          (selected as Application).applicationStatus === 'closed'
+            ? '查看已有评价与真实历史'
+            : '查看当前阶段操作与资格'
+        }}</el-button>
       </section>
+      <nav class="v3-detail-navigation" aria-label="申请详情页内定位">
+        <button
+          v-for="entry in detailSections"
+          :key="entry.key"
+          type="button"
+          @click="locate(entry.key)"
+        >
+          {{ entry.text }}
+        </button>
+      </nav>
+      <p v-if="navigationMessage" role="status" class="v3-detail-navigation-message">
+        {{ navigationMessage }}
+      </p>
       <el-button
         :disabled="
           loading ||
@@ -333,13 +350,47 @@
       <aside class="v3-card v3-detail-aside" aria-label="申请资料">
         <h2>申请资料</h2>
         <dl class="v3-profile">
-          <template v-for="[key, text] in applicationFields" :key="key"
+          <template v-for="[key, text] in basicProfileFields" :key="key"
             ><dt>{{ text }}</dt>
-            <dd>{{ display(selected, key) }}</dd></template
+            <dd>{{ profileText(key) }}</dd></template
           >
         </dl>
-        <p>完整真实历史保留在各业务模块中，可使用原历史入口查看。</p>
+        <button
+          ref="profileToggle"
+          type="button"
+          class="v3-profile-toggle"
+          :aria-expanded="profileExpanded"
+          aria-controls="v3-extra-profile"
+          @click="toggleProfile"
+        >
+          {{ profileExpanded ? '收起更多资料' : '展开更多资料' }}（学历、技能、经历与备注）
+        </button>
+        <div
+          v-show="profileExpanded"
+          id="v3-extra-profile"
+          ref="extraProfile"
+          @keydown.esc.stop.prevent="collapseProfile"
+        >
+          <dl class="v3-profile">
+            <template v-for="[key, text] in extraProfileFields" :key="key"
+              ><dt>{{ text }}</dt>
+              <dd tabindex="0">{{ profileText(key) }}</dd></template
+            >
+          </dl>
+        </div>
+        <p>更多资料保留完整原文，可展开核实业务依据。</p>
       </aside>
+      <section class="v3-card v3-detail-history-entry" aria-label="真实历史入口">
+        <h2>真实历史入口</h2>
+        <p>
+          按来源查看现有真实记录。未记录、未读取与旧版待核实均不等于从未发生；不依据当前阶段补造历史。
+        </p>
+        <div class="v3-detail-history-links">
+          <button type="button" @click="locate('feedback')">查看已有面评及其历史入口</button>
+          <button type="button" @click="locate('advancement-history')">查看真实晋级历史</button>
+          <button type="button" @click="locate('offer-history')">查看 Offer 与结案真实历史</button>
+        </div>
+      </section>
     </div>
   </section>
 </template>
@@ -463,23 +514,87 @@ function load() {
     }
   )
 }
+const detailRoot = ref<HTMLElement | null>(null)
+const profileToggle = ref<HTMLButtonElement | null>(null)
+const extraProfile = ref<HTMLElement | null>(null)
+const profileExpanded = ref(false)
+const navigationMessage = ref('')
+const basicProfileFields = applicationFields.filter(([key]) =>
+  ['name', 'owner', 'phone', 'email'].includes(key)
+)
+const extraProfileFields = applicationFields.filter(
+  ([key]) => !['name', 'owner', 'phone', 'email'].includes(key)
+)
+const detailSections = [
+  { key: 'task', text: '当前任务' },
+  { key: 'interviews', text: '面试与面评' },
+  { key: 'decision', text: 'HR 决策' },
+  { key: 'offer', text: 'Offer 与结案' },
+  { key: 'history', text: '真实历史入口' },
+  { key: 'profile', text: '申请资料' }
+]
+const detailTargets: Record<string, string> = {
+  task: '.v3-detail-task',
+  interviews: '[data-detail-target="Interviews"]',
+  feedback: '[data-detail-target="FeedbackPanel"]',
+  decision: '[data-detail-target="AdvancementPanel"]',
+  offer: '[data-detail-target="OfferPanel"]',
+  history: '.v3-detail-history-entry',
+  profile: '.v3-detail-aside',
+  'advancement-history': '[data-detail-history="advancement"]',
+  'offer-history': '[data-detail-history="offer"]'
+}
+function focusSection(section: Element | null) {
+  const heading = section?.querySelector<HTMLElement>('h2, h3')
+  if (!section || !heading) {
+    navigationMessage.value = '该区域尚未加载或暂不可用，请等待读取完成或重新加载申请详情。'
+    return false
+  }
+  heading.setAttribute('tabindex', '-1')
+  heading.focus({ preventScroll: true })
+  heading.scrollIntoView({ block: 'start' })
+  return true
+}
+function locate(key: string) {
+  navigationMessage.value = ''
+  focusSection(
+    detailRoot.value?.querySelector(detailTargets[key] ?? '[data-unavailable-target]') ?? null
+  )
+}
 function goToTask() {
   if (!selected.value) return
   const row = selected.value as Application
-  const target =
-    row.applicationStatus === 'closed'
-      ? 'FeedbackPanel'
-      : row.stage === 'offer'
-        ? 'OfferPanel'
-        : row.stage === 'screening'
-          ? 'AdvancementPanel'
-          : 'Interviews'
-  const section = document.querySelector('[data-detail-target="' + target + '"]')
-  section?.scrollIntoView({ block: 'start' })
-  const heading = section?.querySelector<HTMLElement>('h2')
-  heading?.setAttribute('tabindex', '-1')
-  heading?.focus({ preventScroll: true })
+  if (row.applicationStatus === 'closed') {
+    const existing = detailRoot.value?.querySelector('[data-existing-feedback]')
+    if (existing && focusSection(existing)) {
+      navigationMessage.value = '已定位到已读取的已有评价；具体更正资格仍由该模块核验。'
+    } else {
+      locate('history')
+      navigationMessage.value =
+        '尚未找到已加载的已有评价，不能据此认定存在可更正记录。请在真实历史入口继续核实；未记录不等于从未发生。'
+    }
+    return
+  }
+  locate(row.stage === 'offer' ? 'offer' : row.stage === 'screening' ? 'decision' : 'interviews')
 }
+function profileText(key: string) {
+  const value = selected.value && (selected.value as unknown as Record<string, unknown>)[key]
+  return value === null || value === undefined || String(value).trim() === ''
+    ? ['phone', 'email'].includes(key)
+      ? '未提供'
+      : '未记录'
+    : String(value)
+}
+async function collapseProfile() {
+  profileExpanded.value = false
+  await nextTick()
+  profileToggle.value?.focus({ preventScroll: true })
+}
+async function toggleProfile() {
+  if (profileExpanded.value) await collapseProfile()
+  else profileExpanded.value = true
+}
+
 function filter() {
   return router.push({
     path: route.path,
@@ -572,6 +687,8 @@ watch(
     query.invalidate()
     selection.invalidate()
     selected.value = null
+    profileExpanded.value = false
+    navigationMessage.value = ''
     refreshPending.value = false
     void closeProfile()
     search.value = String(route.query.q ?? '')

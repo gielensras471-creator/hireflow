@@ -144,7 +144,7 @@
             </tr>
           </thead>
           <tbody>
-            <tr v-for="row in items" :key="row.id" :data-interview-id="row.id">
+            <tr v-for="row in displayedInterviews" :key="row.id" :data-interview-id="row.id">
               <td>
                 #{{ row.id
                 }}<RouterLink :to="'/candidates/' + row.applicationId"
@@ -239,6 +239,14 @@ const route = useRoute(),
 const items = ref<Interview[]>([]),
   application = ref<Application | null>(null),
   total = ref(0)
+const displayedInterviews = computed(() => {
+  if (!props.applicationId || !application.value) return items.value
+  const stage = application.value.stage
+  return [
+    ...items.value.filter((row) => row.stageScope === stage),
+    ...items.value.filter((row) => row.stageScope !== stage)
+  ]
+})
 const loading = ref(false),
   error = ref(''),
   operationError = ref(''),

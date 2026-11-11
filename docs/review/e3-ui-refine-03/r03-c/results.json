@@ -1,0 +1,59 @@
+{
+  "task": "R03-C",
+  "status": "implemented and isolated checks passed; pending independent acceptance",
+  "startingHead": "1661cdeeaca5c6c7b4a59827a8d26bbae3ec7275",
+  "base": "e087241f2bc442364fb4ee71bf7432ede94f14f4",
+  "node": {
+    "passed": 190,
+    "failed": 0,
+    "skipped": 0
+  },
+  "typecheck": "passed",
+  "lint": {
+    "errors": 0,
+    "warnings": 1,
+    "existing": "V2 dashboard/index.vue vue/attributes-order"
+  },
+  "build": "passed",
+  "prettier": "passed for all changed source/test files and Markdown/JSON evidence",
+  "diffCheck": "passed working-tree and all 161 staged paths",
+  "browser": {
+    "recruiting": {
+      "passed": true,
+      "evidence": "recruiting/results.json"
+    },
+    "interviews": {
+      "passed": true,
+      "evidence": "interviews/results.json"
+    },
+    "feedback": {
+      "passed": true,
+      "evidence": "feedback/results.json"
+    },
+    "advancement": {
+      "passed": true,
+      "evidence": "advancement/results.json"
+    },
+    "offer": {
+      "passed": true,
+      "evidence": "offer/results.json"
+    },
+    "dashboard": {
+      "passed": true,
+      "evidence": "dashboard/results.json"
+    }
+  },
+  "r03c": {
+    "realChromiumKeyboard": true,
+    "keys": ["Tab", "Shift+Tab", "Enter", "Space", "Escape"],
+    "stableUidAndDraft": true,
+    "originalProfileText": true,
+    "closedNavigation": true,
+    "unknownHistoryFixture": "isolated response projection only",
+    "unavailableTargetFixture": "readonly DOM removal only",
+    "httpWritesAddedDuringNavigation": 0,
+    "databaseEventsAndReceiptsUnchanged": true,
+    "currentRoundFirst": true
+  },
+  "notExecuted": ["real device", "screen reader", "200 percent zoom", "formal AC-01..36", "R03-D/E"]
+}

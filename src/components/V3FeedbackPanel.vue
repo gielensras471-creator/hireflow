@@ -42,10 +42,11 @@
     />
     <template v-else>
       <article
-        v-for="meeting in context.interviews"
+        v-for="meeting in displayedMeetings"
         :key="meeting.id"
         class="v3-card v3-feedback-card"
         :data-feedback-interview="meeting.id"
+        :data-existing-feedback="record(meeting.id)?.id"
       >
         <header class="v3-feedback-heading">
           <h3>面试 #{{ meeting.id }} · {{ label(meeting.stageScope) }}</h3>
@@ -189,6 +190,14 @@ const blocked = computed(
     !!gate.current.value ||
     v3Session.state.status !== 'ready'
 )
+const displayedMeetings = computed(() => {
+  const rows = context.value?.interviews ?? []
+  const stage = context.value?.application.stage
+  return [
+    ...rows.filter((row) => row.stageScope === stage),
+    ...rows.filter((row) => row.stageScope !== stage)
+  ]
+})
 const record = (id: number) => context.value?.feedback.find((row) => row.interviewId === id) ?? null
 const facts = (id: number) => context.value?.eligibility.find((row) => row.interviewId === id)
 function allowed(action: FeedbackAction, meeting: Interview) {

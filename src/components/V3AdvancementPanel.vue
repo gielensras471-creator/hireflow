@@ -54,7 +54,7 @@
       @close="close"
       @saved="saved"
     />
-    <section class="v3-card">
+    <section class="v3-card" data-detail-history="advancement">
       <h3>真实晋级历史</h3>
       <V3Feedback v-if="historyLoading" state="loading" title="读取晋级历史中" />
       <V3Feedback

@@ -80,7 +80,7 @@
       @close="close"
       @saved="saved"
     />
-    <section class="v3-card">
+    <section class="v3-card" data-detail-history="offer">
       <h3>Offer 与结案真实历史</h3>
       <V3Feedback v-if="historyLoading" state="loading" title="读取 Offer 历史中" />
       <V3Feedback

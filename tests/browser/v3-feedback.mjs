@@ -1,3 +1,4 @@
+import { runR03C } from './r03c-detail-checks.mjs'
 import { checkSummary } from './r03b-summary-checks.mjs'
 import assert from 'node:assert/strict'
 import { spawn } from 'node:child_process'
@@ -26,6 +27,7 @@ const password = randomBytes(18).toString('base64url')
 db.prepare(
   'INSERT INTO users (username,password_hash,name,role,department,email,phone) VALUES (?,?,?,?,?,?,?)'
 ).run(username, bcrypt.hashSync(password, 10), '本地演示 HR', 'hr', '', '', '')
+let legacyProjectionId = null
 let holdPath = null,
   releaseHeld = null,
   alignVersion = false,
@@ -42,6 +44,25 @@ const { default: express } = await import(root('node_modules/express/index.js'))
 const wrapped = express()
 wrapped.use(express.json())
 wrapped.use((req, res, next) => {
+  if (
+    legacyProjectionId &&
+    req.method === 'GET' &&
+    req.path === '/api/v3/applications/' + legacyProjectionId
+  ) {
+    const original = res.json.bind(res)
+    res.json = (body) =>
+      original(
+        body?.id
+          ? {
+              ...body,
+              stage: 'unverified_legacy_stage',
+              outcome: null,
+              offerStatus: 'unknown_legacy_offer',
+              closedReason: null
+            }
+          : body
+      )
+  }
   if (failParent && req.method === 'GET' && /^\/api\/v3\/applications\/\d+$/.test(req.path))
     return res.status(503).json({ error: { code: 'FIXTURE_PARENT', message: 'fixture' } })
   if (req.method === 'GET' && req.path === holdPath) {
@@ -146,6 +167,7 @@ async function until(fn, label, ms = 25000) {
   throw new Error(label + (last ? ': ' + last.message : ''))
 }
 const requests = []
+const requestMethods = []
 const meStatuses = []
 const pending = new Map()
 let seq = 0
@@ -228,7 +250,13 @@ try {
       if (m.error) p?.reject(new Error(m.error.message))
       else p?.resolve(m.result)
     }
-    if (m.method === 'Network.requestWillBeSent') requests.push(m.params.request.url)
+    if (m.method === 'Network.requestWillBeSent') {
+      requests.push(m.params.request.url)
+      requestMethods.push({
+        method: m.params.request.method,
+        path: new URL(m.params.request.url).pathname
+      })
+    }
     if (
       m.method === 'Network.responseReceived' &&
       m.params.response.url.endsWith('/api/v3/auth/me')
@@ -733,6 +761,38 @@ try {
     await detailPage(main)
     dialogMode = null
   }
+
+  if (process.env.R03_C === '1')
+    await runR03C({
+      evaluate,
+      send,
+      check,
+      width,
+      button,
+      detailPage,
+      fillReview,
+      output,
+      apiGet,
+      apiPost,
+      main,
+      meeting,
+      closed,
+      closedMissing,
+      create,
+      advance,
+      book,
+      db,
+      httpWriteCount: () =>
+        requestMethods.filter(
+          (r) => r.path.startsWith('/api/v3/') && !['GET', 'HEAD', 'OPTIONS'].includes(r.method)
+        ).length,
+      setDialogMode: (value) => {
+        dialogMode = value
+      },
+      setLegacyProjection: (value) => {
+        legacyProjectionId = value
+      }
+    })
 
   // Claim-before-read in both directions; held HTTP reads are released deterministically.
   holdPath = '/api/v3/applications/' + main + '/feedback'
