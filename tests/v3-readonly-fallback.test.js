@@ -110,7 +110,7 @@ test('real OfferState template distinguishes all known outcomes, unknown and abs
     assert.ok(!html.includes('已录用'))
   }
   const missing = await render('V3OfferState', {
-    state: { ...base, offerStatus: null, outcome: null }
+    state: { ...base, applicationStatus: 'closed', offerStatus: null, outcome: null }
   })
   assert.ok(missing.includes('未记录 Offer 状态') && missing.includes('未记录结束结果'))
   assert.ok(!missing.includes('未知，待核实'))
@@ -167,5 +167,65 @@ test('real AdvancementPanel template safely renders independent kind and event-t
     assert.ok(html.includes(value ? '未知，待核实' : '未记录晋级类型'))
     assert.ok(html.includes('保留原因') && html.includes('虚构HR') && html.includes('事件 #9'))
     if (value) assert.ok(!html.includes(value))
+  }
+})
+
+test('OfferState distinguishes legal nulls from missing legacy facts', async () => {
+  const cases = [
+    [
+      { ...base, stage: 'screening', offerStatus: null, outcome: null },
+      ['未进入 Offer', '尚未结束'],
+      ['未记录', '已录用']
+    ],
+    [
+      { ...base, offerStatus: 'preparing', outcome: null },
+      ['准备中，尚未确认发送', '尚未结束'],
+      ['未记录结束结果', '已录用']
+    ],
+    [
+      {
+        ...base,
+        applicationStatus: 'closed',
+        stage: 'screening',
+        outcome: 'company_rejected',
+        offerStatus: null
+      },
+      ['企业淘汰', '未进入 Offer'],
+      ['尚未结束', '已录用']
+    ],
+    [
+      { ...base, applicationStatus: 'closed', offerStatus: null, outcome: null },
+      ['未记录 Offer 状态', '未记录结束结果'],
+      ['尚未结束', '已录用']
+    ],
+    [
+      {
+        ...base,
+        applicationStatus: 'closed',
+        stage: 'legacy_unknown',
+        offerStatus: null,
+        outcome: null
+      },
+      ['未记录 Offer 状态', '未记录结束结果'],
+      ['未进入 Offer', '尚未结束']
+    ],
+    [
+      { ...base, offerStatus: 'future_status', outcome: 'future_result' },
+      ['未知，待核实'],
+      ['已录用', '尚未结束']
+    ],
+    [base, ['已接受，待 HR 确认录用', '尚未结束'], ['已录用']],
+    [
+      { ...base, applicationStatus: 'closed', outcome: 'hired' },
+      ['已录用', '已接受（Offer 最后事实）'],
+      ['尚未结束']
+    ]
+  ]
+  for (const [state, expected, forbidden] of cases) {
+    const html = await render('V3OfferState', { state })
+    for (const value of expected)
+      assert.ok(html.includes(value), JSON.stringify(state) + ' missing ' + value)
+    for (const value of forbidden)
+      assert.ok(!html.includes(value), JSON.stringify(state) + ' unexpected ' + value)
   }
 })

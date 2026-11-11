@@ -13,7 +13,10 @@
             : Object.hasOwn(offerStatuses, state.offerStatus)
               ? offerStatuses[state.offerStatus]
               : '未知，待核实'
-          : '未记录 Offer 状态'
+          : state.offerStatus === null &&
+              ['screening', 'first_interview', 'second_interview'].includes(state.stage)
+            ? '未进入 Offer'
+            : '未记录 Offer 状态'
       }}
     </dd>
     <dt>最终结果</dt>
@@ -23,7 +26,9 @@
           ? Object.hasOwn(outcomes, state.outcome)
             ? outcomes[state.outcome]
             : '未知，待核实'
-          : '未记录结束结果'
+          : state.outcome === null && state.applicationStatus === 'active'
+            ? '尚未结束'
+            : '未记录结束结果'
       }}
     </dd>
     <dt>结束时间（上海）</dt>
