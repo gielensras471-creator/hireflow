@@ -1,3 +1,4 @@
+import { checkSummary } from './r03b-summary-checks.mjs'
 import assert from 'node:assert/strict'
 import { spawn } from 'node:child_process'
 import { mkdir, mkdtemp, readFile, writeFile } from 'node:fs/promises'
@@ -186,6 +187,7 @@ const width = (w) =>
     mobile: false
   })
 async function snapshot(name) {
+  await checkSummary({ evaluate, db, output, name })
   const metrics = await send('Page.getLayoutMetrics')
   const { data } = await send('Page.captureScreenshot', {
     format: 'png',

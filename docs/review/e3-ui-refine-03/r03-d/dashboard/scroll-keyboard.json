@@ -1,0 +1,37 @@
+[
+  {
+    "width": 1440,
+    "page": 1440,
+    "client": 1100,
+    "scroll": 1100,
+    "tabindex": null,
+    "hint": null
+  },
+  {
+    "width": 1100,
+    "page": 1092,
+    "client": 902,
+    "scroll": 902,
+    "tabindex": null,
+    "hint": null
+  },
+  {
+    "width": 390,
+    "page": 382,
+    "client": 292,
+    "scroll": 760,
+    "tabindex": "0",
+    "hint": "向右滑动查看完整表格及操作；键盘可用右方向键。"
+  },
+  {
+    "right": 452,
+    "client": 308,
+    "scroll": 760,
+    "hint": "已到右端，可向左滑动查看前面的列；键盘可用左方向键。",
+    "focus": true
+  },
+  {
+    "hideRestore": true,
+    "observedViewports": 2
+  }
+]

@@ -4,7 +4,9 @@
       <h1 v-if="!applicationId">面试管理</h1>
       <h2 v-else>面试活动</h2>
       <p>预约时间均为上海时间。到时仅提示，完成需要 HR 确认。</p>
-      <el-button :disabled="loading || !!editor || opening" @click="load">刷新面试记录</el-button>
+      <el-button :disabled="props.disabled || loading || !!editor || opening" @click="load"
+        >刷新面试记录</el-button
+      >
     </header>
     <form v-if="!applicationId" class="v3-card v3-interview-filters" @submit.prevent="filter">
       <label
@@ -142,7 +144,7 @@
             </tr>
           </thead>
           <tbody>
-            <tr v-for="row in items" :key="row.id" :data-interview-id="row.id">
+            <tr v-for="row in displayedInterviews" :key="row.id" :data-interview-id="row.id">
               <td>
                 #{{ row.id
                 }}<RouterLink :to="'/candidates/' + row.applicationId"
@@ -226,7 +228,7 @@ import {
 import V3Feedback from '../components/V3Feedback.vue'
 import V3InterviewEditor from '../components/V3InterviewEditor.vue'
 import '../styles/v3-interviews.scss'
-const props = defineProps<{ applicationId?: number; disabled?: boolean }>()
+const props = defineProps<{ applicationId?: number; disabled?: boolean; refreshToken?: number }>()
 const emit = defineEmits<{ editing: [boolean]; updated: [] }>()
 const gate = inject(editorGateKey, null) ?? createEditorGate()
 let lease: symbol | null = null
@@ -237,6 +239,14 @@ const route = useRoute(),
 const items = ref<Interview[]>([]),
   application = ref<Application | null>(null),
   total = ref(0)
+const displayedInterviews = computed(() => {
+  if (!props.applicationId || !application.value) return items.value
+  const stage = application.value.stage
+  return [
+    ...items.value.filter((row) => row.stageScope === stage),
+    ...items.value.filter((row) => row.stageScope !== stage)
+  ]
+})
 const loading = ref(false),
   error = ref(''),
   operationError = ref(''),
@@ -421,6 +431,12 @@ const refreshTimer = window.setInterval(() => {
   )
     void load()
 }, 30000)
+watch(
+  () => props.refreshToken,
+  () => {
+    if (!props.disabled && !gate.current.value) void load()
+  }
+)
 onUnmounted(() => {
   alive = false
   if (lease) gate.release(lease)

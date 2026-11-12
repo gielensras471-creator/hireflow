@@ -13,12 +13,13 @@
     <dt>最初录入 HR</dt>
     <dd>账号 #{{ value.recordedByUserId }}</dd>
     <dt>原始提交时间</dt>
-    <dd>{{ feedbackTime(value.submittedAt) }}</dd>
+    <dd>{{ safeHistoryTime(value.submittedAt, feedbackTime) }}</dd>
     <dt>评价 / 修订版本</dt>
     <dd>#{{ value.id }} / {{ value.revision }}</dd>
   </dl>
 </template>
 <script setup lang="ts">
+import { safeHistoryTime } from '../api/history-display'
 import { feedbackTime, recommendations, type FeedbackSnapshot } from '../api/feedback-v3'
 defineProps<{ value: FeedbackSnapshot }>()
 </script>

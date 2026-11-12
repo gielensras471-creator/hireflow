@@ -1,0 +1,66 @@
+{
+  "passed": true,
+  "history503And403Retry": true,
+  "otherHistoryPreserved": true,
+  "applicationId": 9,
+  "feedbackId": 4,
+  "revisionChain": [
+    {
+      "events": 1,
+      "eventIds": [51],
+      "visible": [51],
+      "sameTime": true
+    },
+    {
+      "events": 2,
+      "eventIds": [52, 51],
+      "visible": [52, 51],
+      "sameTime": true
+    },
+    {
+      "events": 3,
+      "eventIds": [53, 52, 51],
+      "visible": [53, 52, 51],
+      "sameTime": true
+    },
+    {
+      "events": 4,
+      "eventIds": [54, 53, 52, 51],
+      "visible": [54, 53, 52],
+      "sameTime": true
+    },
+    {
+      "events": 5,
+      "eventIds": [55, 54, 53, 52, 51],
+      "visible": [55, 54, 53],
+      "sameTime": true
+    },
+    {
+      "events": 6,
+      "eventIds": [56, 55, 54, 53, 52, 51],
+      "visible": [56, 55, 54],
+      "sameTime": true
+    },
+    {
+      "events": 7,
+      "eventIds": [57, 56, 55, 54, 53, 52, 51],
+      "visible": [57, 56, 55],
+      "sameTime": true
+    }
+  ],
+  "expandedEventIds": [51, 52, 53, 54, 55, 56, 57],
+  "editorUid": 86,
+  "urlStable": true,
+  "keyboard": ["Space", "Enter"],
+  "focusRestored": true,
+  "httpWritesAdded": 0,
+  "counts": {
+    "e": 57,
+    "r": 57
+  },
+  "limitations": [
+    "no real device/screen reader",
+    "advancement has at most 3 legal transitions; no fabricated 4+ history",
+    "Offer legal lifecycle bounded; 4+ only tested for feedback"
+  ]
+}

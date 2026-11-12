@@ -1,0 +1,16 @@
+{
+  "normalization": "UTF-8 text with CRLF normalized to LF",
+  "files": {
+    "src/components/V3AdvancementPanel.vue": "6b080eb4db59e03c6bb3547cb798309d612008f8bae405352fd63c4c68ed3e44",
+    "src/components/V3FeedbackPanel.vue": "d9fed2b402ca98ea8d23acbf0296dc0c8934ea9b74eb10aa91e4d03749b592ed",
+    "src/components/V3OfferPanel.vue": "ac192e984f927dd4d5db529422513c2181866bd4ffc10b3a50c3a07f26194abf",
+    "src/styles/v3-recruiting.scss": "0b49b560a44d44375db8a45acd0960482cdd284a23a855717c448fef07f28b1a",
+    "src/views/V3Interviews.vue": "0db9d7fc795a20c42b38ebc6a2b56cfb8338fdbf3598a285ff6a38eaa6b34fa7",
+    "src/views/V3Recruiting.vue": "13b7be9cd58fbcad06dcd06c75ebfc519b67aba86c460e3546735f65504402aa",
+    "tests/browser/v3-advancement.mjs": "593d3c8a1aa9e01ed1f431d25767f71357e035b002d18f9515d23080ec9f92ca",
+    "tests/browser/v3-feedback.mjs": "9eb8970e4ce5220b8622e255a915e0e2af394c3ab4c765c9615d5dac97581a37",
+    "tests/browser/v3-offer.mjs": "17e28cd0070b89a9116b56433e31643a2dffa144f2651993087e697ec172aba8",
+    "tests/browser/r03b-summary-checks.mjs": "abebb116e4f8fb54841e855034c0962a6e1635aff2bb5a0c8e8c477b2674b893",
+    "tests/v3-readonly-fallback.test.js": "726b229c1f03220432586dc05c8ba1b7b821eed306e3980f3e89453c9a96fd94"
+  }
+}

@@ -1,0 +1,37 @@
+{
+  "trigger": "existing parent load callback; controlled integration entry, not a claimed pre-existing refresh button",
+  "beforeIds": {
+    ".v3-offer": 30,
+    ".v3-advancement": 27,
+    ".v3-feedback-panel": 25,
+    ".v3-interviews": 22
+  },
+  "afterIds": {
+    ".v3-offer": 30,
+    ".v3-advancement": 27,
+    ".v3-feedback-panel": 25,
+    ".v3-interviews": 22
+  },
+  "events": [
+    {
+      "event": "mount-observed",
+      "selector": ".v3-offer",
+      "uid": 30
+    },
+    {
+      "event": "mount-observed",
+      "selector": ".v3-advancement",
+      "uid": 27
+    },
+    {
+      "event": "mount-observed",
+      "selector": ".v3-feedback-panel",
+      "uid": 25
+    },
+    {
+      "event": "mount-observed",
+      "selector": ".v3-interviews",
+      "uid": 22
+    }
+  ]
+}

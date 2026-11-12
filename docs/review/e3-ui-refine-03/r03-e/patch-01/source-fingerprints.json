@@ -1,0 +1,4 @@
+{
+  "src/components/V3FeedbackPanel.vue": "49fb94f582304f553e427bf9923ddb8c21ec0722af6671d8ecb4ea3a9f0f481d",
+  "tests/v3-readonly-fallback.test.js": "622bb2d7eda9d9e12d5bc4c8382b0093effdef0afb373eea9631560df301417d"
+}

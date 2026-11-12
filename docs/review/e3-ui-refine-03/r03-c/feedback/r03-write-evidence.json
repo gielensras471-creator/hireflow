@@ -1,0 +1,17 @@
+{
+  "lastWrites": [
+    {
+      "key": "a2e6094a-eae6-4ac7-b8bb-f2d7bc98704c",
+      "body": "{\"reviewerName\":\"陈老师（虚构）\",\"recommendation\":\"recommend\",\"reason\":\"基础能力良好，能解释组件边界。\",\"expectedVersion\":5}"
+    },
+    {
+      "key": "a2e6094a-eae6-4ac7-b8bb-f2d7bc98704c",
+      "body": "{\"reviewerName\":\"陈老师（虚构）\",\"recommendation\":\"recommend\",\"reason\":\"基础能力良好，能解释组件边界。\",\"expectedVersion\":5}"
+    }
+  ],
+  "counts": {
+    "feedback": 2,
+    "events": 39,
+    "receipts": 39
+  }
+}

@@ -1,0 +1,16 @@
+{
+  "node": {
+    "passed": 196,
+    "failed": 0,
+    "skipped": 0
+  },
+  "typecheck": "passed",
+  "lint": "0 errors, 1 existing V2 warning",
+  "build": "passed",
+  "chromium": ["feedback", "recruiting", "interviews", "advancement", "offer", "dashboard"],
+  "actualTemplate": "normal, null, undefined, NaN, invalid/string-number, out-of-range for both times; event links retained",
+  "limitations": [
+    "malformed DTO exercised through Vue SSR, not HTTP browser injection",
+    "no real device or screen reader"
+  ]
+}

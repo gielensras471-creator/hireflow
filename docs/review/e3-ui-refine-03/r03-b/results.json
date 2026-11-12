@@ -1,0 +1,72 @@
+{
+  "task": "R03-B",
+  "startingHead": "2c65083a15564a61533bc7402e596b257ec8e57a",
+  "base": "e087241f2bc442364fb4ee71bf7432ede94f14f4",
+  "status": "implementation verified; awaiting independent review",
+  "node": {
+    "passed": 190,
+    "failed": 0,
+    "skipped": 0
+  },
+  "typecheck": "passed",
+  "lint": {
+    "errors": 0,
+    "warnings": 1,
+    "existingWarning": "src/views/dashboard/index.vue vue/attributes-order"
+  },
+  "build": "passed",
+  "prettier": "passed",
+  "diffCheck": "passed for working tree and all 153 staged paths",
+  "browser": [
+    {
+      "suite": "recruiting",
+      "result": "passed",
+      "file": "recruiting/results.json",
+      "v2Requests": 0
+    },
+    {
+      "suite": "interviews",
+      "result": "passed",
+      "file": "interviews/results.json",
+      "v2Requests": 0
+    },
+    {
+      "suite": "feedback",
+      "result": 9,
+      "file": "feedback/results.json",
+      "v2Requests": 0
+    },
+    {
+      "suite": "advancement",
+      "result": 10,
+      "file": "advancement/results.json",
+      "v2Requests": 0
+    },
+    {
+      "suite": "offer",
+      "result": 8,
+      "file": "offer/results.json",
+      "v2Requests": 0
+    },
+    {
+      "suite": "dashboard",
+      "result": true,
+      "file": "dashboard/results.json",
+      "v2Requests": 0
+    }
+  ],
+  "r03b": {
+    "localRefreshLoadingQueuedFailureRecovery": true,
+    "oneInstanceEach": true,
+    "breakpointDraftPreserved": true,
+    "summaryDomApiDbChecked": true,
+    "taskGuideNoWriteOrUrlChange": true
+  },
+  "notExecuted": [
+    "R03-C folds and focus restoration",
+    "R03-D history summaries",
+    "R03-E final acceptance",
+    "real device and screen reader",
+    "formal AC-01..36 acceptance"
+  ]
+}

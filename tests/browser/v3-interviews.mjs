@@ -459,6 +459,11 @@ try {
 
   const id = await schedule(first)
   assert.equal((await apiGet('/applications/' + first)).stage, 'first_interview')
+  // Parent refresh now retains the panel; wait for its refreshed context before inspecting the unchanged disabled condition.
+  await check(
+    '[...document.querySelectorAll(".v3-interviews button")].some(e=>e.textContent.trim()==="安排面试")',
+    'post-save interview context ready'
+  )
   const r1 = await apiGet('/interviews/' + id)
   assert.equal(r1.startTimeReached, false)
   assert.equal(r1.status, 'scheduled')

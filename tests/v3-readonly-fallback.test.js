@@ -29,11 +29,16 @@ function component(name) {
     (_, spec) => 'const {' + spec.replace(/ as /g, ':') + '}=Vue'
   )
   code = code.replace('export function render', 'function render')
-  return new Function('Vue', code + ';return render')(Vue)
+  return new Function('Vue', stripTypeScriptTypes(code, { mode: 'strip' }) + ';return render')(Vue)
 }
+const { orderHistory, historyCaption, sortableHistory, safeHistoryTime, validHistoryTime } =
+  await mappings('../src/api/history-display.ts')
 const stateRender = component('V3OfferState')
 const renderers = {
   V3OfferState: stateRender,
+  V3FeedbackSnapshot: component('V3FeedbackSnapshot'),
+  V3FeedbackHistory: component('V3FeedbackHistory'),
+  V3FeedbackPanel: component('V3FeedbackPanel'),
   V3OfferPanel: component('V3OfferPanel'),
   V3AdvancementPanel: component('V3AdvancementPanel')
 }
@@ -51,12 +56,20 @@ async function render(name, ctx) {
     data: () => ({
       load() {},
       loadHistory() {},
+      props: { disabled: false },
       loading: false,
       error: '',
       state: null,
       historyLoading: false,
       historyError: '',
       history: [],
+      historyExpanded: false,
+      toggleHistory() {},
+      safeHistoryTime,
+      orderHistory,
+      historyCaption,
+      items: [],
+      decisions: {},
       operationError: '',
       editor: null,
       gate: { current: { value: null } },
@@ -67,6 +80,7 @@ async function render(name, ctx) {
       outcomes,
       offerStatuses,
       label: (v) => v ?? '—',
+      safeHistoryTime,
       feedbackTime: () => '2030-01-01',
       ...ctx
     }),
@@ -227,5 +241,184 @@ test('OfferState distinguishes legal nulls from missing legacy facts', async () 
       assert.ok(html.includes(value), JSON.stringify(state) + ' missing ' + value)
     for (const value of forbidden)
       assert.ok(!html.includes(value), JSON.stringify(state) + ' unexpected ' + value)
+  }
+})
+
+test('history source sorting: 0/1/3/4+, equal timestamps, missing fields and immutability', () => {
+  for (const size of [0, 1, 3, 4, 7]) {
+    const rows = Array.from({ length: size }, (_, i) => ({
+      eventId: i + 1,
+      occurredAt: i < 3 ? 10 : 20
+    }))
+    const before = JSON.stringify(rows)
+    assert.deepEqual(
+      orderHistory(rows).map((x) => x.eventId),
+      rows.map((x) => x.eventId).reverse()
+    )
+    assert.equal(JSON.stringify(rows), before)
+    assert.ok(sortableHistory(rows))
+  }
+  const bad = [
+    { eventId: 1, occurredAt: null },
+    { eventId: 2, occurredAt: 2 }
+  ]
+  assert.equal(sortableHistory(bad), false)
+  assert.deepEqual(orderHistory(bad), bad)
+  assert.match(historyCaption(bad), /已加载/)
+})
+test('feedback history actual summary template guards unknown and prototype names', async () => {
+  for (const type of ['feedback_submitted', 'unknown_legacy', 'toString', '']) {
+    const html = await render('V3FeedbackHistory', {
+      eventNames: {
+        feedback_submitted: '首次提交',
+        feedback_supplemented: '晋级后补录',
+        feedback_corrected: '有痕更正'
+      },
+      items: [
+        {
+          eventId: 9,
+          eventType: type,
+          occurredAt: 1,
+          actorName: '虚构HR',
+          actorUserId: 1,
+          reason: null,
+          before: null,
+          after: null
+        }
+      ]
+    })
+    assert.match(
+      html,
+      type === 'feedback_submitted' ? /首次提交/ : type ? /未知，待核实/ : /未记录事件类型/
+    )
+    assert.match(html, /虚构HR/)
+    assert.match(html, /事件 #9/)
+  }
+})
+
+test('safe historical timestamp types and Date boundaries', () => {
+  let calls = 0
+  const f = (v) => {
+    calls++
+    return String(v)
+  }
+  for (const v of [
+    null,
+    undefined,
+    NaN,
+    Infinity,
+    '2030',
+    '',
+    {},
+    1.5,
+    8640000000000001,
+    -8640000000000001
+  ]) {
+    assert.equal(safeHistoryTime(v, f), '发生时间未记录，待核实')
+    assert.equal(validHistoryTime(v), false)
+  }
+  assert.equal(calls, 0)
+  for (const v of [0, 1794384001000, 8640000000000000, -8640000000000000])
+    assert.equal(safeHistoryTime(v, f), String(v))
+  assert.equal(
+    safeHistoryTime(0, () => {
+      throw Error()
+    }),
+    '发生时间未记录，待核实'
+  )
+})
+test('real Vue domain templates reject missing historical times without fake dates', async () => {
+  for (const time of [null, undefined, NaN, 'bad', 8640000000000001]) {
+    const e = {
+      eventId: 1,
+      eventType: 'unknown_legacy',
+      kind: 'normal',
+      occurredAt: time,
+      actorName: '虚构HR',
+      actorUserId: 1,
+      fromStage: 'screening',
+      toStage: 'first_interview',
+      missingInterviews: [],
+      before: base,
+      after: base
+    }
+    for (const name of ['V3OfferPanel', 'V3AdvancementPanel', 'V3FeedbackHistory']) {
+      const html = await render(name, { history: [e], items: [e] })
+      assert.match(html, /发生时间未记录，待核实/)
+      assert.doesNotMatch(html, /2030-01-01|1970/)
+    }
+    const html = await render('V3OfferState', {
+      state: { ...base, applicationStatus: 'closed', closedAt: time }
+    })
+    assert.match(html, /发生时间未记录，待核实/)
+  }
+})
+
+test('snapshot original submission time and real Shanghai second precision', async () => {
+  const { feedbackTime } = await mappings('../src/api/feedback-v3.ts')
+  const ms = Date.parse('2026-11-11T14:00:01+08:00')
+  assert.equal(safeHistoryTime(ms, feedbackTime), feedbackTime(ms))
+  assert.match(safeHistoryTime(ms, feedbackTime), /14:00:01/)
+  for (const time of [null, undefined, NaN, 'bad']) {
+    const html = await render('V3FeedbackSnapshot', {
+      value: {
+        reviewerName: '虚构',
+        recommendation: 'recommend',
+        reason: '记录',
+        recordedByUserId: 1,
+        submittedAt: time,
+        id: 1,
+        revision: 1
+      },
+      recommendations: { recommend: '推荐通过' }
+    })
+    assert.match(html, /发生时间未记录，待核实/)
+    assert.doesNotMatch(html, /1970|2030-01-01/)
+  }
+})
+
+test('actual feedback panel renders real supplement and waiver times safely', async () => {
+  const { feedbackTime } = await mappings('../src/api/feedback-v3.ts')
+  const valid = Date.parse('2026-11-11T14:00:01+08:00')
+  for (const time of [valid, null, undefined, NaN, 'bad', '1794384001000', 8640000000000001]) {
+    const fact = {
+      supplementEventId: 73,
+      supplementedAt: time,
+      waivers: [
+        {
+          eventId: 42,
+          occurredAt: time,
+          stageScope: 'first_interview',
+          toStage: 'second_interview',
+          reason: '实际原因'
+        }
+      ]
+    }
+    const html = await render('V3FeedbackPanel', {
+      context: {
+        application: { stage: 'first_interview' },
+        interviews: [{ id: 8, status: 'completed', stageScope: 'first_interview' }]
+      },
+      displayedMeetings: [{ id: 8, status: 'completed', stageScope: 'first_interview' }],
+      record: () => ({ id: 3 }),
+      facts: () => fact,
+      feedbackTime,
+      interviewStatus: { completed: '已完成' },
+      blocked: false,
+      allowed: () => false,
+      historyId: null,
+      blockedMessages: {}
+    })
+    assert.match(html, /补录事件 #73/)
+    assert.match(html, /事件 #42/)
+    assert.match(html, /实际原因/)
+    if (time === valid) {
+      assert.ok(html.includes(feedbackTime(valid)))
+      assert.match(html, /14:00:01/)
+      assert.match(html, /2026/)
+    } else {
+      assert.equal((html.match(/发生时间未记录，待核实/g) || []).length, 2)
+      assert.doesNotMatch(html, /1970|2026/)
+    }
   }
 })

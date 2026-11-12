@@ -1,0 +1,19 @@
+{
+  "chromium": "Chrome/157.0.8103.39",
+  "positionCreates": 2,
+  "applicationCreates": 23,
+  "idempotentReplay": true,
+  "operation403": true,
+  "roleRevocation": true,
+  "conflict409": true,
+  "draftRetention": true,
+  "filters": true,
+  "readRetry": true,
+  "v2Requests": 0,
+  "viewport": "1440x900",
+  "paginationRace": true,
+  "unmountRace": true,
+  "accountBoundary": true,
+  "closeReopenArchive": true,
+  "unverified": ["mobile hardware"]
+}

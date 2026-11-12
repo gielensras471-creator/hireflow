@@ -1,9 +1,14 @@
 <template>
   <section class="v3-feedback-panel" aria-label="面试评价管理">
+    <p v-if="props.disabled" role="status">
+      申请详情正在读取、读取失败或等待编辑结束，请先完成当前编辑或重新加载申请详情。
+    </p>
     <header>
       <h2>面试评价</h2>
       <p>评价独立于面试状态和 HR 决策；历史缺评与当前轮次分别展示。</p>
-      <el-button :disabled="loading || !!gate.current.value" @click="load">刷新面评</el-button>
+      <el-button :disabled="props.disabled || loading || !!gate.current.value" @click="load"
+        >刷新面评</el-button
+      >
     </header>
     <V3FeedbackEditor
       v-if="editor"
@@ -26,7 +31,7 @@
       state="error"
       title="暂时无法查看面评"
       :message="error"
-      action="重新加载"
+      :action="props.disabled ? undefined : '重新加载'"
       @action="load"
     />
     <V3Feedback
@@ -37,10 +42,11 @@
     />
     <template v-else>
       <article
-        v-for="meeting in context.interviews"
+        v-for="meeting in displayedMeetings"
         :key="meeting.id"
         class="v3-card v3-feedback-card"
         :data-feedback-interview="meeting.id"
+        :data-existing-feedback="record(meeting.id)?.id"
       >
         <header class="v3-feedback-heading">
           <h3>面试 #{{ meeting.id }} · {{ label(meeting.stageScope) }}</h3>
@@ -53,9 +59,8 @@
         <template v-if="record(meeting.id)">
           <V3FeedbackSnapshot :value="record(meeting.id)!" />
           <p v-if="facts(meeting.id)?.supplementEventId" class="v3-feedback-notice">
-            晋级后补录 · {{ feedbackTime(facts(meeting.id)!.supplementedAt!) }} · 补录事件 #{{
-              facts(meeting.id)!.supplementEventId
-            }}
+            晋级后补录 · {{ safeHistoryTime(facts(meeting.id)!.supplementedAt, feedbackTime) }} ·
+            补录事件 #{{ facts(meeting.id)!.supplementEventId }}
           </p>
           <div class="v3-feedback-actions">
             <el-button :disabled="blocked" @click="showHistory(record(meeting.id)!)"
@@ -97,7 +102,7 @@
         <details v-if="facts(meeting.id)?.waivers.length" class="v3-feedback-waivers" open>
           <summary>已说明原因推进 · 原晋级豁免事实</summary>
           <p v-for="waiver in facts(meeting.id)!.waivers" :key="waiver.eventId">
-            事件 #{{ waiver.eventId }} · {{ feedbackTime(waiver.occurredAt) }} ·
+            事件 #{{ waiver.eventId }} · {{ safeHistoryTime(waiver.occurredAt, feedbackTime) }} ·
             {{ label(waiver.stageScope) }} → {{ label(waiver.toStage) }} · 原因：{{ waiver.reason }}
           </p>
         </details>
@@ -124,6 +129,7 @@
   </section>
 </template>
 <script setup lang="ts">
+import { safeHistoryTime } from '../api/history-display'
 import { computed, inject, nextTick, onUnmounted, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import {
@@ -148,7 +154,7 @@ import V3FeedbackEditor from './V3FeedbackEditor.vue'
 import V3FeedbackSnapshot from './V3FeedbackSnapshot.vue'
 import V3FeedbackHistory from './V3FeedbackHistory.vue'
 import '../styles/v3-feedback.scss'
-const props = defineProps<{ applicationId: number }>()
+const props = defineProps<{ applicationId: number; disabled?: boolean; refreshToken?: number }>()
 const emit = defineEmits<{ updated: [] }>()
 const route = useRoute()
 const gate = inject(editorGateKey, null) ?? createEditorGate()
@@ -176,6 +182,7 @@ const historyId = ref<number | null>(null),
 const history = ref<Awaited<ReturnType<typeof readFeedbackHistory>> | null>(null)
 const blocked = computed(
   () =>
+    props.disabled ||
     loading.value ||
     !!error.value ||
     !context.value ||
@@ -183,6 +190,14 @@ const blocked = computed(
     !!gate.current.value ||
     v3Session.state.status !== 'ready'
 )
+const displayedMeetings = computed(() => {
+  const rows = context.value?.interviews ?? []
+  const stage = context.value?.application.stage
+  return [
+    ...rows.filter((row) => row.stageScope === stage),
+    ...rows.filter((row) => row.stageScope !== stage)
+  ]
+})
 const record = (id: number) => context.value?.feedback.find((row) => row.interviewId === id) ?? null
 const facts = (id: number) => context.value?.eligibility.find((row) => row.interviewId === id)
 function allowed(action: FeedbackAction, meeting: Interview) {
@@ -194,7 +209,7 @@ function allowed(action: FeedbackAction, meeting: Interview) {
   )
 }
 function load() {
-  if (gate.current.value || v3Session.state.status !== 'ready') return
+  if (props.disabled || gate.current.value || v3Session.state.status !== 'ready') return
   loading.value = true
   error.value = ''
   context.value = null
@@ -304,6 +319,14 @@ watch(
     void load()
   },
   { immediate: true }
+)
+watch(
+  () => props.refreshToken,
+  () => {
+    if (!props.disabled && !gate.current.value) {
+      void load()
+    }
+  }
 )
 onUnmounted(() => {
   alive = false

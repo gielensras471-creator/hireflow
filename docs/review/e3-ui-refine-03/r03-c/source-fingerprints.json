@@ -1,0 +1,13 @@
+{
+  "normalization": "UTF-8; CRLF normalized to LF",
+  "files": {
+    "src/views/V3Recruiting.vue": "2951a908c4944a913540f27cece5fb44ccd66a40af1193aede4879037f343c3c",
+    "src/styles/v3-recruiting.scss": "7a40db0b4281ea123ff4f3a252a29f5f17aae76e1f7b082df1fc047cef82827a",
+    "src/views/V3Interviews.vue": "8b3aed32f86b11c026afebde6999d07b5a5ad374a7a62d8f5a0536533d552e34",
+    "src/components/V3FeedbackPanel.vue": "595846740e575948b6455ab325beb66622bd16a58e06346038fe4a6b657d6b3d",
+    "src/components/V3OfferPanel.vue": "dfcb0f851f540a911518cce534b67230c1963426c4abdd7221d864d0e03accad",
+    "src/components/V3AdvancementPanel.vue": "a036725f85944295c0b650b3dc94399da84e1d18862ad41412299ed352943df6",
+    "tests/browser/v3-feedback.mjs": "896142bcd78adeb5ebc7bea7d4aab19dce728a647cbde370a7adb061ddd0f85e",
+    "tests/browser/r03c-detail-checks.mjs": "25c510c1866feda6506de309ab4d70320531271adc399d10684634e7dc39bf30"
+  }
+}

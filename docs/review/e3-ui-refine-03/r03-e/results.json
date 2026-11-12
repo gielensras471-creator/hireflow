@@ -1,0 +1,59 @@
+{
+  "task": "R03-E",
+  "startingHead": "d2751b7e84df5210a4a4702bc18bb2ba39aeffb6",
+  "node": {
+    "passed": 195,
+    "failed": 0,
+    "skipped": 0
+  },
+  "typecheck": "passed",
+  "lint": {
+    "errors": 0,
+    "existingV2Warnings": 1
+  },
+  "build": "passed",
+  "prettier": "passed; evidence formatting enforced before stage",
+  "diffCheck": "working tree passed; staged check enforced before commit",
+  "chromium": [
+    {
+      "suite": "recruiting",
+      "passed": true,
+      "evidence": "recruiting/results.json"
+    },
+    {
+      "suite": "interviews",
+      "passed": true,
+      "evidence": "interviews/results.json"
+    },
+    {
+      "suite": "feedback",
+      "passed": true,
+      "evidence": "feedback/results.json"
+    },
+    {
+      "suite": "advancement",
+      "passed": true,
+      "evidence": "advancement/results.json"
+    },
+    {
+      "suite": "offer",
+      "passed": true,
+      "evidence": "offer/results.json"
+    },
+    {
+      "suite": "dashboard",
+      "passed": true,
+      "evidence": "dashboard/results.json"
+    }
+  ],
+  "ECombination": "R03_E=1 actual legal long corrections; draft + 7 history entries + deferred parent refresh",
+  "P2": "R03-D-P2-01 implemented, pure functions + actual Vue SSR templates verified; awaiting independent closure",
+  "unverified": [
+    "real device",
+    "screen reader",
+    "200 percent zoom",
+    "all per-source late response/account switch combinations",
+    "10+ single-source history stress",
+    "formal E4 AC-01..36"
+  ]
+}

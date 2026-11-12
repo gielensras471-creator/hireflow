@@ -1,5 +1,8 @@
 <template>
   <section class="v3-advancement" aria-label="招聘阶段与 HR 决策">
+    <p v-if="props.disabled" role="status">
+      申请详情正在读取、读取失败或等待编辑结束，请先完成当前编辑或重新加载申请详情。
+    </p>
     <header>
       <h2>招聘阶段与 HR 决策</h2>
       <p>阶段由 HR 明确决定，面试完成或面评推荐不会自动晋级。</p>
@@ -23,7 +26,7 @@
       state="error"
       title="暂时无法核验晋级资格"
       :message="error"
-      action="重试晋级资格"
+      :action="props.disabled ? undefined : '重试晋级资格'"
       @action="load"
     />
     <section v-else-if="state" class="v3-card">
@@ -35,7 +38,7 @@
       <V3AdvancementFacts :facts="state.preflight" :feedback="state.feedback" />
       <div class="v3-advance-actions">
         <el-button
-          :disabled="!!gate.current.value || v3Session.state.status !== 'ready'"
+          :disabled="props.disabled || !!gate.current.value || v3Session.state.status !== 'ready'"
           @click="load"
           >刷新晋级资格</el-button
         ><el-button type="primary" :disabled="blocked || !canAdvance(state.preflight)" @click="open"
@@ -51,8 +54,20 @@
       @close="close"
       @saved="saved"
     />
-    <section class="v3-card">
+    <section class="v3-card" data-detail-history="advancement">
       <h3>真实晋级历史</h3>
+      <p v-if="!historyLoading && !historyError">
+        {{ historyCaption(history) }} 旧版历史未核实；本来源记录不代表旧版历史完整。
+      </p>
+      <button
+        v-if="history.length > 3 && !historyLoading && !historyError"
+        type="button"
+        class="v3-history-toggle"
+        :aria-expanded="historyExpanded"
+        @click="toggleHistory"
+      >
+        {{ historyExpanded ? '收起本组全部' : '查看本组全部' }}（{{ history.length }} 条）
+      </button>
       <V3Feedback v-if="historyLoading" state="loading" title="读取晋级历史中" />
       <V3Feedback
         v-else-if="historyError"
@@ -62,13 +77,15 @@
         action="重试晋级历史"
         @action="loadHistory"
       />
-      <p v-else-if="!history.length">暂无真实晋级事件；当前阶段不能代替历史证据。</p>
+      <p v-else-if="!history.length">
+        暂无真实晋级事件；当前已读取的该来源未记录可核实的业务事件，当前阶段不能代替历史证据。
+      </p>
       <details
-        v-for="event in history"
+        v-for="(event, index) in orderHistory(history)"
         v-else
+        v-show="historyExpanded || index < 3"
         :key="event.eventId"
         :data-advancement-event="event.eventId"
-        open
       >
         <summary>
           {{ label(event.fromStage) }} → {{ label(event.toStage) }} ·
@@ -79,7 +96,9 @@
                 : '未知，待核实'
               : '未记录晋级类型'
           }}
-          · 事件 #{{ event.eventId }}
+          · 事件 #{{ event.eventId }} · {{ safeHistoryTime(event.occurredAt, feedbackTime) }} · 实际
+          HR：{{ event.actorName || '未记录操作者' }} · 账号 #{{ event.actorUserId }} ·
+          {{ event.reason || '未记录附加原因' }}
         </summary>
         <p>
           {{
@@ -90,7 +109,7 @@
                 : '未记录事件类型'
           }}
           · 实际 HR：{{ event.actorName }} · 账号 #{{ event.actorUserId }} ·
-          {{ feedbackTime(event.occurredAt) }}
+          {{ safeHistoryTime(event.occurredAt, feedbackTime) }}
         </p>
         <p>晋级理由：{{ event.reason || '正常晋级，无附加理由' }}</p>
         <p v-if="event.missingInterviews.length">
@@ -110,6 +129,7 @@
   </section>
 </template>
 <script setup lang="ts">
+import { orderHistory, historyCaption, safeHistoryTime } from '../api/history-display'
 import { computed, inject, nextTick, onUnmounted, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import { readV3, v3Session } from '../api/request-v3'
@@ -128,7 +148,7 @@ import V3Feedback from './V3Feedback.vue'
 import V3AdvancementFacts from './V3AdvancementFacts.vue'
 import V3AdvancementEditor from './V3AdvancementEditor.vue'
 import '../styles/v3-advancement.scss'
-const props = defineProps<{ applicationId: number }>()
+const props = defineProps<{ applicationId: number; disabled?: boolean; refreshToken?: number }>()
 const emit = defineEmits<{ updated: [] }>()
 const route = useRoute(),
   gate = inject(editorGateKey, null) ?? createEditorGate()
@@ -149,6 +169,7 @@ let alive = true,
   lease: symbol | null = null
 const blocked = computed(
   () =>
+    props.disabled ||
     loading.value ||
     !!error.value ||
     opening.value ||
@@ -165,7 +186,7 @@ async function readState() {
   return { application, preflight, feedback }
 }
 function load() {
-  if (gate.current.value || v3Session.state.status !== 'ready') return
+  if (props.disabled || gate.current.value || v3Session.state.status !== 'ready') return
   loading.value = true
   error.value = ''
   state.value = null
@@ -257,6 +278,15 @@ watch(
   },
   { immediate: true }
 )
+watch(
+  () => props.refreshToken,
+  () => {
+    if (!props.disabled && !gate.current.value) {
+      void load()
+      void loadHistory()
+    }
+  }
+)
 onUnmounted(() => {
   alive = false
   attempt++
@@ -264,4 +294,20 @@ onUnmounted(() => {
   historyReads.invalidate()
   if (lease) gate.release(lease)
 })
+
+const historyExpanded = ref(false)
+async function toggleHistory(event: Event) {
+  const control = event.currentTarget as HTMLButtonElement
+  historyExpanded.value = !historyExpanded.value
+  if (!historyExpanded.value) {
+    await nextTick()
+    control.focus({ preventScroll: true })
+  }
+}
+watch(
+  () => history.value,
+  () => {
+    historyExpanded.value = false
+  }
+)
 </script>

@@ -32,7 +32,13 @@
       }}
     </dd>
     <dt>结束时间（上海）</dt>
-    <dd>{{ state.closedAt === null ? '—' : feedbackTime(state.closedAt) }}</dd>
+    <dd>
+      {{
+        state.closedAt === null && state.applicationStatus === 'active'
+          ? '—'
+          : safeHistoryTime(state.closedAt, feedbackTime)
+      }}
+    </dd>
     <dt>结束原因</dt>
     <dd>{{ state.closedReason ?? '—' }}</dd>
     <dt>版本</dt>
@@ -40,6 +46,7 @@
   </dl>
 </template>
 <script setup lang="ts">
+import { safeHistoryTime } from '../api/history-display'
 import { label } from '../api/recruiting-v3'
 import { offerStatuses, outcomes, type OfferState } from '../api/offer-v3'
 import { feedbackTime } from '../api/feedback-v3'
