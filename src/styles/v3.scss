@@ -317,3 +317,20 @@
     flex-shrink: 1;
   }
 }
+
+/* Local read feedback: preserve the shared card and original action semantics. */
+.v3-feedback {
+  overflow-wrap: anywhere;
+  h2 {
+    line-height: 1.5;
+  }
+  &[data-state='empty'] {
+    border-style: dashed;
+  }
+  &[data-state='error'] {
+    border-inline-start: 3px solid var(--v3-negative);
+  }
+  .v3-skeleton span {
+    background: var(--v3-border);
+  }
+}

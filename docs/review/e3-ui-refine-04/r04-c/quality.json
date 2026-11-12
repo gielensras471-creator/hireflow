@@ -1,0 +1,41 @@
+{
+  "base": "4abac4c1941b6f7089bf217c8ebbb8001711529a",
+  "branch": "review/e3-ui-refine-04",
+  "node": {
+    "command": "pnpm test",
+    "passed": 196,
+    "failed": 0
+  },
+  "typecheck": {
+    "command": "pnpm exec vue-tsc --noEmit",
+    "exit": 0
+  },
+  "lint": {
+    "command": "pnpm lint",
+    "exit": 0,
+    "warnings": [
+      "src/views/dashboard/index.vue:2:26 existing V2 vue/attributes-order warning"
+    ]
+  },
+  "build": {
+    "command": "pnpm build",
+    "exit": 0
+  },
+  "prettier": {
+    "files": [
+      "src/components/V3Feedback.vue",
+      "src/styles/v3.scss",
+      "tests/browser/v3-dashboard.mjs"
+    ],
+    "exit": 0
+  },
+  "diffCheck": 0,
+  "browser": {
+    "command": "R04_C=1 R04_AB=0 node tests/browser/v3-dashboard.mjs E:/FIFile/Documents/Codex/hireflow-r04-c-evidence",
+    "result": "results.json"
+  },
+  "notExecuted": [
+    "six complete business Chromium suites (not required by the R04-C task)",
+    "native browser 200% zoom / real device / screen reader / formal AC acceptance"
+  ]
+}

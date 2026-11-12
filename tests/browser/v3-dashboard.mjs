@@ -147,6 +147,42 @@ const width = (w) =>
     mobile: false
   })
 async function snapshot(name) {
+  if (process.env.R04_C === '1') {
+    if (
+      ![
+        'dashboard-empty',
+        'dashboard-loading',
+        'dashboard-error',
+        'r04c-work-loading',
+        'r04c-today-loading',
+        'r04c-work-error',
+        'r04c-today-error',
+        'r04c-retry-focus'
+      ].includes(name)
+    )
+      return
+    const target = name.includes('today')
+      ? '.v3-dashboard-today'
+      : name.includes('work')
+        ? '.v3-dashboard-details'
+        : ['dashboard-error', 'r04c-retry-focus'].includes(name)
+          ? '.v3-feedback[data-state=error]'
+          : null
+    if (target)
+      await evaluate(
+        'document.querySelector(' +
+          JSON.stringify(target) +
+          ')?.scrollIntoView({block:"start",behavior:"instant"})'
+      )
+    const { data } = await send('Page.captureScreenshot', {
+      format: 'png',
+      captureBeyondViewport: false
+    })
+    await writeFile(join(output, name + '.png'), Buffer.from(data, 'base64'))
+    await evaluate('window.scrollTo({top:0,behavior:"instant"})')
+    return
+  }
+
   if (process.env.R04_AB === '1') {
     if (!name.startsWith('r04-') && !['dashboard-error', 'dashboard-empty'].includes(name)) return
     const { data } = await send('Page.captureScreenshot', {
@@ -276,7 +312,17 @@ try {
       if (m.error) p?.reject(new Error(m.error.message))
       else p?.resolve(m.result)
     }
-    if (m.method === 'Network.requestWillBeSent') requests.push(m.params.request.url)
+    if (m.method === 'Network.requestWillBeSent') {
+      requests.push(m.params.request.url)
+      const { url, method } = m.params.request
+      const path = new URL(url).pathname
+      if (
+        path.startsWith('/api/v3/') &&
+        !path.startsWith('/api/v3/auth/') &&
+        !['GET', 'HEAD', 'OPTIONS'].includes(method)
+      )
+        browserWrites.push({ path, method })
+    }
     if (
       m.method === 'Network.responseReceived' &&
       m.params.response.url.endsWith('/api/v3/auth/me')
@@ -346,6 +392,22 @@ try {
   await fill(app.password, true)
   await h1('招聘工作台')
   await check('document.querySelector("[data-metric=positions]")?.textContent==="0"', 'real zero')
+  if (process.env.R04_C === '1') {
+    await check(
+      'document.querySelectorAll(".v3-feedback[data-state=empty]").length===2',
+      'both real empty regions'
+    )
+    assert.ok(
+      await evaluate(
+        '[...document.querySelectorAll(".v3-feedback[data-state=empty]")].every(e=>e.querySelector("[role=status]") && getComputedStyle(e).borderTopStyle==="dashed")'
+      )
+    )
+    assert.ok(
+      await evaluate(
+        '[...document.querySelectorAll(".v3-dashboard-pager button")].every(e=>e.disabled)'
+      )
+    )
+  }
   await snapshot('dashboard-empty')
   const pos = (
     await apiPost('/positions', {
@@ -520,7 +582,7 @@ try {
     format: 'png',
     captureBeyondViewport: false
   })
-  if (process.env.R04_AB !== '1')
+  if (process.env.R04_AB !== '1' && process.env.R04_C !== '1')
     await writeFile(
       join(output, 'dashboard-first-screen.png'),
       Buffer.from(firstScreen.data, 'base64')
@@ -649,13 +711,79 @@ try {
   await button('刷新工作台')
   await check('document.body.innerText.includes("暂时无法查看工作台指标")', 'summary fail')
   assert.equal(await evaluate('document.querySelectorAll("[data-metric]").length'), 0)
+  if (process.env.R04_C === '1') {
+    const card = 'document.querySelector(".v3-feedback[data-state=error]")'
+    assert.ok(await evaluate(card + '.querySelector("[role=alert]")!==null'))
+    assert.equal(await evaluate('getComputedStyle(' + card + ').borderInlineStartWidth'), '3px')
+    await evaluate(card + '.querySelector("button").focus()')
+    await send('Input.dispatchKeyEvent', {
+      type: 'keyDown',
+      key: 'Tab',
+      code: 'Tab',
+      windowsVirtualKeyCode: 9
+    })
+    await send('Input.dispatchKeyEvent', {
+      type: 'keyUp',
+      key: 'Tab',
+      code: 'Tab',
+      windowsVirtualKeyCode: 9
+    })
+    await evaluate(card + '.querySelector("button").focus()')
+    assert.ok(await evaluate(card + '.querySelector("button").matches(":focus-visible")'))
+    await snapshot('r04c-retry-focus')
+  }
   await snapshot('dashboard-error')
   failSummary = false
-  await button('重试指标')
+  if (process.env.R04_C === '1') {
+    await send('Input.dispatchKeyEvent', {
+      type: 'keyDown',
+      key: 'Enter',
+      code: 'Enter',
+      windowsVirtualKeyCode: 13,
+      text: '\r'
+    })
+    await send('Input.dispatchKeyEvent', {
+      type: 'keyUp',
+      key: 'Enter',
+      code: 'Enter',
+      windowsVirtualKeyCode: 13
+    })
+  } else await button('重试指标')
   await check('!!document.querySelector("[data-metric]")', 'summary retry')
+  if (process.env.R04_C === '1') {
+    holdPath =
+      '/api/v3/dashboard/work-items/' +
+      (await evaluate('document.querySelector("[aria-label=待办类别]").value'))
+    await button('刷新待办')
+    await until(() => releaseHeld, 'work-only held read')
+    assert.equal(await evaluate('document.querySelectorAll("[data-metric]").length'), 4)
+    await width(1100)
+    await snapshot('r04c-work-loading')
+    releaseHeld()
+    releaseHeld = null
+    await check(
+      '!document.querySelector(".v3-dashboard-details [role=status]")',
+      'work-only load restored'
+    )
+    holdPath = '/api/v3/dashboard/today-interviews'
+    await button('刷新今日面试')
+    await until(() => releaseHeld, 'today-only held read')
+    assert.equal(await evaluate('document.querySelectorAll("[data-metric]").length'), 4)
+    await snapshot('r04c-today-loading')
+    releaseHeld()
+    releaseHeld = null
+    await check(
+      '!document.querySelector(".v3-dashboard-today [role=status]")',
+      'today load restored'
+    )
+  }
   failWork = true
   await button('刷新待办')
   await check('document.body.innerText.includes("暂时无法查看待办")', 'work error')
+  if (process.env.R04_C === '1') {
+    assert.equal(await evaluate('document.querySelectorAll("[data-metric]").length'), 4)
+    await snapshot('r04c-work-error')
+  }
   failWork = false
   await button('重试待办')
   await check(
@@ -665,6 +793,12 @@ try {
   failToday = true
   await button('刷新今日面试')
   await check('document.body.innerText.includes("暂时无法查看今日面试")', 'today error')
+  if (process.env.R04_C === '1') {
+    await width(390)
+    await check('document.querySelector(".v3-shell").dataset.tier==="mobile"', 'mobile')
+    assert.equal(await evaluate('document.querySelectorAll("[data-metric]").length'), 4)
+    await snapshot('r04c-today-error')
+  }
   failToday = false
   await button('重试今日面试')
   await check('document.querySelectorAll(".v3-dashboard-today tbody tr").length===6', 'today retry')
@@ -701,6 +835,7 @@ try {
     0,
     'scroll ResizeObservers disconnected'
   )
+  assert.equal(browserWrites.length, 0, 'Dashboard interactions cannot issue business writes')
   await writeFile(
     join(output, 'results.json'),
     JSON.stringify(
@@ -708,6 +843,18 @@ try {
         chromium: (await (await fetch('http://127.0.0.1:' + port + '/json/version')).json())
           .Browser,
         passed: true,
+        r04c:
+          process.env.R04_C === '1'
+            ? {
+                independentLoading: ['summary', 'work', 'today'],
+                independentErrorsAndRetry: ['summary', 'work', 'today'],
+                emptyStatusAndDashedBorder: true,
+                emptyPaginationDisabled: true,
+                keyboardEnterRetryAndVisibleFocus: true,
+                screenshotsAtWidths: [1440, 1100, 390],
+                businessWritesFromDashboard: 0
+              }
+            : undefined,
         fixtures: 'fresh V3 memory DB, real HTTP commands and frozen Shanghai clock',
         checks: [
           'real empty/zero',
