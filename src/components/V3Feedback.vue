@@ -1,5 +1,5 @@
 <template>
-  <section class="v3-card v3-feedback" :aria-busy="state === 'loading'">
+  <section class="v3-card v3-feedback" :data-state="state" :aria-busy="state === 'loading'">
     <h2 :role="state === 'error' ? 'alert' : 'status'">{{ title }}</h2>
     <div v-if="state === 'loading'" class="v3-skeleton" aria-hidden="true">
       <span />

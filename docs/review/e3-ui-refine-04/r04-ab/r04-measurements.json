@@ -1,0 +1,147 @@
+{
+  "measurements": [
+    {
+      "width": 1440,
+      "height": 900,
+      "columns": 4,
+      "gridHeight": 138.578125,
+      "cards": [
+        {
+          "width": 273.5,
+          "height": 138.578125
+        },
+        {
+          "width": 273.5,
+          "height": 138.578125
+        },
+        {
+          "width": 273.5,
+          "height": 138.578125
+        },
+        {
+          "width": 273.5,
+          "height": 138.578125
+        }
+      ],
+      "workTop": 432.296875,
+      "scrollWidth": 1432
+    },
+    {
+      "width": 1100,
+      "height": 900,
+      "columns": 4,
+      "gridHeight": 138.578125,
+      "cards": [
+        {
+          "width": 228,
+          "height": 138.578125
+        },
+        {
+          "width": 228,
+          "height": 138.578125
+        },
+        {
+          "width": 228,
+          "height": 138.578125
+        },
+        {
+          "width": 228,
+          "height": 138.578125
+        }
+      ],
+      "workTop": 432.296875,
+      "scrollWidth": 1092
+    },
+    {
+      "width": 390,
+      "height": 844,
+      "columns": 2,
+      "gridHeight": 293.15625,
+      "cards": [
+        {
+          "width": 167,
+          "height": 138.578125
+        },
+        {
+          "width": 167,
+          "height": 138.578125
+        },
+        {
+          "width": 167,
+          "height": 138.578125
+        },
+        {
+          "width": 167,
+          "height": 138.578125
+        }
+      ],
+      "workTop": 654.0625,
+      "scrollWidth": 382
+    },
+    {
+      "width": 390,
+      "height": 900,
+      "columns": 2,
+      "gridHeight": 293.15625,
+      "cards": [
+        {
+          "width": 167,
+          "height": 138.578125
+        },
+        {
+          "width": 167,
+          "height": 138.578125
+        },
+        {
+          "width": 167,
+          "height": 138.578125
+        },
+        {
+          "width": 167,
+          "height": 138.578125
+        }
+      ],
+      "workTop": 654.0625,
+      "scrollWidth": 382
+    },
+    {
+      "width": 320,
+      "height": 844,
+      "columns": 1,
+      "gridHeight": 602.3125,
+      "cards": [
+        {
+          "width": 288,
+          "height": 138.578125
+        },
+        {
+          "width": 288,
+          "height": 138.578125
+        },
+        {
+          "width": 288,
+          "height": 138.578125
+        },
+        {
+          "width": 288,
+          "height": 138.578125
+        }
+      ],
+      "workTop": 963.21875,
+      "scrollWidth": 320
+    },
+    {
+      "pressure": "Chromium CSS zoom 200%; not toolbar zoom",
+      "pageWidth": 640,
+      "viewport": 390,
+      "bodyMinWidth": "320px",
+      "columns": 1,
+      "knownBoundary": "global reset.scss body minimum 320px; outside Dashboard-only scope"
+    },
+    {
+      "pressure": "synthetic DOM text only; restored original real values",
+      "overflow": false
+    }
+  ],
+  "statisticsUnchanged": true
+}

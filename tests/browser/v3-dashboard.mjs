@@ -147,6 +147,52 @@ const width = (w) =>
     mobile: false
   })
 async function snapshot(name) {
+  if (process.env.R04_C === '1') {
+    if (
+      ![
+        'dashboard-empty',
+        'dashboard-loading',
+        'dashboard-error',
+        'r04c-work-loading',
+        'r04c-today-loading',
+        'r04c-work-error',
+        'r04c-today-error',
+        'r04c-retry-focus'
+      ].includes(name)
+    )
+      return
+    const target = name.includes('today')
+      ? '.v3-dashboard-today'
+      : name.includes('work')
+        ? '.v3-dashboard-details'
+        : ['dashboard-error', 'r04c-retry-focus'].includes(name)
+          ? '.v3-feedback[data-state=error]'
+          : null
+    if (target)
+      await evaluate(
+        'document.querySelector(' +
+          JSON.stringify(target) +
+          ')?.scrollIntoView({block:"start",behavior:"instant"})'
+      )
+    const { data } = await send('Page.captureScreenshot', {
+      format: 'png',
+      captureBeyondViewport: false
+    })
+    await writeFile(join(output, name + '.png'), Buffer.from(data, 'base64'))
+    await evaluate('window.scrollTo({top:0,behavior:"instant"})')
+    return
+  }
+
+  if (process.env.R04_AB === '1') {
+    if (!name.startsWith('r04-') && !['dashboard-error', 'dashboard-empty'].includes(name)) return
+    const { data } = await send('Page.captureScreenshot', {
+      format: 'png',
+      captureBeyondViewport: false
+    })
+    await writeFile(join(output, name + '.png'), Buffer.from(data, 'base64'))
+    return
+  }
+
   const metrics = await send('Page.getLayoutMetrics')
   const { data } = await send('Page.captureScreenshot', {
     format: 'png',
@@ -172,6 +218,80 @@ async function fill(password, remember = false) {
       '&&!document.querySelector("input[type=checkbox]").checked)document.querySelector("input[type=checkbox]").click();document.querySelector("form").requestSubmit()})()'
   )
 }
+
+async function r04Checks() {
+  const rows = []
+  for (const [w, h] of [
+    [1440, 900],
+    [1100, 900],
+    [390, 844],
+    [390, 900],
+    [320, 844]
+  ]) {
+    await send('Emulation.setDeviceMetricsOverride', {
+      width: w,
+      height: h,
+      deviceScaleFactor: 1,
+      mobile: false
+    })
+    await check('window.innerWidth===' + w, 'R04 viewport')
+    if (w < 800)
+      await check(
+        'document.querySelector(".v3-shell").dataset.tier==="mobile"',
+        'mobile Shell settles'
+      )
+    await evaluate('new Promise(r=>requestAnimationFrame(()=>requestAnimationFrame(r)))')
+    await evaluate('window.scrollTo(0,0)')
+    const m = await evaluate(
+      '(()=>{const g=document.querySelector(".v3-dashboard-metrics"),r=g.getBoundingClientRect(),cards=[...g.children].map(e=>({width:e.getBoundingClientRect().width,height:e.getBoundingClientRect().height})),work=document.querySelector(".v3-dashboard-work").closest("section");return {width:innerWidth,height:innerHeight,columns:getComputedStyle(g).gridTemplateColumns.split(" ").length,gridHeight:r.height,cards,workTop:work.getBoundingClientRect().top,scrollWidth:document.documentElement.scrollWidth}})()'
+    )
+    if (m.columns !== (w >= 1100 ? 4 : w === 390 ? 2 : 1))
+      console.log(
+        'R04 layout',
+        m,
+        await evaluate('getComputedStyle(document.documentElement).fontSize')
+      )
+    assert.equal(m.columns, w >= 1100 ? 4 : w === 390 ? 2 : 1)
+    assert.ok(m.scrollWidth <= w)
+    rows.push(m)
+    if (w !== 320) await snapshot('r04-' + w + 'x' + h)
+  }
+  await width(390)
+  await evaluate('document.documentElement.style.zoom="2"')
+  await evaluate('new Promise(r=>requestAnimationFrame(()=>requestAnimationFrame(r)))')
+  assert.equal(
+    await evaluate(
+      'getComputedStyle(document.querySelector(".v3-dashboard-metrics")).gridTemplateColumns.split(" ").length'
+    ),
+    1
+  )
+  const zoomBounds = await evaluate(
+    '({pageWidth:document.documentElement.scrollWidth,viewport:innerWidth,bodyMinWidth:getComputedStyle(document.body).minWidth,columns:getComputedStyle(document.querySelector(".v3-dashboard-metrics")).gridTemplateColumns.split(" ").length})'
+  )
+  rows.push({
+    pressure: 'Chromium CSS zoom 200%; not toolbar zoom',
+    ...zoomBounds,
+    knownBoundary: 'global reset.scss body minimum 320px; outside Dashboard-only scope'
+  })
+  await evaluate('document.documentElement.style.zoom=""')
+  await evaluate(
+    'window.__r04text=[...document.querySelectorAll(".v3-dashboard-metrics h2,.v3-dashboard-metrics strong")].map(e=>[e,e.textContent]);window.__r04text.forEach(([e])=>e.textContent=e.tagName==="STRONG"?"999999999999999":"真实标题布局压力测试".repeat(5))'
+  )
+  assert.ok(await evaluate('document.documentElement.scrollWidth<=innerWidth'))
+  assert.ok(
+    await evaluate(
+      '[...document.querySelectorAll(".v3-dashboard-metrics strong")].every(e=>e.scrollWidth<=e.clientWidth+1)'
+    )
+  )
+  await evaluate('window.__r04text.forEach(([e,t])=>e.textContent=t);delete window.__r04text')
+  rows.push({ pressure: 'synthetic DOM text only; restored original real values', overflow: false })
+  await width(1440)
+  await writeFile(
+    join(output, 'r04-measurements.json'),
+    JSON.stringify({ measurements: rows, statisticsUnchanged: true }, null, 2)
+  )
+}
+
 const evidence = []
 try {
   const port = await until(
@@ -192,7 +312,17 @@ try {
       if (m.error) p?.reject(new Error(m.error.message))
       else p?.resolve(m.result)
     }
-    if (m.method === 'Network.requestWillBeSent') requests.push(m.params.request.url)
+    if (m.method === 'Network.requestWillBeSent') {
+      requests.push(m.params.request.url)
+      const { url, method } = m.params.request
+      const path = new URL(url).pathname
+      if (
+        path.startsWith('/api/v3/') &&
+        !path.startsWith('/api/v3/auth/') &&
+        !['GET', 'HEAD', 'OPTIONS'].includes(method)
+      )
+        browserWrites.push({ path, method })
+    }
     if (
       m.method === 'Network.responseReceived' &&
       m.params.response.url.endsWith('/api/v3/auth/me')
@@ -262,6 +392,22 @@ try {
   await fill(app.password, true)
   await h1('招聘工作台')
   await check('document.querySelector("[data-metric=positions]")?.textContent==="0"', 'real zero')
+  if (process.env.R04_C === '1') {
+    await check(
+      'document.querySelectorAll(".v3-feedback[data-state=empty]").length===2',
+      'both real empty regions'
+    )
+    assert.ok(
+      await evaluate(
+        '[...document.querySelectorAll(".v3-feedback[data-state=empty]")].every(e=>e.querySelector("[role=status]") && getComputedStyle(e).borderTopStyle==="dashed")'
+      )
+    )
+    assert.ok(
+      await evaluate(
+        '[...document.querySelectorAll(".v3-dashboard-pager button")].every(e=>e.disabled)'
+      )
+    )
+  }
   await snapshot('dashboard-empty')
   const pos = (
     await apiPost('/positions', {
@@ -400,6 +546,7 @@ try {
     assert.equal((await apiGet('/interviews/' + dueMeeting)).status, 'scheduled')
   }
   await snapshot('dashboard-desktop')
+  if (process.env.R04_AB === '1') await r04Checks()
   const refineMetrics = await tableChecks(
     { evaluate, send, width, check, snapshot },
     'dashboard-table',
@@ -407,18 +554,58 @@ try {
   )
   await writeFile(join(output, 'scroll-keyboard.json'), JSON.stringify(refineMetrics, null, 2))
   await selectedChecks({ evaluate, send, check, snapshot })
+  if (process.env.R04_AB === '1') {
+    await evaluate('document.querySelector("[data-work][aria-pressed=true]").focus()')
+    await send('Input.dispatchKeyEvent', {
+      type: 'keyDown',
+      key: 'Enter',
+      text: '\r',
+      code: 'Enter',
+      windowsVirtualKeyCode: 13
+    })
+    await send('Input.dispatchKeyEvent', {
+      type: 'keyUp',
+      key: 'Enter',
+      code: 'Enter',
+      windowsVirtualKeyCode: 13
+    })
+    assert.ok(
+      await evaluate(
+        '(()=>{const e=document.querySelector("[data-work][aria-pressed=true]");return e.matches(":focus-visible") && getComputedStyle(e).outlineStyle!=="none" && getComputedStyle(e).boxShadow!=="none"})()'
+      )
+    )
+    await snapshot('r04-selected-focus')
+  }
   await selection('screening')
 
   const firstScreen = await send('Page.captureScreenshot', {
     format: 'png',
     captureBeyondViewport: false
   })
-  await writeFile(
-    join(output, 'dashboard-first-screen.png'),
-    Buffer.from(firstScreen.data, 'base64')
-  )
+  if (process.env.R04_AB !== '1' && process.env.R04_C !== '1')
+    await writeFile(
+      join(output, 'dashboard-first-screen.png'),
+      Buffer.from(firstScreen.data, 'base64')
+    )
   for (const type of ['screening', 'scheduling', 'due', 'feedback', 'decision', 'offer']) {
     await selection(type)
+    if (process.env.R04_AB === '1') {
+      const option = await evaluate(
+        'document.querySelector("[aria-label=待办类别]").selectedOptions[0].textContent'
+      )
+      assert.ok(
+        (await evaluate('document.querySelector(".v3-dashboard-details h2").textContent')).includes(
+          option
+        )
+      )
+      assert.ok(
+        requests.some(
+          (url) =>
+            new URL(url).pathname === '/api/v3/dashboard/work-items/' + type &&
+            new URL(url).searchParams.get('offset') === '0'
+        )
+      )
+    }
     const p = await apiGet('/dashboard/work-items/' + type + '?limit=10&offset=0')
     assert.equal(
       await evaluate('document.querySelectorAll(".v3-dashboard-details tbody tr").length'),
@@ -503,6 +690,19 @@ try {
   holdPath = '/api/v3/dashboard/summary'
   await button('刷新工作台')
   await until(() => releaseHeld, 'summary loading')
+  if (process.env.R04_AB === '1') {
+    await width(390)
+    await check('innerWidth===390', 'loading mobile')
+    await evaluate('new Promise(r=>requestAnimationFrame(()=>requestAnimationFrame(r)))')
+    assert.equal(
+      await evaluate(
+        'getComputedStyle(document.querySelector(".v3-dashboard-metrics")).gridTemplateColumns.split(" ").length'
+      ),
+      2
+    )
+    await snapshot('r04-loading-390')
+    await width(1440)
+  }
   await snapshot('dashboard-loading')
   releaseHeld()
   releaseHeld = null
@@ -511,13 +711,79 @@ try {
   await button('刷新工作台')
   await check('document.body.innerText.includes("暂时无法查看工作台指标")', 'summary fail')
   assert.equal(await evaluate('document.querySelectorAll("[data-metric]").length'), 0)
+  if (process.env.R04_C === '1') {
+    const card = 'document.querySelector(".v3-feedback[data-state=error]")'
+    assert.ok(await evaluate(card + '.querySelector("[role=alert]")!==null'))
+    assert.equal(await evaluate('getComputedStyle(' + card + ').borderInlineStartWidth'), '3px')
+    await evaluate(card + '.querySelector("button").focus()')
+    await send('Input.dispatchKeyEvent', {
+      type: 'keyDown',
+      key: 'Tab',
+      code: 'Tab',
+      windowsVirtualKeyCode: 9
+    })
+    await send('Input.dispatchKeyEvent', {
+      type: 'keyUp',
+      key: 'Tab',
+      code: 'Tab',
+      windowsVirtualKeyCode: 9
+    })
+    await evaluate(card + '.querySelector("button").focus()')
+    assert.ok(await evaluate(card + '.querySelector("button").matches(":focus-visible")'))
+    await snapshot('r04c-retry-focus')
+  }
   await snapshot('dashboard-error')
   failSummary = false
-  await button('重试指标')
+  if (process.env.R04_C === '1') {
+    await send('Input.dispatchKeyEvent', {
+      type: 'keyDown',
+      key: 'Enter',
+      code: 'Enter',
+      windowsVirtualKeyCode: 13,
+      text: '\r'
+    })
+    await send('Input.dispatchKeyEvent', {
+      type: 'keyUp',
+      key: 'Enter',
+      code: 'Enter',
+      windowsVirtualKeyCode: 13
+    })
+  } else await button('重试指标')
   await check('!!document.querySelector("[data-metric]")', 'summary retry')
+  if (process.env.R04_C === '1') {
+    holdPath =
+      '/api/v3/dashboard/work-items/' +
+      (await evaluate('document.querySelector("[aria-label=待办类别]").value'))
+    await button('刷新待办')
+    await until(() => releaseHeld, 'work-only held read')
+    assert.equal(await evaluate('document.querySelectorAll("[data-metric]").length'), 4)
+    await width(1100)
+    await snapshot('r04c-work-loading')
+    releaseHeld()
+    releaseHeld = null
+    await check(
+      '!document.querySelector(".v3-dashboard-details [role=status]")',
+      'work-only load restored'
+    )
+    holdPath = '/api/v3/dashboard/today-interviews'
+    await button('刷新今日面试')
+    await until(() => releaseHeld, 'today-only held read')
+    assert.equal(await evaluate('document.querySelectorAll("[data-metric]").length'), 4)
+    await snapshot('r04c-today-loading')
+    releaseHeld()
+    releaseHeld = null
+    await check(
+      '!document.querySelector(".v3-dashboard-today [role=status]")',
+      'today load restored'
+    )
+  }
   failWork = true
   await button('刷新待办')
   await check('document.body.innerText.includes("暂时无法查看待办")', 'work error')
+  if (process.env.R04_C === '1') {
+    assert.equal(await evaluate('document.querySelectorAll("[data-metric]").length'), 4)
+    await snapshot('r04c-work-error')
+  }
   failWork = false
   await button('重试待办')
   await check(
@@ -527,6 +793,12 @@ try {
   failToday = true
   await button('刷新今日面试')
   await check('document.body.innerText.includes("暂时无法查看今日面试")', 'today error')
+  if (process.env.R04_C === '1') {
+    await width(390)
+    await check('document.querySelector(".v3-shell").dataset.tier==="mobile"', 'mobile')
+    assert.equal(await evaluate('document.querySelectorAll("[data-metric]").length'), 4)
+    await snapshot('r04c-today-error')
+  }
   failToday = false
   await button('重试今日面试')
   await check('document.querySelectorAll(".v3-dashboard-today tbody tr").length===6', 'today retry')
@@ -563,6 +835,7 @@ try {
     0,
     'scroll ResizeObservers disconnected'
   )
+  assert.equal(browserWrites.length, 0, 'Dashboard interactions cannot issue business writes')
   await writeFile(
     join(output, 'results.json'),
     JSON.stringify(
@@ -570,6 +843,18 @@ try {
         chromium: (await (await fetch('http://127.0.0.1:' + port + '/json/version')).json())
           .Browser,
         passed: true,
+        r04c:
+          process.env.R04_C === '1'
+            ? {
+                independentLoading: ['summary', 'work', 'today'],
+                independentErrorsAndRetry: ['summary', 'work', 'today'],
+                emptyStatusAndDashedBorder: true,
+                emptyPaginationDisabled: true,
+                keyboardEnterRetryAndVisibleFocus: true,
+                screenshotsAtWidths: [1440, 1100, 390],
+                businessWritesFromDashboard: 0
+              }
+            : undefined,
         fixtures: 'fresh V3 memory DB, real HTTP commands and frozen Shanghai clock',
         checks: [
           'real empty/zero',

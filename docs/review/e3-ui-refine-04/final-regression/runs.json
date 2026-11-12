@@ -1,0 +1,56 @@
+[
+  {
+    "name": "recruiting",
+    "command": "node tests/browser/v3-recruiting.mjs E:/FIFile/Documents/Codex/hireflow-r04-final-evidence/recruiting",
+    "start": "2026-11-12T07:58:44.448Z",
+    "end": "2026-11-12T07:59:12.071Z",
+    "exit": 0,
+    "node": "v24.17.0",
+    "sha": "8862d958da40227a0b449572bf2b3302e415497b"
+  },
+  {
+    "name": "interviews",
+    "command": "node tests/browser/v3-interviews.mjs E:/FIFile/Documents/Codex/hireflow-r04-final-evidence/interviews",
+    "start": "2026-11-12T07:59:12.073Z",
+    "end": "2026-11-12T07:59:40.170Z",
+    "exit": 0,
+    "node": "v24.17.0",
+    "sha": "8862d958da40227a0b449572bf2b3302e415497b"
+  },
+  {
+    "name": "feedback",
+    "command": "node tests/browser/v3-feedback.mjs E:/FIFile/Documents/Codex/hireflow-r04-final-evidence/feedback",
+    "start": "2026-11-12T07:59:40.171Z",
+    "end": "2026-11-12T08:00:00.385Z",
+    "exit": 0,
+    "node": "v24.17.0",
+    "sha": "8862d958da40227a0b449572bf2b3302e415497b"
+  },
+  {
+    "name": "advancement",
+    "command": "node tests/browser/v3-advancement.mjs E:/FIFile/Documents/Codex/hireflow-r04-final-evidence/advancement",
+    "start": "2026-11-12T08:00:00.385Z",
+    "end": "2026-11-12T08:00:21.299Z",
+    "exit": 0,
+    "node": "v24.17.0",
+    "sha": "8862d958da40227a0b449572bf2b3302e415497b"
+  },
+  {
+    "name": "offer",
+    "command": "node tests/browser/v3-offer.mjs E:/FIFile/Documents/Codex/hireflow-r04-final-evidence/offer",
+    "start": "2026-11-12T08:00:21.299Z",
+    "end": "2026-11-12T08:00:45.176Z",
+    "exit": 0,
+    "node": "v24.17.0",
+    "sha": "8862d958da40227a0b449572bf2b3302e415497b"
+  },
+  {
+    "name": "dashboard",
+    "command": "node tests/browser/v3-dashboard.mjs E:/FIFile/Documents/Codex/hireflow-r04-final-evidence/dashboard",
+    "start": "2026-11-12T08:00:45.177Z",
+    "end": "2026-11-12T08:01:01.391Z",
+    "exit": 0,
+    "node": "v24.17.0",
+    "sha": "8862d958da40227a0b449572bf2b3302e415497b"
+  }
+]
