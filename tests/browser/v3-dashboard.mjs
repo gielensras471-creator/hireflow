@@ -147,6 +147,16 @@ const width = (w) =>
     mobile: false
   })
 async function snapshot(name) {
+  if (process.env.R04_AB === '1') {
+    if (!name.startsWith('r04-') && !['dashboard-error', 'dashboard-empty'].includes(name)) return
+    const { data } = await send('Page.captureScreenshot', {
+      format: 'png',
+      captureBeyondViewport: false
+    })
+    await writeFile(join(output, name + '.png'), Buffer.from(data, 'base64'))
+    return
+  }
+
   const metrics = await send('Page.getLayoutMetrics')
   const { data } = await send('Page.captureScreenshot', {
     format: 'png',
@@ -172,6 +182,80 @@ async function fill(password, remember = false) {
       '&&!document.querySelector("input[type=checkbox]").checked)document.querySelector("input[type=checkbox]").click();document.querySelector("form").requestSubmit()})()'
   )
 }
+
+async function r04Checks() {
+  const rows = []
+  for (const [w, h] of [
+    [1440, 900],
+    [1100, 900],
+    [390, 844],
+    [390, 900],
+    [320, 844]
+  ]) {
+    await send('Emulation.setDeviceMetricsOverride', {
+      width: w,
+      height: h,
+      deviceScaleFactor: 1,
+      mobile: false
+    })
+    await check('window.innerWidth===' + w, 'R04 viewport')
+    if (w < 800)
+      await check(
+        'document.querySelector(".v3-shell").dataset.tier==="mobile"',
+        'mobile Shell settles'
+      )
+    await evaluate('new Promise(r=>requestAnimationFrame(()=>requestAnimationFrame(r)))')
+    await evaluate('window.scrollTo(0,0)')
+    const m = await evaluate(
+      '(()=>{const g=document.querySelector(".v3-dashboard-metrics"),r=g.getBoundingClientRect(),cards=[...g.children].map(e=>({width:e.getBoundingClientRect().width,height:e.getBoundingClientRect().height})),work=document.querySelector(".v3-dashboard-work").closest("section");return {width:innerWidth,height:innerHeight,columns:getComputedStyle(g).gridTemplateColumns.split(" ").length,gridHeight:r.height,cards,workTop:work.getBoundingClientRect().top,scrollWidth:document.documentElement.scrollWidth}})()'
+    )
+    if (m.columns !== (w >= 1100 ? 4 : w === 390 ? 2 : 1))
+      console.log(
+        'R04 layout',
+        m,
+        await evaluate('getComputedStyle(document.documentElement).fontSize')
+      )
+    assert.equal(m.columns, w >= 1100 ? 4 : w === 390 ? 2 : 1)
+    assert.ok(m.scrollWidth <= w)
+    rows.push(m)
+    if (w !== 320) await snapshot('r04-' + w + 'x' + h)
+  }
+  await width(390)
+  await evaluate('document.documentElement.style.zoom="2"')
+  await evaluate('new Promise(r=>requestAnimationFrame(()=>requestAnimationFrame(r)))')
+  assert.equal(
+    await evaluate(
+      'getComputedStyle(document.querySelector(".v3-dashboard-metrics")).gridTemplateColumns.split(" ").length'
+    ),
+    1
+  )
+  const zoomBounds = await evaluate(
+    '({pageWidth:document.documentElement.scrollWidth,viewport:innerWidth,bodyMinWidth:getComputedStyle(document.body).minWidth,columns:getComputedStyle(document.querySelector(".v3-dashboard-metrics")).gridTemplateColumns.split(" ").length})'
+  )
+  rows.push({
+    pressure: 'Chromium CSS zoom 200%; not toolbar zoom',
+    ...zoomBounds,
+    knownBoundary: 'global reset.scss body minimum 320px; outside Dashboard-only scope'
+  })
+  await evaluate('document.documentElement.style.zoom=""')
+  await evaluate(
+    'window.__r04text=[...document.querySelectorAll(".v3-dashboard-metrics h2,.v3-dashboard-metrics strong")].map(e=>[e,e.textContent]);window.__r04text.forEach(([e])=>e.textContent=e.tagName==="STRONG"?"999999999999999":"真实标题布局压力测试".repeat(5))'
+  )
+  assert.ok(await evaluate('document.documentElement.scrollWidth<=innerWidth'))
+  assert.ok(
+    await evaluate(
+      '[...document.querySelectorAll(".v3-dashboard-metrics strong")].every(e=>e.scrollWidth<=e.clientWidth+1)'
+    )
+  )
+  await evaluate('window.__r04text.forEach(([e,t])=>e.textContent=t);delete window.__r04text')
+  rows.push({ pressure: 'synthetic DOM text only; restored original real values', overflow: false })
+  await width(1440)
+  await writeFile(
+    join(output, 'r04-measurements.json'),
+    JSON.stringify({ measurements: rows, statisticsUnchanged: true }, null, 2)
+  )
+}
+
 const evidence = []
 try {
   const port = await until(
@@ -400,6 +484,7 @@ try {
     assert.equal((await apiGet('/interviews/' + dueMeeting)).status, 'scheduled')
   }
   await snapshot('dashboard-desktop')
+  if (process.env.R04_AB === '1') await r04Checks()
   const refineMetrics = await tableChecks(
     { evaluate, send, width, check, snapshot },
     'dashboard-table',
@@ -407,18 +492,58 @@ try {
   )
   await writeFile(join(output, 'scroll-keyboard.json'), JSON.stringify(refineMetrics, null, 2))
   await selectedChecks({ evaluate, send, check, snapshot })
+  if (process.env.R04_AB === '1') {
+    await evaluate('document.querySelector("[data-work][aria-pressed=true]").focus()')
+    await send('Input.dispatchKeyEvent', {
+      type: 'keyDown',
+      key: 'Enter',
+      text: '\r',
+      code: 'Enter',
+      windowsVirtualKeyCode: 13
+    })
+    await send('Input.dispatchKeyEvent', {
+      type: 'keyUp',
+      key: 'Enter',
+      code: 'Enter',
+      windowsVirtualKeyCode: 13
+    })
+    assert.ok(
+      await evaluate(
+        '(()=>{const e=document.querySelector("[data-work][aria-pressed=true]");return e.matches(":focus-visible") && getComputedStyle(e).outlineStyle!=="none" && getComputedStyle(e).boxShadow!=="none"})()'
+      )
+    )
+    await snapshot('r04-selected-focus')
+  }
   await selection('screening')
 
   const firstScreen = await send('Page.captureScreenshot', {
     format: 'png',
     captureBeyondViewport: false
   })
-  await writeFile(
-    join(output, 'dashboard-first-screen.png'),
-    Buffer.from(firstScreen.data, 'base64')
-  )
+  if (process.env.R04_AB !== '1')
+    await writeFile(
+      join(output, 'dashboard-first-screen.png'),
+      Buffer.from(firstScreen.data, 'base64')
+    )
   for (const type of ['screening', 'scheduling', 'due', 'feedback', 'decision', 'offer']) {
     await selection(type)
+    if (process.env.R04_AB === '1') {
+      const option = await evaluate(
+        'document.querySelector("[aria-label=待办类别]").selectedOptions[0].textContent'
+      )
+      assert.ok(
+        (await evaluate('document.querySelector(".v3-dashboard-details h2").textContent')).includes(
+          option
+        )
+      )
+      assert.ok(
+        requests.some(
+          (url) =>
+            new URL(url).pathname === '/api/v3/dashboard/work-items/' + type &&
+            new URL(url).searchParams.get('offset') === '0'
+        )
+      )
+    }
     const p = await apiGet('/dashboard/work-items/' + type + '?limit=10&offset=0')
     assert.equal(
       await evaluate('document.querySelectorAll(".v3-dashboard-details tbody tr").length'),
@@ -503,6 +628,19 @@ try {
   holdPath = '/api/v3/dashboard/summary'
   await button('刷新工作台')
   await until(() => releaseHeld, 'summary loading')
+  if (process.env.R04_AB === '1') {
+    await width(390)
+    await check('innerWidth===390', 'loading mobile')
+    await evaluate('new Promise(r=>requestAnimationFrame(()=>requestAnimationFrame(r)))')
+    assert.equal(
+      await evaluate(
+        'getComputedStyle(document.querySelector(".v3-dashboard-metrics")).gridTemplateColumns.split(" ").length'
+      ),
+      2
+    )
+    await snapshot('r04-loading-390')
+    await width(1440)
+  }
   await snapshot('dashboard-loading')
   releaseHeld()
   releaseHeld = null

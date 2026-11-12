@@ -49,7 +49,7 @@
             :class="{ 'is-selected': type === key }"
             @click="select(key)"
           >
-            <span class="v3-work-selection">{{ type === key ? '✓ 已选中' : '选择此类' }}</span
+            <span v-if="type === key" class="v3-work-selection">✓ 已选中</span
             ><span>{{ workLabels[key] }}</span
             ><strong>{{ summary.work[key].count }}</strong
             ><small>{{ unitLabel(summary.work[key].unit) }}</small>
@@ -64,7 +64,7 @@
             :class="{ 'is-selected': type === key }"
             @click="select(key)"
           >
-            <span class="v3-work-selection">{{ type === key ? '✓ 已选中' : '选择此类' }}</span
+            <span v-if="type === key" class="v3-work-selection">✓ 已选中</span
             >{{ workLabels[key] }} · {{ summary.work[key].count }}
             {{ unitLabel(summary.work[key].unit) }}
           </button>
