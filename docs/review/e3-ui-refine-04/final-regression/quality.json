@@ -1,0 +1,144 @@
+{
+  "testedSha": "8862d958da40227a0b449572bf2b3302e415497b",
+  "executor": "Codex local Windows",
+  "runs": [
+    {
+      "name": "recruiting",
+      "command": "node tests/browser/v3-recruiting.mjs E:/FIFile/Documents/Codex/hireflow-r04-final-evidence/recruiting",
+      "start": "2026-11-12T07:58:44.448Z",
+      "end": "2026-11-12T07:59:12.071Z",
+      "exit": 0,
+      "node": "v24.17.0",
+      "sha": "8862d958da40227a0b449572bf2b3302e415497b",
+      "result": "recruiting/results.json",
+      "chromium": "Chrome/157.0.8103.78",
+      "executor": "Codex on Owner Windows; not GitHub CI",
+      "v2Requests": 0
+    },
+    {
+      "name": "interviews",
+      "command": "node tests/browser/v3-interviews.mjs E:/FIFile/Documents/Codex/hireflow-r04-final-evidence/interviews",
+      "start": "2026-11-12T07:59:12.073Z",
+      "end": "2026-11-12T07:59:40.170Z",
+      "exit": 0,
+      "node": "v24.17.0",
+      "sha": "8862d958da40227a0b449572bf2b3302e415497b",
+      "result": "interviews/results.json",
+      "chromium": "Chrome/157.0.8103.78",
+      "executor": "Codex on Owner Windows; not GitHub CI",
+      "v2Requests": 0
+    },
+    {
+      "name": "feedback",
+      "command": "node tests/browser/v3-feedback.mjs E:/FIFile/Documents/Codex/hireflow-r04-final-evidence/feedback",
+      "start": "2026-11-12T07:59:40.171Z",
+      "end": "2026-11-12T08:00:00.385Z",
+      "exit": 0,
+      "node": "v24.17.0",
+      "sha": "8862d958da40227a0b449572bf2b3302e415497b",
+      "result": "feedback/results.json",
+      "chromium": "Chrome/157.0.8103.78",
+      "executor": "Codex on Owner Windows; not GitHub CI",
+      "v2Requests": 0
+    },
+    {
+      "name": "advancement",
+      "command": "node tests/browser/v3-advancement.mjs E:/FIFile/Documents/Codex/hireflow-r04-final-evidence/advancement",
+      "start": "2026-11-12T08:00:00.385Z",
+      "end": "2026-11-12T08:00:21.299Z",
+      "exit": 0,
+      "node": "v24.17.0",
+      "sha": "8862d958da40227a0b449572bf2b3302e415497b",
+      "result": "advancement/results.json",
+      "chromium": "Chrome/157.0.8103.78",
+      "executor": "Codex on Owner Windows; not GitHub CI",
+      "v2Requests": 0
+    },
+    {
+      "name": "offer",
+      "command": "node tests/browser/v3-offer.mjs E:/FIFile/Documents/Codex/hireflow-r04-final-evidence/offer",
+      "start": "2026-11-12T08:00:21.299Z",
+      "end": "2026-11-12T08:00:45.176Z",
+      "exit": 0,
+      "node": "v24.17.0",
+      "sha": "8862d958da40227a0b449572bf2b3302e415497b",
+      "result": "offer/results.json",
+      "chromium": "Chrome/157.0.8103.78",
+      "executor": "Codex on Owner Windows; not GitHub CI",
+      "v2Requests": 0
+    },
+    {
+      "name": "dashboard",
+      "command": "node tests/browser/v3-dashboard.mjs E:/FIFile/Documents/Codex/hireflow-r04-final-evidence/dashboard",
+      "start": "2026-11-12T08:00:45.177Z",
+      "end": "2026-11-12T08:01:01.391Z",
+      "exit": 0,
+      "node": "v24.17.0",
+      "sha": "8862d958da40227a0b449572bf2b3302e415497b",
+      "result": "dashboard/results.json",
+      "chromium": "Chrome/157.0.8103.78",
+      "executor": "Codex on Owner Windows; not GitHub CI",
+      "v2Requests": 0
+    }
+  ],
+  "static": [
+    {
+      "command": "pnpm test",
+      "start": "2026-11-12T07:59:27.579Z",
+      "end": "2026-11-12T07:59:34.527Z",
+      "exit": 0,
+      "log": "static-0.log"
+    },
+    {
+      "command": "pnpm exec vue-tsc --noEmit",
+      "start": "2026-11-12T07:59:34.528Z",
+      "end": "2026-11-12T07:59:49.129Z",
+      "exit": 0,
+      "log": "static-1.log"
+    },
+    {
+      "command": "pnpm lint",
+      "start": "2026-11-12T07:59:49.129Z",
+      "end": "2026-11-12T08:00:04.303Z",
+      "exit": 0,
+      "log": "static-2.log"
+    },
+    {
+      "command": "pnpm build",
+      "start": "2026-11-12T08:00:04.303Z",
+      "end": "2026-11-12T08:00:42.072Z",
+      "exit": 0,
+      "log": "static-3.log"
+    },
+    {
+      "command": "pnpm exec prettier --check src/components/V3Feedback.vue src/styles/v3.scss tests/browser/v3-dashboard.mjs src/styles/v3-dashboard.scss src/views/V3Dashboard.vue",
+      "start": "2026-11-12T08:00:42.073Z",
+      "end": "2026-11-12T08:00:43.134Z",
+      "exit": 0,
+      "log": "static-4.log"
+    },
+    {
+      "command": "git diff --check",
+      "start": "2026-11-12T08:00:43.134Z",
+      "end": "2026-11-12T08:00:43.221Z",
+      "exit": 0,
+      "log": "static-5.log"
+    }
+  ],
+  "nodeTests": {
+    "pass": 196,
+    "fail": 0
+  },
+  "lintWarnings": [
+    "src/views/dashboard/index.vue:2:26 vue/attributes-order"
+  ],
+  "nativeZoom200": "UNVERIFIED",
+  "cssZoom": {
+    "viewport": 390,
+    "pageWidth": 640,
+    "bodyMinWidth": "320px",
+    "source": "css-zoom-supplement/r04-measurements.json"
+  },
+  "archive": "STOPPED: Git authentication dry-run failed: unable to get password from user",
+  "evidenceCommit": null
+}

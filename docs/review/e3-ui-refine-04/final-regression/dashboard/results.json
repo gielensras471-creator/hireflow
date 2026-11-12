@@ -1,0 +1,24 @@
+{
+  "chromium": "Chrome/157.0.8103.78",
+  "passed": true,
+  "fixtures": "fresh V3 memory DB, real HTTP commands and frozen Shanghai clock",
+  "checks": [
+    "real empty/zero",
+    "six types and exact source rows",
+    "multiple feedback items, historical missing excluded",
+    "Offer accepted separate from hired",
+    "three reminder boundaries preserve scheduled",
+    "Shanghai today byStatus",
+    "server pages, old-response discard",
+    "refresh no business writes",
+    "detail routing",
+    "loading and independent error retry",
+    "operation403, account switch, actual role revocation",
+    "1440/390 no overflow",
+    "zero V2 requests"
+  ],
+  "limitations": [
+    "time window extremes additionally covered by backend tests",
+    "not formal full AC acceptance"
+  ]
+}
