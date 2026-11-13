@@ -199,6 +199,7 @@ const icons = {
   positions: 'M3 7h18v14H3z M8 7V4h8v3 M3 12h18 M10 12v2h4v-2',
   candidates:
     'M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2 M13 7a4 4 0 1 1-8 0 4 4 0 0 1 8 0 M22 21v-2a4 4 0 0 0-3-4 M17 3a4 4 0 0 1 0 8',
+  legacy: 'M4 4h16v5H4z M6 9v12h12V9 M10 13h4',
   interviews: 'M3 5h18v16H3z M7 3v4 M17 3v4 M3 10h18 M7 14h2 M12 14h2 M7 17h2'
 }
 let currentOwner: string | null = null

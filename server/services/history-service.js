@@ -195,6 +195,47 @@ export const createHistoryService = ({ db, resolveActor }) => {
       }),
     historicalMissing: (context, candidateId) =>
       read(context, () => feedback.historicalMissing(context, candidateId)),
+    legacyPage: (context, options = {}) =>
+      read(context, () => {
+        validateOptions(options, ['limit', 'offset', 'entityType', 'mappingStatus', 'sourceKey'])
+        const { limit = 50, offset = 0, entityType, mappingStatus, sourceKey } = options
+        validateLimit(limit)
+        if (
+          !Number.isSafeInteger(offset) ||
+          offset < 0 ||
+          offset > 100000 ||
+          (entityType !== undefined && !legacyEntities.has(entityType)) ||
+          (mappingStatus !== undefined &&
+            !['unique_match', 'no_match', 'ambiguous', 'not_applicable'].includes(mappingStatus)) ||
+          (sourceKey !== undefined &&
+            (typeof sourceKey !== 'string' || !sourceKey.trim() || sourceKey.length > 128))
+        )
+          throw new CommandError('INVALID_QUERY')
+        const filters = [
+          ['entity_type', entityType],
+          ['mapping_status', mappingStatus],
+          ['source_key', sourceKey]
+        ].filter(([, v]) => v !== undefined)
+        const where = filters.length ? ' WHERE ' + filters.map(([k]) => k + '=?').join(' AND ') : ''
+        const args = filters.map(([, v]) => v)
+        const total = db.prepare('SELECT COUNT(*) n FROM legacy_records' + where).get(...args).n
+        const items = db
+          .prepare(
+            'SELECT source_key,entity_type,legacy_id,mapping_status,mapped_position_id,imported_at FROM legacy_records' +
+              where +
+              ' ORDER BY source_key,entity_type,legacy_id LIMIT ? OFFSET ?'
+          )
+          .all(...args, limit, offset)
+          .map((r) => ({
+            sourceKey: r.source_key,
+            entityType: r.entity_type,
+            legacyId: r.legacy_id,
+            mappingStatus: r.mapping_status,
+            mappedPositionId: r.mapped_position_id,
+            importedAt: r.imported_at
+          }))
+        return { items, total, limit, offset }
+      }),
     legacyRecord: (context, key) =>
       read(context, () => {
         validateOptions(key, ['sourceKey', 'entityType', 'legacyId'])

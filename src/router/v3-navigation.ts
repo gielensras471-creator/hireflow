@@ -2,12 +2,14 @@ export const v3Sections = [
   { path: '/dashboard', name: 'dashboard', title: '工作台' },
   { path: '/positions', name: 'positions', title: '职位管理' },
   { path: '/candidates', name: 'candidates', title: '候选人管理' },
-  { path: '/interviews', name: 'interviews', title: '面试管理' }
+  { path: '/interviews', name: 'interviews', title: '面试管理' },
+  { path: '/legacy-records', name: 'legacy', title: '旧版档案' }
 ] as const
 
 export function tabInfo(path: string) {
   const section = v3Sections.find((item) => item.path === path)
   if (section) return { key: section.path, title: section.title }
+  if (path === '/legacy-records/detail') return { key: path, title: '旧档详情' }
   if (path === '/profile') return { key: path, title: '个人中心' }
   const id = /^\/candidates\/([1-9]\d*)$/.exec(path)?.[1]
   if (id && Number.isSafeInteger(Number(id))) return { key: path, title: '申请 #' + id }

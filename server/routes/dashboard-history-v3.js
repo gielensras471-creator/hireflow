@@ -175,6 +175,18 @@ export const createV3DashboardHistoryRoutes = ({
     })
   )
   router.get(
+    '/legacy-records/list',
+    read((req, actor) => {
+      queryFields(req.query, ['limit', 'offset', 'entityType', 'mappingStatus', 'sourceKey'])
+      const { limit = '50', offset = '0', ...filters } = req.query
+      return history.legacyPage(actor, {
+        ...filters,
+        limit: integer(limit, 1, 100),
+        offset: integer(offset, 0, 100000)
+      })
+    })
+  )
+  router.get(
     '/legacy-records',
     read((req, actor) => legacyRecordDto(history.legacyRecord(actor, legacyKey(req.query))))
   )
