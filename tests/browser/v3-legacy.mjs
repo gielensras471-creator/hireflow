@@ -1,7 +1,4 @@
-import {
-  tableChecks,
-  observerProbe
-} from 'file:///E:/FIFile/Documents/Codex/HireFlow/worktrees/hireflow-v3-ac16-fix/tests/browser/refine-list-checks.mjs'
+import { tableChecks, observerProbe } from './refine-list-checks.mjs'
 import assert from 'node:assert/strict'
 import { spawn } from 'node:child_process'
 import { mkdir, mkdtemp, readFile, writeFile } from 'node:fs/promises'
@@ -310,6 +307,8 @@ try {
           .all()
       ])
     )
+  const file = (name, data) =>
+    writeFile(join(output, currentAc, name + '.json'), JSON.stringify(data, null, 2))
   const run = async (id, fn) => {
     currentAc = id
     await fs.mkdir(join(output, id), { recursive: true })
