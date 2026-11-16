@@ -1,0 +1,13 @@
+# Insert INSIDE the existing api.pixelweave.xyz TLS server only after review.
+# Check all regex locations/rewrite rules before using; this snippet is not a full site.
+location ^~ /api/v3/ {
+    proxy_pass http://127.0.0.1:3301;
+    proxy_set_header Host $host;
+    proxy_set_header X-Real-IP $remote_addr;
+    proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+    proxy_set_header X-Forwarded-Proto $scheme;
+    proxy_read_timeout 30s;
+    # V3 Express owns CORS. Do not add duplicate Access-Control-* headers.
+}
+# KEEP the existing V2 location /api/ and proxy_pass unchanged.
+# Do not expose V3 data, backup, logs or server environment paths through root/alias.

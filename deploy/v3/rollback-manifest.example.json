@@ -1,0 +1,7 @@
+{
+  "authorization": "REPLACE_WITH_OWNER_DECISION",
+  "v2Sha": "490b9ee2f1985b37052feebefd73605aa0dba1ab",
+  "renderDeployId": "REPLACE_WITH_CONFIRMED_DEPLOY_ID",
+  "nginxSnapshot": "REPLACE_WITH_APPROVED_CONFIG_SNAPSHOT",
+  "v2Database": "/var/lib/hireflow/hireflow.db"
+}
