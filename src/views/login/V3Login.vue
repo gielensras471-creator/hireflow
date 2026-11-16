@@ -3,7 +3,7 @@
     <section class="v3-card v3-login-card">
       <p class="v3-brand">HireFlow</p>
       <h1>登录招聘工作台</h1>
-      <p>V3 · 本地隔离联调</p>
+      <p>V3 · {{ productionBuild ? '招聘工作台' : '本地隔离联调' }}</p>
       <V3Feedback v-if="status === 'checking' && !pending" state="loading" title="正在确认身份" />
       <V3Feedback
         v-else-if="status === 'unavailable' && !pending"
@@ -43,6 +43,8 @@ import { useRoute, useRouter } from 'vue-router'
 import { v3Session, adaptV3Error } from '../../api/request-v3'
 import { safeReturn } from '../../router/v3-navigation'
 import V3Feedback from '../../components/V3Feedback.vue'
+
+const productionBuild = import.meta.env.MODE === 'v3-production'
 import '../../styles/v3.scss'
 
 const route = useRoute()

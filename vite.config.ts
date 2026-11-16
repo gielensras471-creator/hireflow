@@ -27,7 +27,7 @@ export default defineConfig(({ mode }) => {
     },
     plugins: [vue()],
     build: {
-      outDir: 'dist',
+      outDir: mode === 'v3-production' ? 'dist-v3' : 'dist',
       sourcemap: false,
       chunkSizeWarningLimit: 1800
     }

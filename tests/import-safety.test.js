@@ -15,7 +15,7 @@ test('fresh imports cannot open a database, seed, load dotenv, listen or mutate 
           format: 'module',
           shortCircuit: true,
           source:
-            "export class DatabaseSync { constructor() { throw new Error('Unexpected database connection') } }"
+            "export class DatabaseSync { constructor() { throw new Error('Unexpected database connection') } }; export const constants = {}; export function backup() { throw new Error('Unexpected SQLite backup') }"
         }
       }
       return nextLoad(url, context)
@@ -41,6 +41,11 @@ test('fresh imports cannot open a database, seed, load dotenv, listen or mutate 
   })
   for (const file of [
     'index.js',
+    'index-v3.js',
+    'config-v3.js',
+    'db/persistent-v3.js',
+    'db/v3-database-checks.js',
+    'scripts/database-v3.js',
     'app.js',
     'app-v3.js',
     'routes/recruiting-v3.js',

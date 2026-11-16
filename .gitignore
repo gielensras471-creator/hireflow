@@ -13,3 +13,6 @@ server/.env
 server/data/*.db
 server/data/*.db-shm
 server/data/*.db-wal
+
+# Independent V3 production build
+dist-v3/
