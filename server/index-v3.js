@@ -14,7 +14,11 @@ export async function startV3Server(env = process.env) {
   try {
     if (!db.prepare("SELECT 1 FROM users WHERE role IN ('hr','招聘管理员') LIMIT 1").get())
       throw new Error('Offline HR provisioning required')
-    const api = createV3App({ db, authConfig: { jwtSecret: config.secret } }),
+    const api = createV3App({
+        db,
+        clientOrigins: config.clientOrigins,
+        authConfig: { jwtSecret: config.secret }
+      }),
       app = express()
     app.disable('x-powered-by')
     app.use((req, res, next) => {

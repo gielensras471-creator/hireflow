@@ -13,6 +13,8 @@ const hook = registerHooks({
   resolve(specifier, context, nextResolve) {
     if (specifier === '../utils/auth-v3' && context.parentURL?.endsWith('/src/api/request-v3.ts'))
       return nextResolve('../utils/auth-v3.ts', context)
+    if (specifier === './v3-api-base' && context.parentURL?.endsWith('/src/api/request-v3.ts'))
+      return nextResolve('./v3-api-base.ts', context)
     return nextResolve(specifier, context)
   }
 })

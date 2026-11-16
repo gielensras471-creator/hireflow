@@ -1,7 +1,11 @@
 import axios from 'axios'
+import { resolveV3ApiBase } from './v3-api-base'
 import { createV3Session, V3Error, type Credentials, type V3User } from '../utils/auth-v3'
 
-const http = axios.create({ baseURL: '/api/v3', timeout: 10000 })
+const http = axios.create({
+  baseURL: resolveV3ApiBase(import.meta.env?.VITE_HIREFLOW_V3_API_URL),
+  timeout: 10000
+})
 
 export function adaptV3Error(error: unknown): V3Error {
   if (error instanceof V3Error) return error

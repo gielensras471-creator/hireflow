@@ -1,4 +1,5 @@
 import path from 'node:path'
+import { parseV3Origins } from './middleware/cors-v3.js'
 export function resolveV3Config(env) {
   if (env.NODE_ENV !== 'production') throw new Error('V3 production entry requires production mode')
   for (const key of ['V3_DATA_ROOT', 'V3_DATABASE_PATH'])
@@ -31,6 +32,7 @@ export function resolveV3Config(env) {
   )
     throw new Error('Static files must not expose data directory')
   return {
+    clientOrigins: parseV3Origins(env.V3_CLIENT_ORIGINS),
     root: env.V3_DATA_ROOT,
     file: env.V3_DATABASE_PATH,
     secret: env.V3_JWT_SECRET,
