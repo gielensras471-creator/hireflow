@@ -2,6 +2,8 @@
 
 本批仅实现方案 A 的本地适配；不构成预发布、正式发布或 V2 数据迁移授权。Node.js 至少 24.15.0，使用受控本机持久盘及独立进程。V2 的 build/start 和数据库保持不变。
 
+本页保留 RELEASE-02 的本地生产等价验证范围。V3 已冻结，当前公开体验走腾讯云独立 Demo，原 Render 站点保留原状。末节发布门禁反映当时阶段，当前交付状态见项目 README 和 DOC-SYNC-05。
+
 ## 四个独立动作
 
 1. Owner/运维预先创建并授权 V3 数据根目录。Linux 目录应由运行用户持有且不可被组/其他用户写入，数据库仅该用户可读写；Windows 应使用独立服务账号和受限 NTFS ACL。代码拒绝网络共享、符号链接、硬链接及根目录外数据库。Windows Fixed 卷核查需要 PowerShell Get-Volume 可用；失败时拒绝，不自动降级。
@@ -11,7 +13,7 @@
 
 ## 前端与代理
 
-`pnpm build:v3` 输出 dist-v3，真正 production 构建（DEV=false）；`pnpm build` 继续输出 V2 dist。不要混用两个产物。V3 Axios 固定同源 /api/v3。
+`pnpm build:v3` 输出 dist-v3，真正 production 构建（DEV=false）；`pnpm build` 继续输出 V2 dist。不要混用两个产物。正式 V3 默认使用同源 /api/v3，可通过 VITE_HIREFLOW_V3_API_URL 指定正式 API 基址。公开 Demo 固定使用其同源 /api/v3。
 
 可选将 V3_STATIC_DIR 配为 dist-v3 的绝对路径，由独立 V3 Express 同源提供静态文件和非 API SPA 深链 fallback。静态目录不得包含数据根目录。GET /api/v3/health 为最小存活检查，GET /api/v3/ready 为已完成数据库和 HR 门禁且服务未 drain 的就绪检查。未知 /api 路径返回 JSON 404，不 fallback 到 HTML。
 
