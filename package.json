@@ -1,11 +1,11 @@
 {
   "name": "hireflow",
-  "version": "2.1.1",
+  "version": "3.0.0",
   "private": true,
   "type": "module",
   "author": "Liu Haohan",
   "license": "MIT",
-  "homepage": "https://hireflow-wed.onrender.com",
+  "homepage": "https://demo.pixelweave.xyz/",
   "repository": {
     "type": "git",
     "url": "https://github.com/gielensras471-creator/hireflow.git"
@@ -26,7 +26,8 @@
     "build:v3": "vue-tsc && vite build --mode v3-production",
     "start:v3": "node server/index-v3.js",
     "db:v3": "node server/scripts/database-v3.js",
-    "build:demo": "vue-tsc && vite build --mode v3-demo"
+    "build:demo": "vue-tsc && vite build --mode v3-demo",
+    "start:demo": "node server/index-demo-v3.js"
   },
   "dependencies": {
     "axios": "^1.6.8",
