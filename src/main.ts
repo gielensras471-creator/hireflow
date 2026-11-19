@@ -13,7 +13,7 @@ import './styles/element.scss'
 async function mount() {
   const { default: router } =
     (import.meta.env.DEV && import.meta.env.MODE === 'v3-local') ||
-    import.meta.env.MODE === 'v3-production'
+    ['v3-production', 'v3-demo'].includes(import.meta.env.MODE)
       ? await import('./router/v3')
       : await import('./router')
 

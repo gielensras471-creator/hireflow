@@ -8,34 +8,51 @@
         >刷新面试记录</el-button
       >
     </header>
-    <form v-if="!applicationId" class="v3-card v3-interview-filters" @submit.prevent="filter">
-      <label
-        >申请编号（ID）<input
+    <form
+      v-if="!applicationId"
+      class="v3-card v3-interview-filters v3-filter-toolbar"
+      @submit.prevent="filter"
+    >
+      <div class="v3-filter-field">
+        <label for="interview-application-id">申请编号（ID）</label>
+        <input
+          id="interview-application-id"
           v-model="applicationFilter"
           type="number"
           min="1"
           aria-label="申请 ID"
-          placeholder="输入申请编号（精确匹配）"
-      /></label>
-      <label
-        >职位编号（ID）<input
+          placeholder="精确匹配"
+        />
+      </div>
+      <div class="v3-filter-field">
+        <label for="interview-position-id">职位编号（ID）</label>
+        <input
+          id="interview-position-id"
           v-model="positionFilter"
           type="number"
           min="1"
           aria-label="职位 ID"
-          placeholder="输入职位编号（精确匹配）"
-      /></label>
-      <select v-model="stage" aria-label="面试轮次">
-        <option value="">全部轮次</option>
-        <option value="first_interview">初面</option>
-        <option value="second_interview">复面</option>
-      </select>
-      <select v-model="status" aria-label="面试状态">
-        <option value="">全部状态</option>
-        <option v-for="(text, key) in interviewStatus" :key="key" :value="key">{{ text }}</option>
-      </select>
-      <el-button type="primary" native-type="submit">筛选</el-button
-      ><el-button @click="router.push('/interviews')">清除筛选</el-button>
+          placeholder="精确匹配"
+        />
+      </div>
+      <V3FilterSelect
+        id="interview-stage"
+        v-model="stage"
+        label="面试轮次"
+        all-label="全部轮次"
+        :options="{ first_interview: '初面', second_interview: '复面' }"
+      />
+      <V3FilterSelect
+        id="interview-status"
+        v-model="status"
+        label="面试状态"
+        all-label="全部状态"
+        :options="interviewStatus"
+      />
+      <div class="v3-filter-actions">
+        <el-button type="primary" native-type="submit">筛选</el-button>
+        <el-button @click="clearFilters">清除筛选</el-button>
+      </div>
       <p class="v3-filter-help">编号用于精确查找，不按姓名搜索。清除筛选可查看全部面试。</p>
     </form>
     <p v-if="!applicationId" class="v3-applied-filters" role="status">
@@ -57,7 +74,7 @@
           !!gate.current.value ||
           !canSchedule(application, items)
         "
-        @click="openEditor(null, 'schedule')"
+        @click="openEditor($event, null, 'schedule')"
         >安排面试</el-button
       >
       <p v-if="application.applicationStatus !== 'active'">申请已结束，不能安排或变更面试。</p>
@@ -74,7 +91,8 @@
       :application="editor.application"
       :interview="editor.interview"
       :action="editor.action"
-      @close="closeEditor"
+      @vue:mounted="editorFocus.enter"
+      @close="cancelWithFocus"
       @saved="saved"
     />
     <p v-if="operationError" class="v3-error" role="alert">{{ operationError }}</p>
@@ -193,7 +211,7 @@
                     !!editor ||
                     opening
                   "
-                  @click="openEditor(row, action)"
+                  @click="openEditor($event, row, action)"
                   >{{ interviewAction[action] }}</el-button
                 >
               </td>
@@ -210,6 +228,7 @@
   </section>
 </template>
 <script setup lang="ts">
+import { useEditorFocus } from '../utils/v3-editor-focus'
 import V3TableScroll from '../components/V3TableScroll.vue'
 import { computed, inject, nextTick, onUnmounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
@@ -225,6 +244,7 @@ import {
   type Interview,
   type InterviewAction
 } from '../api/interview-v3'
+import V3FilterSelect from '../components/V3FilterSelect.vue'
 import V3Feedback from '../components/V3Feedback.vue'
 import V3InterviewEditor from '../components/V3InterviewEditor.vue'
 import '../styles/v3-interviews.scss'
@@ -314,7 +334,7 @@ function load() {
     }
   )
 }
-async function openEditor(row: Interview | null, action: InterviewAction) {
+async function openEditor(event: MouseEvent, row: Interview | null, action: InterviewAction) {
   if (
     editor.value ||
     opening.value ||
@@ -328,6 +348,7 @@ async function openEditor(row: Interview | null, action: InterviewAction) {
   const acquired = gate.acquire()
   if (!acquired) return
   lease = acquired
+  editorFocus.remember(event)
   const path = route.fullPath
   const attempt = ++generation,
     owner = v3Session.version()
@@ -373,6 +394,11 @@ async function openEditor(row: Interview | null, action: InterviewAction) {
     }
   }
 }
+const editorFocus = useEditorFocus('.v3-interviews')
+async function cancelWithFocus() {
+  await closeEditor()
+  await editorFocus.restore()
+}
 async function closeEditor() {
   const releasing = lease
   generation++
@@ -384,7 +410,7 @@ async function closeEditor() {
   if (lease === releasing) lease = null
 }
 function saved() {
-  closeEditor()
+  void closeEditor().then(editorFocus.restore)
   void load()
   emit('updated')
 }
@@ -398,6 +424,10 @@ function filter() {
   ])
     if (value) query[key] = value
   void router.push({ path: '/interviews', query })
+}
+function clearFilters() {
+  applicationFilter.value = positionFilter.value = stage.value = status.value = ''
+  void router.push('/interviews')
 }
 function page(amount: number) {
   void router.push({
@@ -438,6 +468,7 @@ watch(
   }
 )
 onUnmounted(() => {
+  editorFocus.clear()
   alive = false
   if (lease) gate.release(lease)
   window.clearInterval(refreshTimer)

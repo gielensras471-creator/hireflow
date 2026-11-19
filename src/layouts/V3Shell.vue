@@ -57,7 +57,7 @@
           </div>
         </header>
 
-        <div class="v3-tabs" aria-label="已打开页面" @keydown.esc="closeOverflow()">
+        <div ref="tabBar" class="v3-tabs" aria-label="已打开页面" @keydown.esc="closeOverflow()">
           <div
             v-for="tab in visible"
             :key="tab.key"
@@ -65,7 +65,7 @@
             :class="{ 'is-active': tab.key === route.path }"
           >
             <RouterLink :to="tab.target" :title="tab.title">{{ tab.title }}</RouterLink>
-            <button type="button" :aria-label="'关闭 ' + tab.title" @click="closeTab(tab)">
+            <button type="button" :aria-label="'关闭 ' + tab.title" @click="closeTab(tab, $event)">
               ×
             </button>
           </div>
@@ -73,10 +73,16 @@
             <summary>更多页面 <span aria-hidden="true">▾</span></summary>
             <ul>
               <li v-for="tab in overflow" :key="tab.key">
-                <RouterLink :to="tab.target" :title="tab.title" @click="closeOverflow(false)">{{
-                  tab.title
-                }}</RouterLink>
-                <button type="button" :aria-label="'关闭 ' + tab.title" @click="closeTab(tab)">
+                <RouterLink v-slot="{ href }" :to="tab.target" custom>
+                  <a :href="href" :title="tab.title" @click="selectOverflow($event, tab)">
+                    {{ tab.title }}
+                  </a>
+                </RouterLink>
+                <button
+                  type="button"
+                  :aria-label="'关闭 ' + tab.title"
+                  @click="closeTab(tab, $event)"
+                >
                   ×
                 </button>
               </li>
@@ -85,6 +91,10 @@
         </div>
 
         <main class="v3-content">
+          <p v-if="demoBuild" class="v3-notice" role="note">
+            公开演示 ·
+            共享虚构数据，请勿录入真实个人信息。重启将重置数据并退出登录；与正式招聘数据库隔离。
+          </p>
           <V3Feedback
             v-if="status === 'unavailable'"
             state="error"
@@ -158,7 +168,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
+import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { v3Session } from '../api/request-v3'
 import V3Feedback from '../components/V3Feedback.vue'
@@ -173,6 +183,7 @@ import {
 } from '../router/v3-navigation'
 import { v3TabsKey } from '../utils/auth-v3'
 
+const demoBuild = import.meta.env.MODE === 'v3-demo'
 const route = useRoute()
 const router = useRouter()
 const user = computed(() => v3Session.state.user)
@@ -182,6 +193,7 @@ const root = ref<HTMLElement>()
 const navToggle = ref<HTMLButtonElement>()
 const drawer = ref<HTMLDialogElement>()
 const more = ref<HTMLDetailsElement>()
+const tabBar = ref<HTMLElement>()
 const drawerOpen = ref(false)
 const width = ref(window.innerWidth)
 const tier = computed(() => shellTier(width.value))
@@ -242,7 +254,23 @@ watch(
   { immediate: true }
 )
 
-async function closeTab(tab: V3Tab) {
+function focusActiveTab() {
+  tabBar.value?.querySelector<HTMLAnchorElement>('.v3-tab.is-active a')?.focus()
+}
+
+async function selectOverflow(event: MouseEvent, tab: V3Tab) {
+  if (event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return
+  event.preventDefault()
+  const link = event.currentTarget
+  if (await router.push(tab.target)) return
+  closeOverflow(false)
+  await nextTick()
+  if (document.activeElement === document.body || document.activeElement === link) focusActiveTab()
+}
+
+async function closeTab(tab: V3Tab, event: MouseEvent) {
+  const button = event.currentTarget
+  const restore = document.activeElement === button
   const remaining = tabs.value.filter(({ key }) => key !== tab.key)
   if (tab.key === route.path) {
     const destination = remaining[0]?.target ?? '/dashboard'
@@ -252,6 +280,14 @@ async function closeTab(tab: V3Tab) {
     tabs.value = remaining
   }
   saveTabs()
+  if (restore) {
+    await nextTick()
+    if (document.activeElement === document.body) {
+      const summary = more.value?.open && more.value.querySelector('summary')
+      if (summary) summary.focus()
+      else focusActiveTab()
+    }
+  }
 }
 
 function isSection(path: string) {

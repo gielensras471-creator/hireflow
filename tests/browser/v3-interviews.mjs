@@ -1,4 +1,9 @@
-import { tableChecks, observerProbe } from './refine-list-checks.mjs'
+import {
+  tableChecks,
+  observerProbe,
+  chooseFilterOption,
+  filterSelection
+} from './refine-list-checks.mjs'
 import assert from 'node:assert/strict'
 import { spawn } from 'node:child_process'
 import { mkdir, mkdtemp, readFile, writeFile } from 'node:fs/promises'
@@ -328,6 +333,15 @@ try {
     await evaluate(expression + '.click()')
   }
   const input = async (label, value) => {
+    if (label === '面试状态') {
+      const options = {
+        scheduled: '已预约',
+        completed: '已完成',
+        cancelled: '已取消',
+        '': '全部状态'
+      }
+      return chooseFilterOption({ evaluate, check }, label, options[value])
+    }
     const selector = JSON.stringify('[aria-label="' + label + '"]')
     await check('!!document.querySelector(' + selector + ')', 'input ' + label)
     return evaluate(
@@ -727,10 +741,7 @@ try {
       'document.querySelector(".v3-interview-loading [role=status]").textContent.includes("加载面试记录中")'
     )
   )
-  assert.equal(
-    await evaluate('document.querySelector("[aria-label=\\"面试状态\\"]").value'),
-    'scheduled'
-  )
+  assert.equal(await evaluate(filterSelection('面试状态')), '已预约')
   assert.ok(
     await evaluate(
       '!document.querySelector(".v3-interview-loading").textContent.includes("共 23 场")'

@@ -17,7 +17,8 @@
       :interview-id="editor.interviewId"
       :original="editor.original"
       :action="editor.action"
-      @close="closeEditor"
+      @vue:mounted="editorFocus.enter"
+      @close="cancelWithFocus"
       @saved="saved"
     />
     <p v-if="operationError" class="v3-error" role="alert">{{ operationError }}</p>
@@ -68,7 +69,7 @@
             >
             <el-button
               :disabled="blocked || meeting.status !== 'completed'"
-              @click="open(meeting.id, 'correct')"
+              @click="open($event, meeting.id, 'correct')"
               >更正面评</el-button
             >
           </div>
@@ -87,14 +88,14 @@
               v-if="allowed('submit', meeting)"
               type="primary"
               :disabled="blocked"
-              @click="open(meeting.id, 'submit')"
+              @click="open($event, meeting.id, 'submit')"
               >填写面评</el-button
             >
             <el-button
               v-if="allowed('supplement', meeting)"
               type="primary"
               :disabled="blocked"
-              @click="open(meeting.id, 'supplement')"
+              @click="open($event, meeting.id, 'supplement')"
               >补录历史面评</el-button
             >
           </div>
@@ -129,6 +130,7 @@
   </section>
 </template>
 <script setup lang="ts">
+import { useEditorFocus } from '../utils/v3-editor-focus'
 import { safeHistoryTime } from '../api/history-display'
 import { computed, inject, nextTick, onUnmounted, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
@@ -227,11 +229,12 @@ function load() {
     }
   )
 }
-async function open(id: number, action: FeedbackAction) {
+async function open(event: MouseEvent, id: number, action: FeedbackAction) {
   if (blocked.value) return
   const acquired = gate.acquire()
   if (!acquired) return
   lease = acquired
+  editorFocus.remember(event)
   const path = route.fullPath,
     owner = v3Session.version(),
     attempt = ++generation
@@ -271,6 +274,11 @@ async function open(id: number, action: FeedbackAction) {
     }
   }
 }
+const editorFocus = useEditorFocus('.v3-feedback-panel')
+async function cancelWithFocus() {
+  await closeEditor()
+  await editorFocus.restore()
+}
 async function closeEditor() {
   const releasing = lease
   generation++
@@ -284,6 +292,7 @@ async function saved() {
   await closeEditor()
   emit('updated')
   void load()
+  await editorFocus.restore()
 }
 function hideHistory() {
   historyId.value = null
@@ -329,6 +338,7 @@ watch(
   }
 )
 onUnmounted(() => {
+  editorFocus.clear()
   alive = false
   generation++
   reads.invalidate()

@@ -79,6 +79,9 @@
     color: var(--v3-warning);
     background: var(--v3-warning-soft);
   }
+  .v3-feedback-editor .v3-feedback-notice {
+    margin-top: 12px;
+  }
   .v3-feedback-notice {
     padding: 12px;
     border-radius: 8px;

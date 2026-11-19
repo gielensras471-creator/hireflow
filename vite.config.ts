@@ -25,9 +25,25 @@ export default defineConfig(({ mode }) => {
             }
           : undefined
     },
-    plugins: [vue()],
+    plugins: [
+      vue(),
+      ...(mode === 'v3-demo'
+        ? [
+            {
+              name: 'demo-manifest',
+              generateBundle() {
+                this.emitFile({
+                  type: 'asset' as const,
+                  fileName: 'demo-build.json',
+                  source: JSON.stringify({ kind: 'hireflow-isolated-demo', apiBase: '/api/v3' })
+                })
+              }
+            }
+          ]
+        : [])
+    ],
     build: {
-      outDir: mode === 'v3-production' ? 'dist-v3' : 'dist',
+      outDir: mode === 'v3-demo' ? 'dist-demo' : mode === 'v3-production' ? 'dist-v3' : 'dist',
       sourcemap: false,
       chunkSizeWarningLimit: 1800
     }

@@ -20,12 +20,28 @@
     display: block;
     font-size: 12px;
   }
-  .v3-filters {
-    display: flex;
-    gap: 12px;
-    flex-wrap: wrap;
+  .v3-position-action-group {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    vertical-align: middle;
   }
-  input,
+  .v3-position-action-group .el-button {
+    margin-inline-start: 0;
+  }
+  .v3-position-action-group a {
+    padding: 6px 8px;
+    color: var(--v3-brand);
+  }
+  .v3-position-action-group a:hover {
+    text-decoration: underline;
+  }
+  .v3-position-management {
+    margin-inline-start: 8px;
+    padding-inline-start: 8px;
+    border-inline-start: 1px solid var(--v3-border);
+  }
+  input:not(.el-select__input),
   select,
   textarea {
     max-width: 100%;
@@ -85,10 +101,6 @@
     }
     .v3-editor fieldset {
       grid-template-columns: 1fr;
-    }
-    .v3-filters > input,
-    .v3-filters > select {
-      width: 100%;
     }
   }
 }

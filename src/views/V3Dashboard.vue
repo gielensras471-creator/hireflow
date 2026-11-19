@@ -32,11 +32,11 @@
           ><small>{{ m.unit }}</small>
         </article>
       </div>
-      <p class="v3-dashboard-note">
-        开放职位含 {{ summary.openPositions.softDeletedOpen }} 个已归档、状态仍为开放
-        的记录，不等于可投递职位。申请数为职位申请记录，不是去重人数。指标读取时间：{{
-          feedbackTime(summary.now)
-        }}。
+      <p class="v3-dashboard-note v3-dashboard-metric-note">
+        开放职位含
+        {{ summary.openPositions.softDeletedOpen }} 个已归档的开放记录，不等于可投递职位。
+        申请数按申请记录统计，不按人数去重。
+        <span>指标读取时间：{{ feedbackTime(summary.now) }}。</span>
       </p>
       <section class="v3-card">
         <h2>需要处理的工作</h2>
@@ -49,7 +49,7 @@
             :class="{ 'is-selected': type === key }"
             @click="select(key)"
           >
-            <span v-if="type === key" class="v3-work-selection">✓ 已选中</span
+            <span class="v3-work-selection" aria-hidden="true">✓ 已选中</span
             ><span>{{ workLabels[key] }}</span
             ><strong>{{ summary.work[key].count }}</strong
             ><small>{{ unitLabel(summary.work[key].unit) }}</small>
@@ -64,9 +64,11 @@
             :class="{ 'is-selected': type === key }"
             @click="select(key)"
           >
-            <span v-if="type === key" class="v3-work-selection">✓ 已选中</span
-            >{{ workLabels[key] }} · {{ summary.work[key].count }}
-            {{ unitLabel(summary.work[key].unit) }}
+            <span class="v3-work-selection" aria-hidden="true">✓ 已选中</span
+            ><span
+              >{{ workLabels[key] }} · {{ summary.work[key].count }}
+              {{ unitLabel(summary.work[key].unit) }}</span
+            >
           </button>
         </div>
         <p class="v3-dashboard-note">
@@ -77,23 +79,26 @@
     <section class="v3-card v3-dashboard-details" :aria-busy="workLoading">
       <header>
         <h2>待处理事项 · {{ workLabels[type] }}</h2>
-        <el-button :disabled="!ready" @click="loadWork">刷新待办</el-button>
+        <el-button :disabled="!ready" @click="refreshWork">刷新待办</el-button>
       </header>
-      <label
-        >待办类别<select
-          :value="type"
-          aria-label="待办类别"
-          @change="select(($event.target as HTMLSelectElement).value as WorkType)"
-        >
-          <option v-for="(text, key) in workLabels" :key="key" :value="key">{{ text }}</option>
-        </select></label
-      >
-      <label v-if="type === 'offer'"
-        >Offer 子状态<select v-model="offerStatus" aria-label="Offer 子状态" @change="changeOffer">
-          <option value="">全部活跃 Offer</option>
-          <option v-for="(text, key) in offerLabels" :key="key" :value="key">{{ text }}</option>
-        </select></label
-      >
+      <div class="v3-filter-toolbar v3-dashboard-filters">
+        <V3FilterSelect
+          id="dashboard-work-type"
+          :model-value="type"
+          label="待办类别"
+          :options="workLabels"
+          @update:model-value="select($event as WorkType)"
+        />
+        <V3FilterSelect
+          v-if="type === 'offer'"
+          id="dashboard-offer-status"
+          v-model="offerStatus"
+          label="Offer 子状态"
+          all-label="全部活跃 Offer"
+          :options="offerLabels"
+          @update:model-value="changeOffer"
+        />
+      </div>
       <template v-if="workLoading"
         ><V3DashboardTable :items="[]" loading />
         <p role="status">加载待办明细中…</p></template
@@ -104,7 +109,7 @@
         title="暂时无法查看待办"
         :message="workError"
         action="重试待办"
-        @action="loadWork"
+        @action="refreshWork"
       />
       <V3Feedback
         v-else-if="!work?.items.length"
@@ -112,7 +117,13 @@
         title="当前页暂无待办"
         :message="work?.total ? '可返回前一页查看。' : '当前类别没有需要处理的记录。'"
       />
-      <V3DashboardTable v-else :items="work.items" :loading="false" />
+      <V3DashboardTable
+        v-else
+        :items="work.items"
+        :loading="false"
+        :identities="identities"
+        :identity-state="identityState"
+      />
       <div v-if="work" class="v3-dashboard-pager">
         <el-button :disabled="offset === 0 || workLoading" @click="page(-10)">上一页待办</el-button
         ><span
@@ -130,7 +141,7 @@
       <section class="v3-card v3-dashboard-today" :aria-busy="todayLoading">
         <header>
           <h2>今日面试</h2>
-          <el-button :disabled="!ready" @click="loadToday">刷新今日面试</el-button>
+          <el-button :disabled="!ready" @click="refreshToday">刷新今日面试</el-button>
         </header>
         <template v-if="todayLoading"
           ><V3DashboardTable :items="[]" loading today />
@@ -142,7 +153,7 @@
           title="暂时无法查看今日面试"
           :message="todayError"
           action="重试今日面试"
-          @action="loadToday"
+          @action="refreshToday"
         />
         <template v-else-if="today"
           ><p>
@@ -154,7 +165,14 @@
             v-if="!today.items.length"
             state="empty"
             title="当前页暂无今日面试"
-          /><V3DashboardTable v-else :items="today.items" :loading="false" today />
+          /><V3DashboardTable
+            v-else
+            :items="today.items"
+            :loading="false"
+            today
+            :identities="identities"
+            :identity-state="identityState"
+          />
           <div class="v3-dashboard-pager">
             <el-button :disabled="todayOffset === 0" @click="todayPage(-10)">上一页面试</el-button
             ><el-button :disabled="todayOffset + 10 >= today.total" @click="todayPage(10)"
@@ -164,36 +182,67 @@
         >
       </section>
       <section class="v3-card v3-dashboard-stats">
-        <h2>辅助统计</h2>
-        <p>当前快照分布；暂无趋势或阶段分布接口，不推算漏斗。</p>
-        <template v-if="summary"
-          ><h3>申请记录分布 · 总量 {{ summary.applicationTotals.total }} 条</h3>
-          <div
-            v-for="(text, key) in { active: '进行中', closed: '已结束', hired: '其中已确认录用' }"
-            :key="key"
-            class="v3-dashboard-bar"
-          >
-            <span>{{ text }}</span
-            ><meter
-              :value="summary.applicationTotals[key]"
-              :max="Math.max(summary.applicationTotals.total, 1)"
-              :aria-label="text"
-            /><b>{{ summary.applicationTotals[key] }} 条</b>
-          </div>
-          <h3>活跃 Offer 分布</h3>
-          <button
-            v-for="(text, key) in offerLabels"
-            :key="key"
-            class="v3-dashboard-offer"
-            @click="selectOffer(key)"
-          >
-            {{ text }} · {{ summary.offerByStatus[key] }} 条申请
-          </button>
-          <h3>待办分类</h3>
-          <p v-for="(text, key) in workLabels" :key="key">
-            {{ text }}：{{ summary.work[key].count }} {{ unitLabel(summary.work[key].unit) }}
-          </p></template
-        >
+        <header><h2>辅助统计</h2></header>
+        <template v-if="summary">
+          <section class="v3-stat-group" aria-labelledby="dashboard-stat-applications">
+            <div class="v3-stat-heading">
+              <h3 id="dashboard-stat-applications">申请记录分布</h3>
+              <small>共 {{ summary.applicationTotals.total }} 条</small>
+            </div>
+            <dl class="v3-stat-list">
+              <div
+                v-for="(text, key) in {
+                  active: '进行中',
+                  closed: '已结束',
+                  hired: '其中已确认录用'
+                }"
+                :key="key"
+                class="v3-dashboard-bar"
+                :data-application-stat="key"
+              >
+                <dt>{{ text }}</dt>
+                <dd>{{ summary.applicationTotals[key] }} <span>条</span></dd>
+                <meter
+                  :value="summary.applicationTotals[key]"
+                  :max="Math.max(summary.applicationTotals.total, 1)"
+                  :aria-label="text"
+                />
+              </div>
+            </dl>
+          </section>
+          <section class="v3-stat-group" aria-labelledby="dashboard-stat-offer">
+            <h3 id="dashboard-stat-offer">活跃 Offer 分布</h3>
+            <div class="v3-stat-offers">
+              <button
+                v-for="(text, key) in offerLabels"
+                :key="key"
+                class="v3-dashboard-offer"
+                :data-offer-stat="key"
+                type="button"
+                @click="selectOffer(key)"
+              >
+                <span>{{ text }}</span>
+                <span>{{ summary.offerByStatus[key] }} <small>条申请</small></span>
+              </button>
+            </div>
+          </section>
+          <section class="v3-stat-group" aria-labelledby="dashboard-stat-work">
+            <h3 id="dashboard-stat-work">待办分类</h3>
+            <dl class="v3-stat-list">
+              <div
+                v-for="(text, key) in workLabels"
+                :key="key"
+                class="v3-stat-row"
+                :data-work-stat="key"
+              >
+                <dt>{{ text }}</dt>
+                <dd>
+                  {{ summary.work[key].count }} <span>{{ unitLabel(summary.work[key].unit) }}</span>
+                </dd>
+              </div>
+            </dl>
+          </section>
+        </template>
         <p v-else>指标未成功读取，统计暂不可用。</p>
       </section>
     </div>
@@ -216,7 +265,9 @@ import {
   type WorkPage,
   type Today
 } from '../api/dashboard-v3'
+import type { Application, Page } from '../api/recruiting-v3'
 import { feedbackTime } from '../api/feedback-v3'
+import V3FilterSelect from '../components/V3FilterSelect.vue'
 import V3Feedback from '../components/V3Feedback.vue'
 import V3DashboardTable from '../components/V3DashboardTable.vue'
 import '../styles/v3-dashboard.scss'
@@ -224,6 +275,9 @@ const ready = computed(() => v3Session.state.status === 'ready')
 const summary = ref<Summary | null>(null),
   work = ref<WorkPage | null>(null),
   today = ref<Today | null>(null)
+type Identity = Pick<Application, 'name' | 'positionId' | 'positionTitle'>
+const identities = ref(new Map<number, Identity>())
+const identityState = ref<'loading' | 'ready' | 'error'>('loading')
 const summaryLoading = ref(false),
   workLoading = ref(false),
   todayLoading = ref(false),
@@ -345,12 +399,64 @@ function todayPage(n: number) {
   todayOffset.value += n
   void loadToday()
 }
+// Read only the existing paginated recruiting projection. One scan serves both dashboard tables.
+const identityPageSize = 100
+const identityPageLimit = 5
+let identityRun: object | undefined
+
+async function loadIdentities() {
+  if (!ready.value || identityRun) return
+  const run = {}
+  identityRun = run
+  identityState.value = 'loading'
+  const sessionVersion = v3Session.version()
+  const isCurrent = () =>
+    identityRun === run && ready.value && v3Session.version() === sessionVersion
+  const records = new Map<number, Identity>()
+  try {
+    for (let page = 0; page < identityPageLimit; page++) {
+      const offset = page * identityPageSize
+      const result = await readV3<Page<Application>>(
+        '/applications?limit=' + identityPageSize + '&offset=' + offset
+      )
+      if (!isCurrent()) return
+      for (const { id, name, positionId, positionTitle } of result.items) {
+        records.set(id, { name, positionId, positionTitle })
+      }
+      if (result.items.length < identityPageSize || offset + result.items.length >= result.total)
+        break
+    }
+    identities.value = records
+    identityState.value = 'ready'
+  } catch {
+    if (!isCurrent()) return
+    identities.value = records
+    identityState.value = 'error'
+  } finally {
+    if (identityRun === run) identityRun = undefined
+  }
+}
+
+function refreshWork() {
+  void loadWork()
+  void loadIdentities()
+}
+
+function refreshToday() {
+  void loadToday()
+  void loadIdentities()
+}
+
 function refreshAll() {
+  void loadIdentities()
   void loadSummary()
   void loadWork()
   void loadToday()
 }
 function clear() {
+  identityRun = undefined
+  identities.value = new Map()
+  identityState.value = 'loading'
   sr.invalidate()
   wr.invalidate()
   tr.invalidate()

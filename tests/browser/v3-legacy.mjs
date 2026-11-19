@@ -1,4 +1,4 @@
-import { tableChecks, observerProbe } from './refine-list-checks.mjs'
+import { tableChecks, observerProbe, chooseFilterOption } from './refine-list-checks.mjs'
 import assert from 'node:assert/strict'
 import { spawn } from 'node:child_process'
 import { mkdir, mkdtemp, readFile, writeFile } from 'node:fs/promises'
@@ -249,14 +249,6 @@ try {
     await check(expression + ' !== undefined', 'button ' + text)
     return evaluate(expression + '?.click()')
   }
-  const input = async (label, value) =>
-    evaluate(
-      '(()=>{const e=document.querySelector("[aria-label=\\"' +
-        label +
-        '\\"]");e.value=' +
-        JSON.stringify(value) +
-        ';e.dispatchEvent(new Event(e.tagName==="SELECT"?"change":"input",{bubbles:true}))})()'
-    )
   const fs = await import('node:fs/promises'),
     { createHash } = await import('node:crypto'),
     { DatabaseSync } = await import('node:sqlite'),
@@ -584,7 +576,7 @@ try {
       await h1('旧版档案')
       await check('!!document.querySelector("table tbody tr a")', 'list loaded')
       if (type === 'interviews') {
-        await input('旧档实体类型', 'interviews')
+        await chooseFilterOption({ evaluate, check }, '实体类型', '旧面试')
         await button('筛选档案')
         await check('!!document.querySelector("table tbody tr a")', 'filtered')
       }
@@ -637,8 +629,8 @@ try {
     }
     await go('/legacy-records')
     await h1('旧版档案')
-    await input('旧档实体类型', 'positions')
-    await input('旧档映射状态', 'ambiguous')
+    await chooseFilterOption({ evaluate, check }, '实体类型', '旧职位')
+    await chooseFilterOption({ evaluate, check }, '职位映射状态', '同名歧义，待核实')
     await button('筛选档案')
     await check('document.body.innerText.includes("暂无符合条件")', 'true empty')
     await snapshot('AC-16/empty')

@@ -18,19 +18,18 @@ HireFlow 使用 **Vue 3 + TypeScript** 构建前端，使用 **Node.js + Express
 
 ---
 
-## 在线体验
+## V3 正式站与公开演示
 
-- **Frontend Demo**：https://hireflow-wed.onrender.com
-- **Backend API**：https://api.pixelweave.xyz
-- **API Health Check**：https://api.pixelweave.xyz/api/health
-- **GitHub**：https://github.com/gielensras471-creator/hireflow
+- [公开演示](https://demo.pixelweave.xyz/) 提供独立的虚构招聘数据和公开演示登录提示。
+- [正式工作台](https://hireflow-wed.onrender.com/) 使用正式招聘账号。
+- [正式 V3 API 健康检查](https://api.pixelweave.xyz/api/v3/health)
 
-### 演示账号
+使用 Node.js 24.15+ 和 `pnpm install --frozen-lockfile`。Render 构建为 `pnpm run build:v3`，发布 `dist-v3`，
+`VITE_HIREFLOW_V3_API_URL` 设为 `https://api.pixelweave.xyz/api/v3`。
+`pnpm run build:demo` 为独立演示服务构建 `dist-demo`，浏览器始终使用同源 `/api/v3`。
+演示运行服务、种子和恢复配置由现有独立环境管理。
 
-```text
-账号：admin
-密码：123456
-```
+下文保留 V2 项目展示及历史运维说明，其中的本地示例仅适用于 V2 本地隔离环境。
 
 ---
 

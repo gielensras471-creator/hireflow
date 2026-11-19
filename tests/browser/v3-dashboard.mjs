@@ -1,4 +1,10 @@
-import { tableChecks, selectedChecks, observerProbe } from './refine-list-checks.mjs'
+import {
+  tableChecks,
+  selectedChecks,
+  observerProbe,
+  chooseFilterOption,
+  filterSelection
+} from './refine-list-checks.mjs'
 import assert from 'node:assert/strict'
 import { spawn } from 'node:child_process'
 import { mkdir, mkdtemp, readFile, writeFile } from 'node:fs/promises'
@@ -378,12 +384,21 @@ try {
       'refresh settled'
     )
   }
+  const workLabels = {
+    screening: '待筛选',
+    scheduling: '待安排面试',
+    due: '预约到时待确认',
+    feedback: '待提交面评',
+    decision: '待 HR 决策',
+    offer: 'Offer 待处理'
+  }
+  const offerLabels = { preparing: '待发送', sent: '待候选人回应', accepted: '待 HR 确认录用' }
   const selection = async (type) => {
-    await evaluate(
-      '(()=>{const e=document.querySelector("[aria-label=待办类别]");e.value=' +
-        JSON.stringify(type) +
-        ';e.dispatchEvent(new Event("change",{bubbles:true}))})()'
-    )
+    if ((await evaluate(filterSelection('待办类别'))) === workLabels[type]) {
+      await click('[data-work=' + type + ']')
+    } else {
+      await chooseFilterOption({ evaluate, check }, '待办类别', workLabels[type])
+    }
     await check('!document.querySelector(".v3-dashboard-details [role=status]")', 'work settled')
   }
   await send('Page.addScriptToEvaluateOnNewDocument', { source: observerProbe })
@@ -571,7 +586,7 @@ try {
     })
     assert.ok(
       await evaluate(
-        '(()=>{const e=document.querySelector("[data-work][aria-pressed=true]");return e.matches(":focus-visible") && getComputedStyle(e).outlineStyle!=="none" && getComputedStyle(e).boxShadow!=="none"})()'
+        '(()=>{const e=document.querySelector("[data-work][aria-pressed=true]");return e.matches(":focus-visible") && getComputedStyle(e).outlineStyle!=="none" && getComputedStyle(e).borderTopColor==="rgb(81, 72, 200)"&&e.innerText.includes("✓ 已选中")})()'
       )
     )
     await snapshot('r04-selected-focus')
@@ -590,9 +605,7 @@ try {
   for (const type of ['screening', 'scheduling', 'due', 'feedback', 'decision', 'offer']) {
     await selection(type)
     if (process.env.R04_AB === '1') {
-      const option = await evaluate(
-        'document.querySelector("[aria-label=待办类别]").selectedOptions[0].textContent'
-      )
+      const option = await evaluate(filterSelection('待办类别'))
       assert.ok(
         (await evaluate('document.querySelector(".v3-dashboard-details h2").textContent')).includes(
           option
@@ -639,6 +652,7 @@ try {
     'last page actual item range'
   )
   await snapshot('dashboard-last-page')
+  await send('Network.setCacheDisabled', { cacheDisabled: true })
   holdPath = '/api/v3/dashboard/work-items/screening'
   await button('刷新待办')
   await until(() => releaseHeld, 'held old read')
@@ -657,11 +671,7 @@ try {
   await snapshot('dashboard-work-details')
   for (const status of ['preparing', 'sent', 'accepted']) {
     await selection('offer')
-    await evaluate(
-      '(()=>{const e=document.querySelector("[aria-label=\\"Offer 子状态\\"]");e.value=' +
-        JSON.stringify(status) +
-        ';e.dispatchEvent(new Event("change",{bubbles:true}))})()'
-    )
+    await chooseFilterOption({ evaluate, check }, 'Offer 子状态', offerLabels[status])
     await check(
       'document.querySelectorAll(".v3-dashboard-details tbody tr").length===1',
       'Offer subtype'
@@ -753,7 +763,7 @@ try {
   if (process.env.R04_C === '1') {
     holdPath =
       '/api/v3/dashboard/work-items/' +
-      (await evaluate('document.querySelector("[aria-label=待办类别]").value'))
+      (await evaluate('document.querySelector("[data-work][aria-pressed=true]").dataset.work'))
     await button('刷新待办')
     await until(() => releaseHeld, 'work-only held read')
     assert.equal(await evaluate('document.querySelectorAll("[data-metric]").length'), 4)

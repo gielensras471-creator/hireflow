@@ -2,8 +2,12 @@
   <main class="v3-ui v3-login">
     <section class="v3-card v3-login-card">
       <p class="v3-brand">HireFlow</p>
-      <h1>登录招聘工作台</h1>
-      <p>V3 · {{ productionBuild ? '招聘工作台' : '本地隔离联调' }}</p>
+      <h1>{{ demoBuild ? '登录公开演示工作台' : '登录招聘工作台' }}</h1>
+      <p v-if="demoBuild" role="note">
+        共享演示空间 · 仅限虚构资料 ·
+        维护者重启后重置。请勿输入真实个人信息或正式管理员凭据。演示账号：demo_admin，密码：a123456。
+      </p>
+      <p>V3 · {{ demoBuild ? '独立演示环境' : productionBuild ? '招聘工作台' : '本地隔离联调' }}</p>
       <V3Feedback v-if="status === 'checking' && !pending" state="loading" title="正在确认身份" />
       <V3Feedback
         v-else-if="status === 'unavailable' && !pending"
@@ -28,7 +32,11 @@
         <p v-if="status === 'forbidden'" class="v3-error" role="alert">当前账号没有招聘权限。</p>
         <p v-else-if="message" class="v3-error" role="alert">{{ message }}</p>
         <p v-else-if="v3Session.state.expired" class="v3-error" role="alert">
-          登录已失效，请重新登录。
+          {{
+            demoBuild
+              ? '演示登录已失效，环境可能已恢复初始状态，请重新登录。'
+              : '登录已失效，请重新登录。'
+          }}
         </p>
         <el-button type="primary" native-type="submit" :loading="pending">登录</el-button>
       </form>
@@ -44,13 +52,14 @@ import { v3Session, adaptV3Error } from '../../api/request-v3'
 import { safeReturn } from '../../router/v3-navigation'
 import V3Feedback from '../../components/V3Feedback.vue'
 
+const demoBuild = import.meta.env.MODE === 'v3-demo'
 const productionBuild = import.meta.env.MODE === 'v3-production'
 import '../../styles/v3.scss'
 
 const route = useRoute()
 const router = useRouter()
-const username = ref('')
-const password = ref('')
+const username = ref(demoBuild ? 'demo_admin' : '')
+const password = ref(demoBuild ? 'a123456' : '')
 const remember = ref(false)
 const pending = ref(false)
 const message = ref('')

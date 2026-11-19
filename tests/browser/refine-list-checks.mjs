@@ -129,6 +129,22 @@ export async function tableChecks(
   metrics.push({ hideRestore: true, observedViewports: count })
   return metrics
 }
+export function filterSelection(label) {
+  return `document.querySelector(${JSON.stringify('.v3-filter-select:has([aria-label="' + label + '"]) .el-select__placeholder')})?.textContent.trim()`
+}
+
+export async function chooseFilterOption({ evaluate, check }, label, text) {
+  const selector = JSON.stringify(
+    '.v3-filter-select:has([aria-label="' + label + '"]) .el-select__wrapper'
+  )
+  const option = `[...document.querySelectorAll('.v3-filter-popper .el-select-dropdown__item')].find(e=>e.getBoundingClientRect().height&&e.textContent.trim()===${JSON.stringify(text)})`
+  await check('!!document.querySelector(' + selector + ')', 'filter ' + label)
+  await evaluate('document.querySelector(' + selector + ').click()')
+  await check('!!(' + option + ')', 'filter option ' + text)
+  await evaluate('(' + option + ').click()')
+  await check(filterSelection(label) + '===' + JSON.stringify(text), 'selected ' + text)
+}
+
 export async function selectedChecks({ evaluate, send, check, snapshot }) {
   for (const [i, key] of [
     'screening',

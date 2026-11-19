@@ -3,7 +3,9 @@ import { resolveV3ApiBase } from './v3-api-base'
 import { createV3Session, V3Error, type Credentials, type V3User } from '../utils/auth-v3'
 
 const http = axios.create({
-  baseURL: resolveV3ApiBase(import.meta.env?.VITE_HIREFLOW_V3_API_URL),
+  baseURL: resolveV3ApiBase(
+    import.meta.env?.MODE === 'v3-demo' ? undefined : import.meta.env?.VITE_HIREFLOW_V3_API_URL
+  ),
   timeout: 10000
 })
 
@@ -15,6 +17,12 @@ export function adaptV3Error(error: unknown): V3Error {
     const code = typeof problem?.code === 'string' ? problem.code : 'REQUEST_FAILED'
     const requestId = typeof problem?.requestId === 'string' ? problem.requestId : undefined
     const businessMessages: Record<string, string> = {
+      ...(import.meta.env?.MODE === 'v3-demo'
+        ? {
+            DEMO_RATE_LIMIT: '演示访问频繁，请稍后重试。',
+            DEMO_WRITE_LIMIT: '演示写入额度已用完，请联系维护者重置演示环境。'
+          }
+        : {}),
       FEEDBACK_REVISION_CONFLICT: '面评已被更正，请核对最新内容与修订版本。',
       FEEDBACK_ALREADY_EXISTS: '该面试已有当前有效面评，请查看或有痕更正。',
       INTERVIEW_NOT_COMPLETED: '面试尚未完成，不能提交面评。',

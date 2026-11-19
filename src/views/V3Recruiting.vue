@@ -15,41 +15,59 @@
         v-if="!isDetail"
         type="primary"
         :disabled="loading || !!gate.current.value"
-        @click="openEditor(null)"
+        @click="openEditor($event, null)"
         >＋ {{ positions ? '新建职位' : '添加申请' }}</el-button
       >
     </header>
-    <form v-if="!isDetail" class="v3-card v3-filters" @submit.prevent="filter">
-      <input
-        v-model="search"
-        aria-label="搜索"
-        :placeholder="positions ? '搜索职位名称、部门' : '搜索姓名、负责人或职位'"
-      />
-      <select v-if="positions" v-model="status" aria-label="职位状态">
-        <option value="">全部状态</option>
-        <option value="open">开放</option>
-        <option value="closed">关闭</option>
-      </select>
-      <template v-else>
+    <form v-if="!isDetail" class="v3-card v3-filters v3-filter-toolbar" @submit.prevent="filter">
+      <div class="v3-filter-field v3-filter-search">
+        <label for="recruiting-search">搜索</label>
         <input
-          v-model="positionFilter"
-          type="number"
-          min="1"
-          aria-label="职位 ID"
-          placeholder="职位 ID"
+          id="recruiting-search"
+          v-model="search"
+          aria-label="搜索"
+          :placeholder="positions ? '搜索职位名称、部门' : '搜索姓名、负责人或职位'"
         />
-        <select v-model="stage" aria-label="阶段">
-          <option value="">全部阶段</option>
-          <option v-for="s in stages" :key="s" :value="s">{{ label(s) }}</option>
-        </select>
-        <select v-model="status" aria-label="申请状态">
-          <option value="">全部申请状态</option>
-          <option value="active">进行中</option>
-          <option value="closed">已结束</option>
-        </select>
+      </div>
+      <V3FilterSelect
+        v-if="positions"
+        id="position-status"
+        v-model="status"
+        label="职位状态"
+        all-label="全部状态"
+        :options="{ open: '开放', closed: '关闭' }"
+      />
+      <template v-else>
+        <div class="v3-filter-field">
+          <label for="recruiting-position-id">职位编号</label>
+          <input
+            id="recruiting-position-id"
+            v-model="positionFilter"
+            type="number"
+            min="1"
+            aria-label="职位 ID"
+            placeholder="精确匹配"
+          />
+        </div>
+        <V3FilterSelect
+          id="application-stage"
+          v-model="stage"
+          label="阶段"
+          all-label="全部阶段"
+          :options="stageOptions"
+        />
+        <V3FilterSelect
+          id="application-status"
+          v-model="status"
+          label="申请状态"
+          all-label="全部申请状态"
+          :options="{ active: '进行中', closed: '已结束' }"
+        />
       </template>
-      <el-button native-type="submit">筛选</el-button
-      ><el-button @click="clearFilters">清除筛选</el-button>
+      <div class="v3-filter-actions">
+        <el-button native-type="submit" type="primary">筛选</el-button>
+        <el-button @click="clearFilters">清除筛选</el-button>
+      </div>
     </form>
     <V3RecruitingEditor
       v-if="editor"
@@ -58,7 +76,8 @@
       :row="editor.row"
       :action="editor.action"
       :options="options"
-      @close="closeProfile"
+      @vue:mounted="editorFocus.enter"
+      @close="cancelWithFocus"
       @saved="saved"
     />
     <section
@@ -166,7 +185,7 @@
           !!gate.current.value ||
           (selected as Application).applicationStatus !== 'active'
         "
-        @click="openEditor(selected)"
+        @click="openEditor($event, selected)"
         >编辑申请资料</el-button
       >
     </section>
@@ -245,36 +264,44 @@
                   ><small>Offer：{{ applicationOfferText(row as Application) }}</small></template
                 >
               </td>
-              <td>
-                <el-button text @click="showDetail(row)">查看详情</el-button>
-                <el-button
-                  text
-                  :disabled="
-                    !!gate.current.value ||
-                    (positions
-                      ? !!(row as Position).deletedAt
-                      : (row as Application).applicationStatus === 'closed')
-                  "
-                  @click="openEditor(row)"
-                  >编辑</el-button
+              <td :class="{ 'v3-position-actions': positions }">
+                <div :class="{ 'v3-position-action-group': positions }">
+                  <el-button text @click="showDetail(row, $event)">查看详情</el-button>
+                  <el-button
+                    text
+                    :disabled="
+                      !!gate.current.value ||
+                      (positions
+                        ? !!(row as Position).deletedAt
+                        : (row as Application).applicationStatus === 'closed')
+                    "
+                    @click="openEditor($event, row)"
+                    >编辑</el-button
+                  >
+                  <RouterLink
+                    v-if="positions && !(row as Position).deletedAt"
+                    :to="{ path: '/candidates', query: { positionId: row.id } }"
+                    >查看申请</RouterLink
+                  >
+                </div>
+                <div
+                  v-if="positions && !(row as Position).deletedAt"
+                  class="v3-position-action-group v3-position-management"
                 >
-                <template v-if="positions && !(row as Position).deletedAt">
                   <el-button
                     text
                     :disabled="!!gate.current.value"
-                    @click="openEditor(row, 'status')"
+                    @click="openEditor($event, row, 'status')"
                     >{{ (row as Position).status === 'open' ? '关闭' : '重新开放' }}</el-button
                   >
                   <el-button
                     text
+                    type="danger"
                     :disabled="!!gate.current.value"
-                    @click="openEditor(row, 'archive')"
+                    @click="openEditor($event, row, 'archive')"
                     >归档</el-button
                   >
-                  <RouterLink :to="{ path: '/candidates', query: { positionId: row.id } }"
-                    >查看申请</RouterLink
-                  >
-                </template>
+                </div>
               </td>
             </tr>
           </tbody>
@@ -286,15 +313,27 @@
         ><el-button :disabled="offset + 20 >= total" @click="page(20)">下一页</el-button>
       </div>
     </section>
-    <section v-if="positions && selected && !isDetail" class="v3-card">
-      <h2>职位 #{{ selected.id }} 详情</h2>
-      <dl class="v3-profile">
+    <section
+      v-if="positions && positionDetailId !== null"
+      class="v3-card v3-position-detail"
+      :aria-busy="positionDetailLoading"
+      aria-labelledby="position-detail-title"
+    >
+      <h2 id="position-detail-title" ref="positionDetailHeading" tabindex="-1">
+        职位 #{{ positionDetailId }} 详情
+      </h2>
+      <p v-if="positionDetailLoading" role="status">正在读取职位详情…</p>
+      <template v-else-if="positionDetailError">
+        <p class="v3-error" role="alert">{{ positionDetailError }}</p>
+        <el-button @click="loadPositionDetail(positionDetailId)">重新读取职位详情</el-button>
+      </template>
+      <dl v-else-if="selected" class="v3-profile">
         <template v-for="[key, text] in positionFields" :key="key"
           ><dt>{{ text }}</dt>
           <dd>{{ display(selected, key) }}</dd></template
         >
       </dl>
-      <el-button @click="selected = null">收起</el-button>
+      <el-button @click="hidePositionDetail">收起</el-button>
     </section>
     <p v-if="isDetail && selected && refreshPending" role="status">
       刷新已登记，当前编辑或请求结束后读取最新资料；草稿不会清除。
@@ -395,6 +434,7 @@
   </section>
 </template>
 <script setup lang="ts">
+import { useEditorFocus } from '../utils/v3-editor-focus'
 import { applicationOutcomeText, applicationOfferText } from '../api/recruiting-v3'
 import V3TableScroll from '../components/V3TableScroll.vue'
 import { computed, nextTick, onUnmounted, provide, ref, watch } from 'vue'
@@ -412,6 +452,7 @@ import {
   type RecruitingRow,
   type Page
 } from '../api/recruiting-v3'
+import V3FilterSelect from '../components/V3FilterSelect.vue'
 import V3Feedback from '../components/V3Feedback.vue'
 import V3RecruitingEditor from '../components/V3RecruitingEditor.vue'
 import V3Interviews from './V3Interviews.vue'
@@ -465,6 +506,7 @@ const applicationColumns = [
   '操作'
 ]
 const stages = ['screening', 'first_interview', 'second_interview', 'offer']
+const stageOptions = Object.fromEntries(stages.map((stage) => [stage, label(stage)]))
 
 function display(row: RecruitingRow, key: string) {
   const value = (row as unknown as Record<string, unknown>)[key]
@@ -490,7 +532,6 @@ function load() {
   loading.value = true
   error.value = ''
   items.value = []
-  if (!isDetail.value) selected.value = null
   return query.execute<RecruitingRow | Page<RecruitingRow>>(
     () =>
       isDetail.value
@@ -545,7 +586,7 @@ const detailTargets: Record<string, string> = {
   'offer-history': '[data-detail-history="offer"]'
 }
 function focusSection(section: Element | null) {
-  const heading = section?.querySelector<HTMLElement>('h2, h3')
+  const heading = section?.querySelector<HTMLElement>('h1, h2, h3')
   if (!section || !heading) {
     navigationMessage.value = '该区域尚未加载或暂不可用，请等待读取完成或重新加载申请详情。'
     return false
@@ -607,12 +648,14 @@ function filter() {
   })
 }
 function clearFilters() {
+  search.value = status.value = stage.value = positionFilter.value = ''
   return router.push({ path: route.path, query: {} })
 }
 function page(amount: number) {
   return router.push({ path: route.path, query: { ...route.query, offset: offset.value + amount } })
 }
 async function openEditor(
+  event: MouseEvent,
   row: RecruitingRow | null,
   action: 'edit' | 'status' | 'archive' = 'edit'
 ) {
@@ -628,6 +671,7 @@ async function openEditor(
   const lease = gate.acquire()
   if (!lease) return
   profileLease = lease
+  editorFocus.remember(event)
   const attempt = ++openingGeneration
   const path = route.fullPath
   const session = v3Session.version()
@@ -654,6 +698,11 @@ async function openEditor(
     }
   }
 }
+const editorFocus = useEditorFocus('.v3-recruiting')
+async function cancelWithFocus() {
+  await closeProfile()
+  await editorFocus.restore()
+}
 async function closeProfile() {
   const lease = profileLease
   openingGeneration++
@@ -662,31 +711,70 @@ async function closeProfile() {
   if (lease) gate.release(lease)
   if (profileLease === lease) profileLease = null
 }
-function showDetail(row: RecruitingRow) {
+const positionDetailId = ref<number | null>(null)
+const positionDetailLoading = ref(false)
+const positionDetailError = ref('')
+const positionDetailHeading = ref<HTMLElement>()
+let positionDetailTrigger: HTMLElement | null = null
+
+async function showDetail(row: RecruitingRow, event: MouseEvent) {
   if (!positions.value) {
     void router.push('/candidates/' + row.id)
     return
   }
-  void selection.execute(
-    () => detail('positions', row.id),
+  positionDetailTrigger = event.currentTarget as HTMLElement
+  void loadPositionDetail(row.id)
+  await nextTick()
+  positionDetailHeading.value?.focus()
+}
+function loadPositionDetail(id: number) {
+  if (positionDetailLoading.value && positionDetailId.value === id) return
+  positionDetailId.value = id
+  positionDetailLoading.value = true
+  positionDetailError.value = ''
+  selected.value = null
+  return selection.execute(
+    () => detail('positions', id),
     (data) => {
       selected.value = data
+      positionDetailLoading.value = false
     },
     (e) => {
-      error.value = e instanceof Error ? e.message : '读取失败'
+      positionDetailError.value = e instanceof Error ? e.message : '无法读取职位详情'
+      positionDetailLoading.value = false
     }
   )
 }
+function clearPositionDetail() {
+  selection.invalidate()
+  positionDetailId.value = null
+  positionDetailLoading.value = false
+  positionDetailError.value = ''
+  selected.value = null
+  positionDetailTrigger = null
+}
+async function hidePositionDetail() {
+  const trigger = positionDetailTrigger
+  clearPositionDetail()
+  await nextTick()
+  if (trigger?.isConnected) trigger.focus()
+  else focusSection(detailRoot.value?.querySelector('header') ?? null)
+}
 function saved() {
-  void closeProfile()
+  const savedPositionId = positions.value ? editor.value?.row?.id : undefined
+  if (savedPositionId && savedPositionId === positionDetailId.value) {
+    selection.invalidate()
+    positionDetailLoading.value = false
+    void loadPositionDetail(savedPositionId)
+  }
+  void closeProfile().then(editorFocus.restore)
   void load()
 }
 watch(
   [() => route.fullPath, () => v3Session.state.user?.id],
   () => {
     query.invalidate()
-    selection.invalidate()
-    selected.value = null
+    clearPositionDetail()
     profileExpanded.value = false
     navigationMessage.value = ''
     refreshPending.value = false
@@ -707,6 +795,7 @@ watch(
   { flush: 'post' }
 )
 onUnmounted(() => {
+  editorFocus.clear()
   alive = false
   if (profileLease) gate.release(profileLease)
   openingGeneration++

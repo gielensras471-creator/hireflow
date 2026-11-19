@@ -28,7 +28,7 @@
           <el-button
             :type="action === 'send' || action === 'confirmHire' ? 'primary' : undefined"
             :disabled="blocked || !offerAllowed(state, action)"
-            @click="open(action)"
+            @click="open($event, action)"
             >{{ offerActions[action] }}</el-button
           ><small v-if="!offerAllowed(state, action)">{{
             offerBlocks[state.offer.actions[action].blockedReason ?? ''] ?? '当前状态不允许此动作。'
@@ -38,7 +38,7 @@
       <section class="v3-card">
         <h3>结束招聘</h3>
         <p>普通结案仅限企业淘汰或候选人退出；不能用于录用或拒绝 Offer。</p>
-        <el-button :disabled="blocked || !state.closure.allowed" @click="open('close')"
+        <el-button :disabled="blocked || !state.closure.allowed" @click="open($event, 'close')"
           >结束招聘</el-button
         >
         <p v-if="!state.closure.allowed">
@@ -77,7 +77,8 @@
       v-if="editor"
       :original="editor.context"
       :action="editor.action"
-      @close="close"
+      @vue:mounted="editorFocus.enter"
+      @close="cancelWithFocus"
       @saved="saved"
     />
     <section class="v3-card" data-detail-history="offer">
@@ -114,16 +115,19 @@
           :data-offer-event="event.eventId"
         >
           <summary>
-            {{
-              event.eventType
-                ? Object.hasOwn(eventNames, event.eventType)
-                  ? eventNames[event.eventType]
-                  : '未知，待核实'
-                : '未记录事件类型'
-            }}
-            · 事件 #{{ event.eventId }} · {{ safeHistoryTime(event.occurredAt, feedbackTime) }} ·
-            实际 HR：{{ event.actorName || '未记录操作者' }} · 账号 #{{ event.actorUserId }} ·
-            {{ event.reason || '未记录附加原因' }}
+            <span class="v3-history-action">
+              {{
+                event.eventType
+                  ? Object.hasOwn(eventNames, event.eventType)
+                    ? eventNames[event.eventType]
+                    : '未知，待核实'
+                  : '未记录事件类型'
+              }} </span
+            ><span class="v3-history-meta"
+              >事件 #{{ event.eventId }} · {{ safeHistoryTime(event.occurredAt, feedbackTime) }} ·
+              实际 HR：{{ event.actorName || '未记录操作者' }} · 账号 #{{ event.actorUserId }} ·
+              {{ event.reason || '未记录附加原因' }}
+            </span>
           </summary>
           <p>
             实际 HR：{{ event.actorName }} · 账号 #{{ event.actorUserId }} ·
@@ -159,6 +163,7 @@
   </section>
 </template>
 <script setup lang="ts">
+import { useEditorFocus } from '../utils/v3-editor-focus'
 import { orderHistory, historyCaption, safeHistoryTime } from '../api/history-display'
 import { readOfferContext } from '../api/offer-read'
 import { computed, inject, nextTick, onUnmounted, ref, watch } from 'vue'
@@ -242,11 +247,12 @@ function loadHistory() {
     }
   )
 }
-async function open(action: OfferAction) {
+async function open(event: MouseEvent, action: OfferAction) {
   if (blocked.value) return
   const acquired = gate.acquire()
   if (!acquired) return
   lease = acquired
+  editorFocus.remember(event)
   opening.value = true
   operationError.value = ''
   const path = route.fullPath,
@@ -277,6 +283,11 @@ async function open(action: OfferAction) {
     }
   }
 }
+const editorFocus = useEditorFocus('.v3-offer')
+async function cancelWithFocus() {
+  await close()
+  await editorFocus.restore()
+}
 async function close() {
   const releasing = lease
   attempt++
@@ -289,6 +300,7 @@ async function close() {
 async function saved() {
   await close()
   emit('updated')
+  await editorFocus.restore()
 }
 watch(
   () => [props.applicationId, route.fullPath],
@@ -311,6 +323,7 @@ watch(
   }
 )
 onUnmounted(() => {
+  editorFocus.clear()
   alive = false
   attempt++
   reads.invalidate()

@@ -3,20 +3,27 @@
     <h1>{{ detailMode ? '旧档详情' : '旧版档案' }}</h1>
     <p>旧版只读档案，不是可操作的新申请。未知事实保持待核实，不依据当前阶段补造历史。</p>
     <RouterLink v-if="detailMode" to="/legacy-records">返回旧版档案列表</RouterLink>
-    <form v-else class="v3-card" @submit.prevent="filter">
-      <label
-        >实体类型<select v-model="entity" aria-label="旧档实体类型">
-          <option value="">全部类型</option>
-          <option v-for="(text, key) in entityLabels" :key="key" :value="key">{{ text }}</option>
-        </select></label
-      >
-      <label
-        >职位映射<select v-model="mapping" aria-label="旧档映射状态">
-          <option value="">全部映射状态</option>
-          <option v-for="(text, key) in mappingLabels" :key="key" :value="key">{{ text }}</option>
-        </select></label
-      >
-      <el-button native-type="submit">筛选档案</el-button>
+    <form v-else class="v3-card v3-filter-toolbar" @submit.prevent="filter">
+      <V3FilterSelect
+        id="legacy-entity"
+        v-model="entity"
+        label="实体类型"
+        all-label="全部类型"
+        :options="entityLabels"
+      />
+      <V3FilterSelect
+        id="legacy-mapping"
+        v-model="mapping"
+        label="职位映射状态"
+        all-label="全部映射状态"
+        :options="mappingLabels"
+      />
+      <div class="v3-filter-actions">
+        <el-button native-type="submit" type="primary" :aria-disabled="loading">
+          筛选档案
+        </el-button>
+        <el-button :aria-disabled="loading" @click="clearFilters">清除筛选</el-button>
+      </div>
     </form>
     <V3Feedback v-if="loading" state="loading" title="读取旧版档案中" />
     <V3Feedback
@@ -56,47 +63,58 @@
       </p>
     </article>
     <template v-else-if="page">
-      <V3Feedback v-if="!page.items.length" state="empty" title="暂无符合条件的旧版档案" />
-      <div v-else class="v3-card legacy-table">
-        <table aria-label="旧版档案列表">
-          <thead>
-            <tr>
-              <th>旧记录标识</th>
-              <th>来源</th>
-              <th>职位映射</th>
-              <th>操作</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr
-              v-for="row in page.items"
-              :key="JSON.stringify([row.sourceKey, row.entityType, row.legacyId])"
-            >
-              <td>{{ entityLabels[row.entityType] }} #{{ row.legacyId }}</td>
-              <td>{{ row.sourceKey }}</td>
-              <td>{{ mappingLabels[row.mappingStatus] }}</td>
-              <td>
-                <RouterLink
-                  :to="{
-                    path: '/legacy-records/detail',
-                    query: {
-                      sourceKey: row.sourceKey,
-                      entityType: row.entityType,
-                      legacyId: String(row.legacyId)
-                    }
-                  }"
-                  >查看只读旧档</RouterLink
-                >
-              </td>
-            </tr>
-          </tbody>
-        </table>
+      <V3Feedback
+        v-if="!page.items.length"
+        state="empty"
+        title="暂无符合条件的旧版档案"
+        :message="entity || mapping ? '可调整筛选条件后再查看。' : undefined"
+      />
+      <div v-else class="v3-card">
+        <V3TableScroll name="旧版档案表格">
+          <table aria-label="旧版档案列表">
+            <thead>
+              <tr>
+                <th>旧记录标识</th>
+                <th>来源</th>
+                <th>职位映射</th>
+                <th>操作</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr
+                v-for="row in page.items"
+                :key="JSON.stringify([row.sourceKey, row.entityType, row.legacyId])"
+              >
+                <td>{{ entityLabels[row.entityType] }} #{{ row.legacyId }}</td>
+                <td>{{ row.sourceKey }}</td>
+                <td>{{ mappingLabels[row.mappingStatus] }}</td>
+                <td>
+                  <RouterLink
+                    :to="{
+                      path: '/legacy-records/detail',
+                      query: {
+                        sourceKey: row.sourceKey,
+                        entityType: row.entityType,
+                        legacyId: String(row.legacyId)
+                      }
+                    }"
+                    >查看只读旧档</RouterLink
+                  >
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </V3TableScroll>
       </div>
-      <p>共 {{ page.total }} 条归档记录；不是活跃申请数。</p>
-      <el-button :disabled="offset === 0" @click="changePage(-20)">上一页旧档</el-button
-      ><el-button :disabled="offset + 20 >= page.total" @click="changePage(20)"
-        >下一页旧档</el-button
-      >
+      <div class="v3-list-footer">
+        <p>共 {{ page.total }} 条归档记录；不是活跃申请数。</p>
+        <nav class="v3-filter-actions" aria-label="旧版档案分页">
+          <el-button :disabled="offset === 0" @click="changePage(-20)">上一页旧档</el-button>
+          <el-button :disabled="offset + 20 >= page.total" @click="changePage(20)"
+            >下一页旧档</el-button
+          >
+        </nav>
+      </div>
     </template>
   </section>
 </template>
@@ -114,7 +132,9 @@ import {
   type LegacyDetail,
   type LegacyPage
 } from '../api/legacy-v3'
+import V3FilterSelect from '../components/V3FilterSelect.vue'
 import V3Feedback from '../components/V3Feedback.vue'
+import V3TableScroll from '../components/V3TableScroll.vue'
 const route = useRoute(),
   detailMode = computed(() => route.path.endsWith('/detail'))
 const entity = ref(''),
@@ -170,8 +190,14 @@ function load() {
   )
 }
 function filter() {
+  if (loading.value) return
   offset.value = 0
   void load()
+}
+function clearFilters() {
+  if (loading.value) return
+  entity.value = mapping.value = ''
+  filter()
 }
 function changePage(delta: number) {
   offset.value += delta
@@ -188,7 +214,13 @@ onUnmounted(() => reads.invalidate())
 </script>
 <style scoped>
 .v3-legacy {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 16px;
   min-width: 0;
+}
+.v3-legacy > :is(h1, p) {
+  margin: 0;
 }
 dl {
   display: grid;
@@ -197,9 +229,6 @@ dl {
 dd {
   margin: 0 0 12px;
   overflow-wrap: anywhere;
-}
-.legacy-table {
-  overflow-x: auto;
 }
 table {
   min-width: 640px;
@@ -213,10 +242,5 @@ th {
 td {
   max-width: 240px;
   overflow-wrap: anywhere;
-}
-label {
-  display: inline-flex;
-  gap: 8px;
-  padding: 8px;
 }
 </style>

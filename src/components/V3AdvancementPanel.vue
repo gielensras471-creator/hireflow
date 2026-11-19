@@ -51,7 +51,8 @@
       v-if="editor"
       :original="editor.preflight"
       :feedback="editor.feedback"
-      @close="close"
+      @vue:mounted="editorFocus.enter"
+      @close="cancelWithFocus"
       @saved="saved"
     />
     <section class="v3-card" data-detail-history="advancement">
@@ -88,17 +89,20 @@
         :data-advancement-event="event.eventId"
       >
         <summary>
-          {{ label(event.fromStage) }} → {{ label(event.toStage) }} ·
-          {{
-            event.kind
-              ? Object.hasOwn(kinds, event.kind)
-                ? kinds[event.kind]
-                : '未知，待核实'
-              : '未记录晋级类型'
-          }}
-          · 事件 #{{ event.eventId }} · {{ safeHistoryTime(event.occurredAt, feedbackTime) }} · 实际
-          HR：{{ event.actorName || '未记录操作者' }} · 账号 #{{ event.actorUserId }} ·
-          {{ event.reason || '未记录附加原因' }}
+          <span class="v3-history-action">
+            {{ label(event.fromStage) }} → {{ label(event.toStage) }} ·
+            {{
+              event.kind
+                ? Object.hasOwn(kinds, event.kind)
+                  ? kinds[event.kind]
+                  : '未知，待核实'
+                : '未记录晋级类型'
+            }} </span
+          ><span class="v3-history-meta"
+            >事件 #{{ event.eventId }} · {{ safeHistoryTime(event.occurredAt, feedbackTime) }} ·
+            实际 HR：{{ event.actorName || '未记录操作者' }} · 账号 #{{ event.actorUserId }} ·
+            {{ event.reason || '未记录附加原因' }}
+          </span>
         </summary>
         <p>
           {{
@@ -129,6 +133,7 @@
   </section>
 </template>
 <script setup lang="ts">
+import { useEditorFocus } from '../utils/v3-editor-focus'
 import { orderHistory, historyCaption, safeHistoryTime } from '../api/history-display'
 import { computed, inject, nextTick, onUnmounted, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
@@ -219,11 +224,12 @@ function loadHistory() {
     }
   )
 }
-async function open() {
+async function open(event: MouseEvent) {
   if (blocked.value) return
   const acquired = gate.acquire()
   if (!acquired) return
   lease = acquired
+  editorFocus.remember(event)
   opening.value = true
   operationError.value = ''
   const token = v3Session.version(),
@@ -254,6 +260,11 @@ async function open() {
     }
   }
 }
+const editorFocus = useEditorFocus('.v3-advancement')
+async function cancelWithFocus() {
+  await close()
+  await editorFocus.restore()
+}
 async function close() {
   const releasing = lease
   attempt++
@@ -266,6 +277,7 @@ async function close() {
 async function saved() {
   await close()
   emit('updated')
+  await editorFocus.restore()
 }
 watch(
   () => [props.applicationId, route.fullPath],
@@ -288,6 +300,7 @@ watch(
   }
 )
 onUnmounted(() => {
+  editorFocus.clear()
   alive = false
   attempt++
   reads.invalidate()
