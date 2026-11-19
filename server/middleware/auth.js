@@ -1,6 +1,4 @@
-import { verifyAccessToken } from '../utils/jwt.js'
-
-export const requireAuth = (req, res, next) => {
+export const createRequireAuth = (verifyAccessToken) => (req, res, next) => {
   const header = req.headers.authorization || ''
   const [scheme, token] = header.split(' ')
 

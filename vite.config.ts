@@ -5,6 +5,7 @@ import { fileURLToPath, URL } from 'node:url'
 export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, process.cwd(), '')
 
+  const localV3 = mode === 'v3-local'
   return {
     resolve: {
       alias: {
@@ -12,20 +13,37 @@ export default defineConfig(({ mode }) => {
       }
     },
     server: {
-      host: '0.0.0.0',
+      host: localV3 ? '127.0.0.1' : '0.0.0.0',
       port: Number(env.VITE_PORT || 5173),
-      proxy: env.VITE_PROXY
-        ? {
-            '/api': {
-              target: env.VITE_PROXY,
-              changeOrigin: true
+      proxy:
+        !localV3 && env.VITE_PROXY
+          ? {
+              '/api': {
+                target: env.VITE_PROXY,
+                changeOrigin: true
+              }
             }
-          }
-        : undefined
+          : undefined
     },
-    plugins: [vue()],
+    plugins: [
+      vue(),
+      ...(mode === 'v3-demo'
+        ? [
+            {
+              name: 'demo-manifest',
+              generateBundle() {
+                this.emitFile({
+                  type: 'asset' as const,
+                  fileName: 'demo-build.json',
+                  source: JSON.stringify({ kind: 'hireflow-isolated-demo', apiBase: '/api/v3' })
+                })
+              }
+            }
+          ]
+        : [])
+    ],
     build: {
-      outDir: 'dist',
+      outDir: mode === 'v3-demo' ? 'dist-demo' : mode === 'v3-production' ? 'dist-v3' : 'dist',
       sourcemap: false,
       chunkSizeWarningLimit: 1800
     }

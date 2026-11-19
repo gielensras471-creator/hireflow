@@ -1,0 +1,87 @@
+import test from 'node:test'
+import assert from 'node:assert/strict'
+import fs from 'node:fs'
+import http from 'node:http'
+import dotenv from 'dotenv'
+import { registerHooks } from 'node:module'
+
+test('fresh imports cannot open a database, seed, load dotenv, listen or mutate files', async (t) => {
+  let sqliteIntercepted = false
+  const hooks = registerHooks({
+    load(url, context, nextLoad) {
+      if (url === 'node:sqlite') {
+        sqliteIntercepted = true
+        return {
+          format: 'module',
+          shortCircuit: true,
+          source:
+            "export class DatabaseSync { constructor() { throw new Error('Unexpected database connection') } }; export const constants = {}; export function backup() { throw new Error('Unexpected SQLite backup') }"
+        }
+      }
+      return nextLoad(url, context)
+    }
+  })
+  t.after(() => hooks.deregister())
+  t.mock.method(dotenv, 'config', () => {
+    throw new Error('Unexpected dotenv read')
+  })
+  t.mock.method(http.Server.prototype, 'listen', () => {
+    throw new Error('Unexpected listener')
+  })
+  for (const name of ['mkdirSync', 'writeFileSync', 'rmSync', 'unlinkSync']) {
+    t.mock.method(fs, name, () => {
+      throw new Error('Unexpected filesystem mutation: ' + name)
+    })
+  }
+  const read = fs.readFileSync.bind(fs)
+  t.mock.method(fs, 'readFileSync', (file, ...args) => {
+    if (/\.env(?:\.|$)|\.db(?:-|$)|seed-data\.json/.test(String(file)))
+      throw new Error('Unexpected data/config read')
+    return read(file, ...args)
+  })
+  for (const file of [
+    'index.js',
+    'index-v3.js',
+    'config-v3.js',
+    'db/persistent-v3.js',
+    'db/v3-database-checks.js',
+    'scripts/database-v3.js',
+    'app.js',
+    'app-v3.js',
+    'routes/recruiting-v3.js',
+    'routes/interview-feedback-v3.js',
+    'routes/decision-v3.js',
+    'routes/dashboard-history-v3.js',
+    'routes/history-v3-dto.js',
+    'routes/request-v3.js',
+    'db/verify-v3-db.js',
+    'middleware/auth-v3.js',
+    'middleware/error-v3.js',
+    'config.js',
+    'db/database.js',
+    'db/schema.js',
+    'db/schema-v3.js',
+    'db/migration-sandbox.js',
+    'services/command-core.js',
+    'services/recruiting-auth.js',
+    'services/recruiting-service.js',
+    'services/interview-service.js',
+    'services/feedback-service.js',
+    'services/advancement-service.js',
+    'services/offer-service.js',
+    'services/dashboard-service.js',
+    'services/history-service.js',
+    'services/query-read.js',
+    'db/seed.js',
+    'utils/jwt.js',
+    'middleware/auth.js',
+    'routes/auth.js',
+    'routes/profile.js',
+    'routes/positions.js',
+    'routes/candidates.js',
+    'routes/interviews.js',
+    'scripts/reset-db.js'
+  ])
+    await import(new URL('../server/' + file, import.meta.url))
+  assert.equal(sqliteIntercepted, true)
+})

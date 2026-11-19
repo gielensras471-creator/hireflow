@@ -1,0 +1,14 @@
+{
+  "authorization": "REPLACE_WITH_OWNER_DECISION",
+  "v2Sha": "490b9ee2f1985b37052feebefd73605aa0dba1ab",
+  "renderDeployId": "REPLACE_WITH_VERIFIED_DEPLOY_ID",
+  "nginxSnapshot": {
+    "path": "/var/backups/hireflow-deploy/rollback/nginx-v2.conf",
+    "sha256": "REPLACE_WITH_VERIFIED_SHA256"
+  },
+  "renderEvidence": {
+    "path": "/var/backups/hireflow-deploy/rollback/render-v2.json",
+    "sha256": "REPLACE_WITH_VERIFIED_SHA256"
+  },
+  "v2Database": "/var/lib/hireflow/hireflow.db"
+}

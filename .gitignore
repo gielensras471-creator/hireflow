@@ -13,3 +13,33 @@ server/.env
 server/data/*.db
 server/data/*.db-shm
 server/data/*.db-wal
+
+# Independent V3 production build
+dist-v3/
+
+/dist-demo/
+
+# Local run artifacts and private data
+/docs/review/
+/deploy/v3/RELEASE-03-*.md
+/evidence/
+/launch-evidence/
+/tmp/
+coverage/
+.env.*
+!.env.example
+!.env.development
+!.env.production
+*.sqlite
+*.sqlite3
+*.sqlite-shm
+*.sqlite-wal
+*.sqlite3-shm
+*.sqlite3-wal
+*.db
+*.db-shm
+*.db-wal
+*.pem
+*.key
+id_rsa
+id_ed25519
