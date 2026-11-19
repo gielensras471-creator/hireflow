@@ -2,6 +2,11 @@
 
 HireFlow 是面向小型招聘团队的招聘流程协作平台。前端使用 Vue 3、TypeScript、Pinia、Vue Router、Element Plus、Vite 和 Sass，后端使用 Node.js、Express、JWT、bcryptjs 和 SQLite。公开 Demo 的安装、构建和启动命令见 [README](README.md)。
 
+## 当前版本与工作区
+
+- V3 已完成验收和冻结。GitHub main 的稳定基线是 52a0fb22f51ddcd335c2635d9d65dba664708f60，来自 PR #12。公开展示使用 [腾讯云 Demo](https://demo.pixelweave.xyz/)。正式 API 使用独立数据和认证。原 Render 站点按 Owner 决策保留原状、停止同步。
+- V4 尚未启动。仅在 Owner 授权后从冻结 main 建立同仓库的独立分支和 Git Worktree。主控资料由 E:/FIFile/Documents/Codex/HireFlow/docs 维护。工程验证与权限约束沿用下文。
+
 ## 开发依据
 
 - 以 Owner 当前批准的任务范围和冻结业务规则为准。改动前核对实际分支、HEAD 和工作树状态。
