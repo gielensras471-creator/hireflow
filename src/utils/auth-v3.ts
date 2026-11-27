@@ -3,7 +3,7 @@ import { reactive } from 'vue'
 export type V3User = { id: number; username: string; name: string; role: string }
 export type Credentials = { username: string; password: string; remember: boolean }
 type Token = { token: string; expiresAt: number }
-type StoredToken = Token & { remember: boolean }
+type SessionToken = Token & { remember: boolean; needsPersistence: boolean }
 type Status = 'anonymous' | 'checking' | 'ready' | 'forbidden' | 'unavailable'
 type Transport = {
   login(credentials: Credentials): Promise<Token>
@@ -34,11 +34,11 @@ export function createV3Session(
   local: SessionStorage,
   temporary: SessionStorage
 ) {
-  function read(storage: SessionStorage, key: string, remember: boolean): StoredToken | null {
+  function read(storage: SessionStorage, key: string, remember: boolean): SessionToken | null {
     try {
       const value = JSON.parse(storage.getItem(key) ?? 'null')
       if (typeof value?.token === 'string' && value.token && Number.isFinite(value.expiresAt)) {
-        return { token: value.token, expiresAt: value.expiresAt, remember }
+        return { token: value.token, expiresAt: value.expiresAt, remember, needsPersistence: false }
       }
     } catch {
       // Invalid browser storage is treated as a missing session.
@@ -84,9 +84,22 @@ export function createV3Session(
       .then(() => transport.me(current.token))
       .then((user) => {
         if (generation !== attempt) return
+        if (current.expiresAt <= Date.now()) {
+          clear('anonymous', true)
+          return
+        }
         if (!isRecruiter(user.role)) {
           clear('forbidden')
           return
+        }
+        if (current.needsPersistence) {
+          const { token, expiresAt, remember } = current
+          const storage = remember ? local : temporary
+          storage.setItem(
+            remember ? v3SessionKey : v3TemporaryKey,
+            JSON.stringify({ token, expiresAt })
+          )
+          current.needsPersistence = false
         }
         if (state.user && state.user.id !== user.id) temporary.removeItem(v3TabsKey)
         state.user = user
@@ -112,20 +125,18 @@ export function createV3Session(
     const attempt = generation
     const result = await transport.login(input)
     if (generation !== attempt) return
-    credential = { ...result, remember: input.remember }
+    credential = { ...result, remember: input.remember, needsPersistence: true }
     await refresh()
-    if (state.status === 'ready' && credential?.token === result.token) {
-      const storage = input.remember ? local : temporary
-      storage.setItem(
-        input.remember ? v3SessionKey : v3TemporaryKey,
-        JSON.stringify({ token: result.token, expiresAt: result.expiresAt })
-      )
-    }
   }
 
   return {
     state,
     refresh,
+    async refreshAfterWrite() {
+      const attempt = generation
+      if (pending) await pending
+      if (generation === attempt) await refresh()
+    },
     signIn,
     clear,
     token: () => credential?.token,

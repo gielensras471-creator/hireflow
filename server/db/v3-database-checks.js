@@ -1,4 +1,5 @@
 import { createHash } from 'node:crypto'
+import { authSchemaFingerprint } from './v3-auth-migration.js'
 export const schemaFingerprint = 'af1212fbfa27d78f852b9ea827f536d7f9b2eae10a53cceb63cb0abcfe886bfe'
 export const verifyV3Structure = (db) => {
   const incompatible = () => new TypeError('Incompatible V3 database structure or safety settings')
@@ -17,8 +18,8 @@ export const verifyV3Structure = (db) => {
     )
     .all()
     .map((row) => ({ ...row, sql: row.sql.replace(/\r\n/g, '\n') }))
-  if (createHash('sha256').update(JSON.stringify(schema)).digest('hex') !== schemaFingerprint)
-    throw incompatible()
+  const fingerprint = createHash('sha256').update(JSON.stringify(schema)).digest('hex')
+  if (![schemaFingerprint, authSchemaFingerprint].includes(fingerprint)) throw incompatible()
   const integrity = db.prepare('PRAGMA main.integrity_check').all()
   if (
     integrity.length !== 1 ||
@@ -26,4 +27,5 @@ export const verifyV3Structure = (db) => {
     db.prepare('PRAGMA main.foreign_key_check').get()
   )
     throw incompatible()
+  return fingerprint
 }

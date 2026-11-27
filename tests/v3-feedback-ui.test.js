@@ -42,6 +42,6 @@ test('feedback labels and server timestamp display use Shanghai independently of
   const ms = Date.parse('2030-01-01T06:00:00Z')
   for (const tz of ['UTC', 'America/New_York', 'Asia/Shanghai']) {
     process.env.TZ = tz
-    assert.match(feedbackTime(ms), /14:00:00.*上海/)
+    assert.match(feedbackTime(ms), /14:00:00.*北京时间/)
   }
 })

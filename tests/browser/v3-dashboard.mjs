@@ -34,9 +34,13 @@ db.prepare(
 ).run(username, bcrypt.hashSync(password, 10), '本地演示 HR', 'hr', '', '', '')
 let holdPath = null,
   releaseHeld = null,
+  staleHistory = null,
   failSummary = false,
   failWork = false,
   failToday = false,
+  failHistory = false,
+  failPhase = false,
+  failPosition = null,
   denySummary = false
 const dialogs = [],
   browserWrites = []
@@ -46,7 +50,8 @@ wrapped.use(express.json())
 wrapped.use((req, res, next) => {
   if (req.path === holdPath) {
     holdPath = null
-    releaseHeld = () => next()
+    const stale = req.path.endsWith('/history-metrics') ? staleHistory : null
+    releaseHeld = () => (stale ? res.json(stale) : next())
     return
   }
   if (req.path === '/api/v3/dashboard/summary' && denySummary) {
@@ -56,7 +61,13 @@ wrapped.use((req, res, next) => {
   if (
     (failSummary && req.path.endsWith('/summary')) ||
     (failWork && req.path.includes('/work-items/')) ||
-    (failToday && req.path.endsWith('/today-interviews'))
+    (failToday && req.path.endsWith('/today-interviews')) ||
+    (failHistory && req.path.endsWith('/history-metrics')) ||
+    (failPhase && req.path.endsWith('/applications') && req.query.stage === 'second_interview') ||
+    (failPosition !== null &&
+      req.path.endsWith('/interviews') &&
+      req.query.positionId === String(failPosition) &&
+      req.query.status === 'completed')
   )
     return res.status(503).json({ error: { code: 'TEST_BUSY', message: 'fixture' } })
   next()
@@ -121,11 +132,11 @@ const meStatuses = []
 const pending = new Map()
 let seq = 0
 let dialogMode = null
-function send(method, params = {}) {
+function send(method, params = {}, sessionId) {
   const id = ++seq
   return new Promise((resolve, reject) => {
     pending.set(id, { resolve, reject })
-    ws.send(JSON.stringify({ id, method, params }))
+    ws.send(JSON.stringify({ id, method, params, sessionId }))
   })
 }
 async function evaluate(expression) {
@@ -145,10 +156,10 @@ const h1 = (name) =>
 const click = (selector) =>
   evaluate('document.querySelector(' + JSON.stringify(selector) + ')?.click()')
 const go = (path) => send('Page.navigate', { url: app.url + path })
-const width = (w) =>
+const width = (w, height = w < 800 ? 844 : 900) =>
   send('Emulation.setDeviceMetricsOverride', {
     width: w,
-    height: w < 800 ? 844 : 900,
+    height,
     deviceScaleFactor: 1,
     mobile: false
   })
@@ -212,6 +223,94 @@ async function snapshot(name) {
     }
   })
   await writeFile(join(output, name + '.png'), Buffer.from(data, 'base64'))
+}
+async function viewportShot(name) {
+  await evaluate('new Promise(r=>requestAnimationFrame(()=>requestAnimationFrame(r)))')
+  const image = await until(async () => {
+    const { data } = await send('Page.captureScreenshot', {
+      format: 'png',
+      captureBeyondViewport: false
+    })
+    const image = Buffer.from(data, 'base64')
+    if (image.length < 8000) return null
+    const hasInk = await evaluate(`(async () => {
+      const bitmap = await createImageBitmap(await (await fetch('data:image/png;base64,' + ${JSON.stringify(data)})).blob())
+      const canvas = new OffscreenCanvas(bitmap.width, bitmap.height)
+      const context = canvas.getContext('2d')
+      context.drawImage(bitmap, 0, 0)
+      const pixels = context.getImageData(0, 0, bitmap.width, bitmap.height).data
+      bitmap.close()
+      let dark = 0
+      for (let i=0; i<pixels.length; i+=16) {
+        if (Math.max(pixels[i], pixels[i+1], pixels[i+2]) < 130 && ++dark >= 100) return true
+      }
+      return false
+    })()`)
+    return hasInk ? image : null
+  }, 'nonempty screenshot ' + name)
+  await writeFile(join(output, name + '.png'), image)
+}
+
+async function nativeZoom() {
+  await send('Emulation.clearDeviceMetricsOverride')
+  const { windowId } = await send('Browser.getWindowForTarget')
+  await send('Browser.setWindowBounds', { windowId, bounds: { width: 1440, height: 900 } })
+  await check('innerWidth > 1300', 'settled unzoomed window width')
+  const {
+    targetInfo: { targetId: mainTab }
+  } = await send('Target.getTargetInfo')
+  const { targetId } = await send('Target.createTarget', {
+    url: 'chrome://settings/appearance',
+    background: true
+  })
+  const { sessionId } = await send('Target.attachToTarget', { targetId, flatten: true })
+  const setZoom = (zoom) =>
+    send(
+      'Runtime.evaluate',
+      {
+        expression: 'chrome.settingsPrivate.setDefaultZoom(' + zoom + ')'
+      },
+      sessionId
+    )
+  try {
+    await until(
+      async () =>
+        (
+          await send(
+            'Runtime.evaluate',
+            {
+              expression: 'typeof chrome.settingsPrivate?.setDefaultZoom === "function"',
+              returnByValue: true
+            },
+            sessionId
+          )
+        ).result?.value,
+      'Chrome native zoom setting'
+    )
+    await setZoom(2)
+    await send('Target.activateTarget', { targetId: mainTab })
+    await send('Page.reload')
+    await check(
+      'devicePixelRatio >= 1.95 && innerWidth < 740 && document.querySelectorAll(".v4-dash-bar-point").length===7',
+      'native 200% and chart'
+    )
+    await check(
+      'document.documentElement.scrollWidth <= innerWidth + 1 && ![...document.querySelectorAll(".v3-dashboard,.v4-dash-core,.v4-dash-positions")].some(e=>e.scrollWidth>e.clientWidth+1)',
+      'native zoom no horizontal layout overflow'
+    )
+    await viewportShot('dashboard-native-200')
+    await evaluate('document.querySelector(".v3-dashboard-stats").scrollIntoView({block:"start"})')
+    await viewportShot('dashboard-native-200-bottom')
+    return await evaluate(
+      '({ width: innerWidth, height: innerHeight, dpr: devicePixelRatio, scrollWidth: document.documentElement.scrollWidth })'
+    )
+  } finally {
+    await setZoom(1)
+    await send('Target.closeTarget', { targetId })
+    await width(1440)
+    await send('Page.reload')
+    await h1('招聘工作台')
+  }
 }
 async function fill(password, remember = false) {
   await evaluate(
@@ -403,7 +502,7 @@ try {
   }
   await send('Page.addScriptToEvaluateOnNewDocument', { source: observerProbe })
   await go('/dashboard')
-  await h1('登录招聘工作台')
+  await h1('欢迎回来')
   await fill(app.password, true)
   await h1('招聘工作台')
   await check('document.querySelector("[data-metric=positions]")?.textContent==="0"', 'real zero')
@@ -423,7 +522,12 @@ try {
       )
     )
   }
+  await check(
+    'document.querySelectorAll(".v4-dash-value").length===7 && [...document.querySelectorAll(".v4-dash-value")].every(e=>e.textContent.trim()==="0")',
+    'seven confirmed zero buckets'
+  )
   await snapshot('dashboard-empty')
+  await viewportShot('dashboard-zero')
   const pos = (
     await apiPost('/positions', {
       title: '虚构工作台岗位',
@@ -433,11 +537,26 @@ try {
       description: '隔离统计验证'
     })
   ).data.result.aggregateId
-  const create = async (name) => {
+  const extra = []
+  for (const [title, publishDate] of [
+    ['可读性验证 · 跨区域招聘平台与人才数据运营高级产品经理', '2029-12-31'],
+    ['企业招聘顾问', '2029-12-30']
+  ]) {
+    const position = await apiPost('/positions', {
+      title,
+      department: '产品研发',
+      location: '上海',
+      publishDate,
+      description: '虚构验收数据'
+    })
+    assert.equal(position.status, 201)
+    extra.push(position.data.result.aggregateId)
+  }
+  const create = async (name, positionId = pos, appliedDate = '2030-01-01') => {
     const r = await apiPost('/applications', {
       name,
-      positionId: pos,
-      appliedDate: '2030-01-01',
+      positionId,
+      appliedDate,
       owner: '虚构 HR'
     })
     assert.equal(r.status, 201)
@@ -525,6 +644,24 @@ try {
     if (status === 'hired') await action(id, '/offer/confirm-hire')
     offerIds.push(id)
   }
+  // Other months are closed, so they exercise the chart without changing active work counts.
+  for (const [month, count] of [
+    [7, 6],
+    [8, 3],
+    [9, 15],
+    [10, 8],
+    [11, 18],
+    [12, 13]
+  ]) {
+    for (let i = 0; i < count; i++) {
+      const id = await create(
+        '趋势虚构样例',
+        extra[i % extra.length],
+        '2029-' + String(month).padStart(2, '0') + '-15'
+      )
+      await action(id, '/close', { outcome: 'company_rejected', reason: '隔离演示结案' })
+    }
+  }
   // Query refresh is read-only, including every exposed count and page.
   const counts = () =>
     JSON.stringify(
@@ -536,9 +673,15 @@ try {
     )
   const before = counts()
   await refresh()
-  const metrics = { positions: '2', applications: String(screening.length + 9), hired: '1' }
+  const metrics = { positions: '4', applications: String(screening.length + 9) }
   const sum = await apiGet('/dashboard/summary')
   metrics.applications = String(sum.activeApplications.count)
+  metrics.scheduling = String(sum.work.scheduling.count)
+  metrics.offer = String(sum.work.offer.count)
+  assert.match(
+    await evaluate('document.querySelector("[data-application-stat=hired] dd").textContent'),
+    /^1/
+  )
   for (const [key, value] of Object.entries(metrics))
     assert.equal(
       await evaluate('document.querySelector("[data-metric=' + key + ']").textContent'),
@@ -560,6 +703,242 @@ try {
     assert.equal(s.work.due.count, expected)
     assert.equal((await apiGet('/interviews/' + dueMeeting)).status, 'scheduled')
   }
+  const latest = await apiGet('/dashboard/history-metrics')
+  db.prepare('UPDATE candidates SET applied_date=? WHERE id=?').run('', screening[0])
+  await refresh()
+  await check(
+    'document.querySelector(".v4-dashboard-trend").innerText.includes("部分覆盖")',
+    'invalid business dates mark trend partial'
+  )
+  await viewportShot('dashboard-partial')
+  db.prepare('UPDATE candidates SET applied_date=? WHERE id=?').run('2030-01-01', screening[0])
+  await refresh()
+  await check(
+    'document.querySelectorAll(".v4-dash-bar-point").length===7 && !document.querySelector(".v4-dashboard-trend").innerText.includes("部分覆盖")',
+    'restored dates return certified V3 coverage'
+  )
+
+  await check(
+    'document.querySelectorAll(".v4-dash-job").length===3 && !document.querySelector(".v4-dash-job-stats dd:nth-child(2)")?.textContent.includes("读取中")',
+    'three open position cards'
+  )
+  assert.deepEqual(
+    await evaluate(
+      '[...document.querySelectorAll(".v4-dash-value")].map(e=>Number(e.textContent))'
+    ),
+    latest.applications.months.map((m) => m.count)
+  )
+  const bars = await evaluate(
+    '[...document.querySelectorAll(".v4-dash-bar-fill")].map(e=>({bottom:e.getBoundingClientRect().bottom,height:e.getBoundingClientRect().height}))'
+  )
+  const maximum = Math.max(...latest.applications.months.map((m) => m.count))
+  bars.forEach((bar, i) => {
+    assert.ok(Math.abs(bar.bottom - bars[0].bottom) < 1, 'common zero baseline')
+    assert.ok(
+      Math.abs(
+        bar.height / Math.max(...bars.map((x) => x.height)) -
+          latest.applications.months[i].count / maximum
+      ) < 0.01,
+      'real proportional heights'
+    )
+  })
+  await evaluate('document.querySelector(".v4-dash-button.is-primary").focus()')
+  await send('Input.dispatchKeyEvent', {
+    type: 'keyDown',
+    key: 'Tab',
+    code: 'Tab',
+    windowsVirtualKeyCode: 9
+  })
+  await send('Input.dispatchKeyEvent', {
+    type: 'keyUp',
+    key: 'Tab',
+    code: 'Tab',
+    windowsVirtualKeyCode: 9
+  })
+  await check(
+    'document.activeElement.matches(".v4-dash-bar-point:focus-visible")',
+    'keyboard reaches trend point'
+  )
+  assert.match(await evaluate('document.activeElement.getAttribute("aria-label")'), /申请记录/)
+  await check(
+    'getComputedStyle(document.activeElement.querySelector(".v4-dash-tip")).display!=="none"',
+    'keyboard focus tooltip'
+  )
+  await evaluate('document.activeElement.blur()')
+  assert.deepEqual(
+    await evaluate(
+      '[...document.querySelectorAll(".v4-dash-job-id")].map(e=>Number(e.innerText.match(/#([0-9]+)/)[1]))'
+    ),
+    [pos, ...extra]
+  )
+  assert.deepEqual(
+    await evaluate(
+      '[...document.querySelectorAll(".v4-dash-job")].map(e=>e.querySelectorAll("dd")[1].textContent.trim())'
+    ),
+    ['4', '0', '0']
+  )
+  failPosition = extra[0]
+  failPhase = true
+  failHistory = true
+  await refresh()
+  await check(
+    'document.body.innerText.includes("部分阶段读取失败") && document.body.innerText.includes("重试场次") && document.body.innerText.includes("重试历史统计")',
+    'independent failures'
+  )
+  assert.deepEqual(
+    await evaluate(
+      '[...document.querySelectorAll(".v4-dash-job")].map(e=>e.querySelectorAll("dd")[1].textContent.trim())'
+    ),
+    ['4', '不可用', '0']
+  )
+  assert.equal(
+    await evaluate(
+      '[...document.querySelectorAll(".v4-dash-progress dl div")].find(e=>e.querySelector("dt").textContent==="面试中").querySelector("dd").textContent'
+    ),
+    '—'
+  )
+  await viewportShot('dashboard-error-history')
+  failHistory = failPhase = false
+  failPosition = null
+  await button('重试历史统计')
+  await button('重试阶段')
+  await button('重试场次')
+  await check(
+    'document.querySelectorAll(".v4-dash-bar-point").length===7 && !document.body.innerText.includes("重试场次") && !document.body.innerText.includes("重试阶段")',
+    'independent retries'
+  )
+  staleHistory = {
+    ...latest,
+    applications: {
+      ...latest.applications,
+      months: latest.applications.months.map((m) => ({ ...m, count: 99999 }))
+    }
+  }
+  holdPath = '/api/v3/dashboard/history-metrics'
+  await button('刷新工作台')
+  const releaseOld = await until(() => releaseHeld, 'held older historical read')
+  releaseHeld = null
+  await viewportShot('dashboard-loading-history')
+  await button('刷新工作台')
+  await check(
+    'document.querySelectorAll(".v4-dash-bar-point").length===7',
+    'latest history accepted before older read'
+  )
+  releaseOld()
+  staleHistory = null
+  await check(
+    'performance.getEntriesByType("resource").filter(e=>e.name.endsWith("/dashboard/history-metrics")).length >= 6',
+    'older HTTP response resolved'
+  )
+  await evaluate('new Promise(r=>requestAnimationFrame(()=>requestAnimationFrame(r)))')
+  assert.deepEqual(
+    await evaluate(
+      '[...document.querySelectorAll(".v4-dash-value")].map(e=>Number(e.textContent))'
+    ),
+    latest.applications.months.map((m) => m.count),
+    'stale response cannot overwrite current values'
+  )
+  for (const type of ['screening', 'feedback', 'offer']) {
+    await evaluate('document.querySelector("[data-highlight=' + type + ']").focus()')
+    await send('Input.dispatchKeyEvent', {
+      type: 'keyDown',
+      key: 'Enter',
+      text: '\r',
+      code: 'Enter',
+      windowsVirtualKeyCode: 13
+    })
+    await send('Input.dispatchKeyEvent', {
+      type: 'keyUp',
+      key: 'Enter',
+      code: 'Enter',
+      windowsVirtualKeyCode: 13
+    })
+    await check(
+      '!!document.querySelector("[data-work=' + type + '][aria-pressed=true]")',
+      'highlight keyboard switches ' + type
+    )
+  }
+  await check('document.querySelectorAll(".v4-dash-bar-point").length===7', 'chart settled')
+  const dimensions = []
+  for (const [w, h] of [
+    [1920, 1080],
+    [1440, 900],
+    [1366, 768],
+    [1024, 768],
+    [390, 844]
+  ]) {
+    await width(w, h)
+    await check(
+      'innerWidth===' + w + ' && document.documentElement.scrollWidth <= innerWidth + 1',
+      'viewport bounds ' + w
+    )
+    await evaluate('document.querySelector(".v3-content").scrollTo({top:0,behavior:"instant"})')
+    dimensions.push(
+      await evaluate(
+        '({width:innerWidth,height:innerHeight,core:[...document.querySelectorAll(".v4-dash-core > section")].map(e=>[e.offsetWidth,e.offsetHeight]),positions:getComputedStyle(document.querySelector(".v4-dash-positions")).gridTemplateColumns,overflow:[...document.querySelectorAll(".v3-dashboard,.v4-dash-core,.v4-dash-positions")].some(e=>e.scrollWidth>e.clientWidth+1)})'
+      )
+    )
+    assert.equal(dimensions.at(-1).overflow, false)
+    await viewportShot('dashboard-' + w)
+  }
+  await width(1920, 1080)
+  await evaluate(
+    'document.querySelector(".v3-dashboard-stats").scrollIntoView({block:"end",behavior:"instant"})'
+  )
+  await viewportShot('dashboard-bottom')
+  await width(1920, 2500)
+  await evaluate('document.querySelector(".v3-content").scrollTo({top:0,behavior:"instant"})')
+  await viewportShot('dashboard-full-content')
+  await width(390, 844)
+  await evaluate('document.querySelector(".v3-content").scrollTo({top:0,behavior:"instant"})')
+  staleHistory = {
+    ...latest,
+    applications: {
+      ...latest.applications,
+      months: latest.applications.months.map((month, i) => ({
+        ...month,
+        count: i === 0 ? Number.MAX_SAFE_INTEGER : i === 1 ? 0 : month.count
+      }))
+    }
+  }
+  holdPath = '/api/v3/dashboard/history-metrics'
+  await button('刷新工作台')
+  const sendLarge = await until(() => releaseHeld, 'synthetic large-count DTO pressure check')
+  releaseHeld = null
+  sendLarge()
+  staleHistory = null
+  await check(
+    'document.querySelector(".v4-dash-bar-point")?.getAttribute("aria-label").includes("9007199254740991")',
+    'large value remains available to assistive tech'
+  )
+  await check(
+    'document.querySelector(".v4-dashboard-trend").scrollWidth<=document.querySelector(".v4-dashboard-trend").clientWidth',
+    'large label fits its chart'
+  )
+  await viewportShot('dashboard-large-number-390')
+  await refresh()
+  await check(
+    'document.querySelector(".v4-dash-bar-point")?.getAttribute("aria-label").includes("6 条")',
+    'restore real data after DTO pressure check'
+  )
+  await width(1440, 900)
+  await check('document.querySelectorAll(".v4-dash-job").length===3', 'position actions available')
+  await click('.v4-dash-job footer a')
+  await check(
+    'location.pathname.startsWith("/positions/") && !!document.querySelector(".v4-position-detail .position-accent")',
+    'Dashboard link opens independent position detail'
+  )
+  await click('.v4-position-detail > a')
+  await h1('招聘工作台')
+  await check(
+    'document.activeElement.matches("[data-position-link]")',
+    'back to Dashboard restores trigger focus'
+  )
+  const zoom = await nativeZoom()
+  await writeFile(
+    join(output, 'dev06-layout.json'),
+    JSON.stringify({ dimensions, zoom, barGeometry: bars }, null, 2)
+  )
   await snapshot('dashboard-desktop')
   if (process.env.R04_AB === '1') await r04Checks()
   const refineMetrics = await tableChecks(
@@ -687,6 +1066,10 @@ try {
   await snapshot('dashboard-offer')
   const today = await apiGet('/dashboard/today-interviews?limit=10&offset=0')
   assert.equal(today.total, 6)
+  await check(
+    'document.querySelector(".v3-dashboard-today")?.textContent.includes("共 6 场")',
+    'today total is still visible'
+  )
   assert.deepEqual(today.byStatus, { scheduled: 1, completed: 4, cancelled: 1 })
   await snapshot('dashboard-today')
   assert.equal(counts(), before)
@@ -822,8 +1205,22 @@ try {
   assert.ok(await evaluate('document.documentElement.scrollWidth<=390'))
   await snapshot('dashboard-mobile')
   await width(1440)
-  await click('.v3-account button')
-  await h1('登录招聘工作台')
+  await check(
+    'document.querySelector(".v3-shell").dataset.tier!=="mobile"',
+    'desktop account controls'
+  )
+  await click('.v3-account a')
+  await h1('个人中心')
+  await check('document.querySelectorAll(".v3-table-scroll").length===0', 'table route unmounted')
+  assert.equal(
+    await evaluate('window.__tableObservers?.size ?? 0'),
+    0,
+    'scroll ResizeObservers disconnected'
+  )
+  await click('nav a[href="/dashboard"]')
+  await h1('招聘工作台')
+  await click('.v4-rail-account .v4-exit')
+  await h1('欢迎回来')
   db.prepare(
     'INSERT INTO users(username,password_hash,name,role,department,email,phone)VALUES(?,?,?,?,?,?,?)'
   ).run('second-hr', bcrypt.hashSync(password, 10), '第二虚构HR', 'hr', '', '', '')
@@ -833,18 +1230,10 @@ try {
   await check('!!document.querySelector("[data-metric]")', 'new account data')
   db.prepare("UPDATE users SET role='viewer' WHERE username='second-hr'").run()
   await button('刷新工作台')
-  await h1('登录招聘工作台')
+  await h1('欢迎回来')
   assert.equal(await evaluate('document.querySelectorAll("[data-metric]").length'), 0)
   assert.equal(requests.filter((u) => /^\/api\/(?!v3\/)/.test(new URL(u).pathname)).length, 0)
 
-  await width(1440)
-  await evaluate('document.querySelector(".v3-account a")?.click()')
-  await check('document.querySelectorAll(".v3-table-scroll").length===0', 'table route unmounted')
-  assert.equal(
-    await evaluate('window.__tableObservers?.size ?? 0'),
-    0,
-    'scroll ResizeObservers disconnected'
-  )
   assert.equal(browserWrites.length, 0, 'Dashboard interactions cannot issue business writes')
   await writeFile(
     join(output, 'results.json'),
@@ -878,7 +1267,12 @@ try {
           'detail routing',
           'loading and independent error retry',
           'operation403, account switch, actual role revocation',
-          '1440/390 no overflow',
+          '1920/1440/1366/1024/390 and native 200% without page overflow',
+          'seven real bars, shared baseline, measured ratios and keyboard tooltip',
+          'long value 9007199254740991 remains available at 390 CSS pixels',
+          'position detail exposes existing linked applications route',
+          'three independent keyboard shortcuts, active phase partial failure and per-position retry',
+          'latest history wins over delayed stale DTO and missing business date reports partial coverage',
           'zero V2 requests'
         ],
         limitations: [

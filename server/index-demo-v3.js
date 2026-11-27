@@ -46,7 +46,8 @@ export function createDemoRequestGuard(now = Date.now) {
 export async function startDemoServer({
   password = 'a123456',
   port = 3302,
-  staticDir = defaultStatic
+  staticDir = defaultStatic,
+  seed = 'compact'
 } = {}) {
   if (!Number.isInteger(port) || port < 0 || port > 65535) throw new Error('Invalid demo port')
   // A dedicated artifact, never the formal frontend (which could contain the formal API URL).
@@ -54,7 +55,7 @@ export async function startDemoServer({
   const manifest = JSON.parse(fs.readFileSync(path.join(directory, 'demo-build.json'), 'utf8'))
   if (manifest.kind !== 'hireflow-isolated-demo' || manifest.apiBase !== '/api/v3')
     throw new Error('An isolated demo build is required')
-  const { db, jwtSecret } = createDemoDatabase(password)
+  const { db, jwtSecret } = createDemoDatabase(password, { seed })
   let server,
     closing,
     draining = false
@@ -106,6 +107,7 @@ export async function startDemoServer({
 if (process.argv[1] && import.meta.url === pathToFileURL(path.resolve(process.argv[1])).href) {
   try {
     const running = await startDemoServer({
+      seed: 'rich',
       port: process.env.DEMO_PORT === undefined ? 3302 : Number(process.env.DEMO_PORT)
     })
     for (const signal of ['SIGINT', 'SIGTERM']) process.once(signal, () => void running.close())

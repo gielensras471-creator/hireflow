@@ -1,3 +1,4 @@
+import { showDetailTabForScope } from './v4-detail-controls.mjs'
 import { checkSummary } from './r03b-summary-checks.mjs'
 import assert from 'node:assert/strict'
 import { spawn } from 'node:child_process'
@@ -359,6 +360,7 @@ try {
   const race = await create('并发虚构申请')
   await advance(race)
   const button = async (text, scope = 'document') => {
+    await showDetailTabForScope(evaluate, scope)
     const expr =
       '([...(' +
       scope +
@@ -404,7 +406,7 @@ try {
   const editors =
     'document.querySelectorAll(".v3-advance-editor,.v3-feedback-editor,.v3-interview-editor,.v3-editor").length'
   await go('/candidates/' + main)
-  await h1('登录招聘工作台')
+  await h1('欢迎回来')
   await fill(app.password, true)
   await h1('申请详情')
   await check(panel + '.textContent.includes("暂无真实晋级事件")', 'empty history')
@@ -748,8 +750,8 @@ try {
   await button('核验并决定晋级', panel)
   await check('!!' + ed, 'auth editor')
   await input('晋级理由', '账号切换保留边界')
-  await click('.v3-account button')
-  await h1('登录招聘工作台')
+  await click('.v3-sidebar button[aria-label=退出]')
+  await h1('欢迎回来')
   db.prepare(
     'INSERT INTO users(username,password_hash,name,role,department,email,phone) VALUES(?,?,?,?,?,?,?)'
   ).run('second-hr', bcrypt.hashSync(password, 10), '第二虚构 HR', 'hr', '', '', '')
@@ -763,7 +765,7 @@ try {
   await input('晋级理由', '撤权不应写入')
   db.prepare("UPDATE users SET role='viewer' WHERE username='second-hr'").run()
   await save()
-  await h1('登录招聘工作台')
+  await h1('欢迎回来')
   assert.deepEqual(count(), authBefore)
   app.username = username
   await fill(app.password)
@@ -773,7 +775,7 @@ try {
   await check('!!' + ed, '401 editor')
   unauthorized = true
   await save()
-  await h1('登录招聘工作台')
+  await h1('欢迎回来')
   assert.equal(await evaluate(editors), 0)
   assert.equal(requests.filter((url) => /^\/api\/(?!v3\/)/.test(new URL(url).pathname)).length, 0)
   evidence.push(

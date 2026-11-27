@@ -35,6 +35,7 @@
       :action="props.disabled ? undefined : '重新加载'"
       @action="load"
     />
+    <slot v-if="loading || error" name="unavailable" />
     <V3Feedback
       v-else-if="!context?.interviews.length"
       state="empty"
@@ -42,23 +43,92 @@
       message="实际面试完成后可录入评价，不预填默认结论。"
     />
     <template v-else>
-      <article
+      <details
         v-for="meeting in displayedMeetings"
         :key="meeting.id"
         class="v3-card v3-feedback-card"
         :data-feedback-interview="meeting.id"
+        :data-interview-id="meeting.id"
         :data-existing-feedback="record(meeting.id)?.id"
+        open
       >
-        <header class="v3-feedback-heading">
-          <h3>面试 #{{ meeting.id }} · {{ label(meeting.stageScope) }}</h3>
-          <span class="v3-feedback-badge">{{ interviewStatus[meeting.status] }}</span>
+        <summary class="v3-feedback-heading">
+          <span class="v4-detail-symbol" aria-hidden="true"
+            ><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6">
+              <rect x="4" y="6" width="16" height="14" rx="2" />
+              <path d="M8 3v5m8-5v5M4 11h16" /></svg
+          ></span>
+          <h3>{{ label(meeting.stageScope) }}</h3>
+          <span class="v4-meeting-id">面试 #{{ meeting.id }}</span>
+          <span class="v3-feedback-badge" :data-meeting-status="meeting.status">{{
+            interviewStatus[meeting.status]
+          }}</span>
           <span class="v3-feedback-badge">{{
             meeting.stageScope === context.application.stage ? '当前轮次' : '历史轮次'
           }}</span>
           <span v-if="record(meeting.id)?.corrected" class="v3-feedback-badge">已更正</span>
-        </header>
+        </summary>
+        <div class="v4-meeting-surface">
+          <dl class="v4-meeting-facts">
+            <div>
+              <dt>预约开始 · 北京时间</dt>
+              <dd>{{ safeHistoryTime(meeting.scheduledAt, feedbackTime) }}</dd>
+            </div>
+            <div>
+              <dt>面试官</dt>
+              <dd>{{ meeting.interviewerName || '未记录' }}</dd>
+            </div>
+            <div>
+              <dt>面评状态</dt>
+              <dd>
+                {{
+                  record(meeting.id)
+                    ? '已提交'
+                    : facts(meeting.id)?.historicalMissing
+                      ? '历史缺评'
+                      : '尚未提交'
+                }}
+              </dd>
+            </div>
+          </dl>
+          <div
+            v-if="allowed('submit', meeting) || allowed('supplement', meeting)"
+            class="v3-feedback-actions"
+          >
+            <el-button
+              v-if="allowed('submit', meeting)"
+              type="primary"
+              :disabled="blocked"
+              @click="open($event, meeting.id, 'submit')"
+              >填写面评</el-button
+            >
+            <el-button
+              v-if="allowed('supplement', meeting)"
+              type="primary"
+              :disabled="blocked"
+              @click="open($event, meeting.id, 'supplement')"
+              >补录历史面评</el-button
+            >
+          </div>
+        </div>
+        <p v-if="meeting.note" class="v4-meeting-note">面试备注：{{ meeting.note }}</p>
+        <p v-if="meeting.cancelReason">取消原因：{{ meeting.cancelReason }}</p>
+        <p
+          v-if="meeting.status === 'scheduled' && meeting.startTimeReached"
+          class="v3-reminder"
+          role="status"
+        >
+          {{ meeting.reminder }}
+        </p>
+        <slot name="meeting-actions" :meeting="meeting" />
         <template v-if="record(meeting.id)">
-          <V3FeedbackSnapshot :value="record(meeting.id)!" />
+          <div class="v4-current-feedback">
+            <h4>
+              当前有效面评 · #{{ record(meeting.id)?.id }}
+              <span v-if="record(meeting.id)?.corrected" class="v3-feedback-badge">已更正</span>
+            </h4>
+            <V3FeedbackSnapshot :value="record(meeting.id)!" />
+          </div>
           <p v-if="facts(meeting.id)?.supplementEventId" class="v3-feedback-notice">
             晋级后补录 · {{ safeHistoryTime(facts(meeting.id)!.supplementedAt, feedbackTime) }} ·
             补录事件 #{{ facts(meeting.id)!.supplementEventId }}
@@ -83,22 +153,6 @@
               blockedMessages[facts(meeting.id)?.blockedReason ?? ''] ?? '当前状态不允许提交评价。'
             }}
           </p>
-          <div class="v3-feedback-actions">
-            <el-button
-              v-if="allowed('submit', meeting)"
-              type="primary"
-              :disabled="blocked"
-              @click="open($event, meeting.id, 'submit')"
-              >填写面评</el-button
-            >
-            <el-button
-              v-if="allowed('supplement', meeting)"
-              type="primary"
-              :disabled="blocked"
-              @click="open($event, meeting.id, 'supplement')"
-              >补录历史面评</el-button
-            >
-          </div>
         </template>
         <details v-if="facts(meeting.id)?.waivers.length" class="v3-feedback-waivers" open>
           <summary>已说明原因推进 · 原晋级豁免事实</summary>
@@ -107,7 +161,7 @@
             {{ label(waiver.stageScope) }} → {{ label(waiver.toStage) }} · 原因：{{ waiver.reason }}
           </p>
         </details>
-      </article>
+      </details>
     </template>
     <section v-if="historyId" class="v3-card">
       <h3>评价 #{{ historyId }} 的真实记录</h3>

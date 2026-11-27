@@ -91,7 +91,9 @@ test('RELEASE02 initialization/version/path gates preserve empty business and or
   const wrong = path.join(root, 'version.db')
   await backupV3File(root, file, wrong)
   const v = new DatabaseSync(wrong)
-  v.exec("DROP TRIGGER schema_migrations_no_update; UPDATE schema_migrations SET version='unknown'")
+  v.exec(
+    "DROP TRIGGER schema_migrations_no_update; UPDATE schema_migrations SET version='unknown' WHERE version='v3_file_001'"
+  )
   v.close()
   assert.throws(() => openPersistentV3(root, wrong))
   const linked = path.join(root, 'linked.db')
@@ -133,7 +135,7 @@ test('RELEASE02 production HTTP survives restart, JWT and rows persist, atomic e
     const base = 'http://127.0.0.1:' + env.V3_PORT + '/api/v3',
       response = await fetch(base + '/auth/login', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', Connection: 'close' },
         body: JSON.stringify({ username: hr.username, password: hr.password })
       }),
       token = (await response.json()).token
@@ -143,6 +145,9 @@ test('RELEASE02 production HTTP survives restart, JWT and rows persist, atomic e
       const r = await fetch(base + p, {
         method: body ? 'POST' : 'GET',
         headers: {
+          // The test restarts an HTTP server on the same port. Don't reuse a
+          // pooled socket belonging to the closed instance after restart.
+          Connection: 'close',
           Authorization: 'Bearer ' + token,
           ...(body
             ? { 'Content-Type': 'application/json', 'Idempotency-Key': 'release-' + ++key }

@@ -1,3 +1,4 @@
+import { showDetailTabForScope } from './v4-detail-controls.mjs'
 import { observerProbe } from './refine-list-checks.mjs'
 import assert from 'node:assert/strict'
 import { spawn } from 'node:child_process'
@@ -197,12 +198,41 @@ try {
 
   await send('Page.addScriptToEvaluateOnNewDocument', { source: observerProbe })
   await go('/positions')
-  await h1('登录招聘工作台')
+  await h1('欢迎回来')
+  await check(
+    '!document.querySelector(".login-demo") && !document.getElementById("v3-username").value && !document.getElementById("v3-password").value',
+    'formal login has no Demo entry or prefill'
+  )
+  await snapshot('formal-login')
+  await send('Network.setBlockedURLs', { urls: [app.url + '/api/v3/auth/login'] })
+  try {
+    await fill(app.password)
+    await check(
+      'document.querySelector("#login-error")?.textContent.includes("网络连接暂时不可用") && !document.getElementById("v3-password").value',
+      'network login error is recoverable'
+    )
+    await snapshot('formal-login-network-error')
+  } finally {
+    await send('Network.setBlockedURLs', { urls: [] })
+  }
   await fill(app.password, true)
   await h1('职位管理')
+  await writeFile(
+    join(output, 'login-dev02.json'),
+    JSON.stringify(
+      {
+        formalDemoEntryAbsent: true,
+        networkErrorAndManualRetry: true,
+        protectedRouteRestored: true
+      },
+      null,
+      2
+    )
+  )
   await check('document.body.innerText.includes("暂时没有记录")', 'true empty')
   await snapshot('positions-empty')
   const button = async (text, scope = 'document') => {
+    await showDetailTabForScope(evaluate, scope)
     const expression =
       '([...(' +
       scope +
@@ -296,7 +326,7 @@ try {
     await go('/candidates/' + id)
     await h1('申请详情')
     await check(
-      'document.querySelector(".v3-detail-summary h2")?.textContent.includes("申请 #' + id + '")',
+      'document.querySelector(".v4-detail-identity")?.textContent.includes("申请 #' + id + '")',
       'detail ID'
     )
     await check(
@@ -305,6 +335,7 @@ try {
     )
   }
   const readyButton = async (text, scope = 'document') => {
+    await showDetailTabForScope(evaluate, scope)
     await check(
       '([...(' +
         scope +
@@ -358,7 +389,7 @@ try {
     const scope =
       action === '安排面试'
         ? 'document.querySelector(".v3-interviews")'
-        : 'document.querySelector("tr[data-interview-id=\\"' + mid + '\\"]")'
+        : 'document.querySelector("[data-interview-id=\\"' + mid + '\\"]")'
     await readyButton(action, scope)
     await check('!!document.querySelector(".v3-interview-editor")', 'interview editor')
     if (time) await input('预约开始时间', time)
@@ -507,6 +538,7 @@ try {
             .length,
           0
         )
+        await showDetailTabForScope(evaluate, '.v3-feedback-panel')
         await check(
           'document.body.innerText.includes("历史缺评（已说明原因推进）")',
           'historical missing'
@@ -784,6 +816,18 @@ try {
   assert.equal(steps.length, 11)
   assert.equal(aux.length, 4)
   assert.equal(audit.http5xx.length, 0)
+  await evaluate(`(() => {
+    const key = 'hireflow_v3_session'
+    const token = JSON.parse(localStorage.getItem(key))
+    localStorage.setItem(key, JSON.stringify({ ...token, expiresAt: Date.now() - 1 }))
+  })()`)
+  await go('/profile')
+  await h1('欢迎回来')
+  await check(
+    'document.querySelector("#login-error")?.textContent.includes("登录已失效")',
+    'expired session returns to login and explains recovery'
+  )
+  await snapshot('formal-session-expired')
   console.log(
     JSON.stringify({
       steps: steps.map((x) => [x.id, x.status]),

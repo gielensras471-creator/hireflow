@@ -23,7 +23,7 @@ export const verifyV3Database = (db) => {
     throw incompatible()
 
   try {
-    verifyV3Structure(db)
+    return verifyV3Structure(db)
   } catch {
     throw incompatible()
   }

@@ -70,3 +70,33 @@ export function workPath(type: WorkType, status: string, offset: number) {
     offset
   )
 }
+
+export type HistoryMetrics = {
+  now: number
+  timezone: 'Asia/Shanghai'
+  applications: {
+    dateField: 'appliedDate'
+    unit: 'application_record'
+    startDate: string
+    endDate: string
+    throughDate: string
+    invalidDates: number
+    coverage: 'complete' | 'partial'
+    reasons: string[]
+    months: { month: string; count: number | null }[]
+  }
+  offer: {
+    dateField: 'occurredAt'
+    unit: 'business_event'
+    start: number
+    end: number
+    through: number
+    coverage: 'complete' | 'partial'
+    reasons: string[]
+    sent: number | null
+    responded: number | null
+  }
+}
+
+export const barRatio = (count: number | null, peak: number) =>
+  count !== null && peak > 0 ? count / peak : 0

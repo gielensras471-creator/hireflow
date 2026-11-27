@@ -1,3 +1,4 @@
+import { showDetailTabForScope } from './v4-detail-controls.mjs'
 import {
   tableChecks,
   observerProbe,
@@ -323,6 +324,7 @@ try {
     200
   )
   const button = async (text, scope = 'document') => {
+    await showDetailTabForScope(evaluate, scope)
     const expression =
       '([...(' +
       scope +
@@ -359,6 +361,7 @@ try {
   const detailPage = async (id) => {
     await go('/candidates/' + id)
     await h1('申请详情')
+    await showDetailTabForScope(evaluate, '.v3-interviews')
     await check('!!document.querySelector(".v3-interviews .v3-card")', 'interview region')
   }
   const rowScope = (id) => 'document.querySelector("[data-interview-id=\\"' + id + '\\"]")'
@@ -371,12 +374,15 @@ try {
     await snapshot('schedule-form')
     await save()
     await check('!document.querySelector(".v3-interview-editor")', 'schedule saved')
-    await check('!!document.querySelector(".v3-interviews tbody tr")', 'interview displayed')
+    await check(
+      '!!document.querySelector(".v3-interviews [data-interview-id]")',
+      'interview displayed'
+    )
     return (await apiGet('/applications/' + id + '/interviews')).at(-1).id
   }
   await send('Page.addScriptToEvaluateOnNewDocument', { source: observerProbe })
-  await go('/interviews')
-  await h1('登录招聘工作台')
+  await go('/interviews?view=list')
+  await h1('欢迎回来')
   await fill(app.password, true)
   await h1('面试管理')
   await check('document.body.innerText.includes("暂时没有面试记录")', 'true empty')
@@ -512,7 +518,7 @@ try {
   await snapshot('failed-refresh-blocked')
   failEmbedded = false
   await button('重新加载', 'document.querySelector(".v3-interviews")')
-  await check('!!document.querySelector(".v3-interviews tbody tr")', 'embedded recover')
+  await check('[...document.querySelectorAll(".v3-interviews button")].some(e=>e.textContent.trim()==="安排面试")', 'embedded appointment controls recovered')
   assert.ok(
     await evaluate(
       '[...document.querySelectorAll(".v3-interviews button")].find(e=>e.textContent.trim()==="安排面试").disabled'
@@ -678,7 +684,7 @@ try {
       200
     )
   }
-  await go('/interviews')
+  await go('/interviews?view=list')
   await h1('面试管理')
   await check(
     'document.querySelectorAll(".v3-interviews tbody tr").length===20',
@@ -721,7 +727,7 @@ try {
     await evaluate(
       '[...document.querySelectorAll(".v3-interview-loading th")].map(e=>e.textContent)'
     ),
-    ['面试 / 申请', '应聘职位', '轮次', '预约开始时间（上海）', '面试官', '状态', '操作']
+    ['面试 / 申请', '应聘职位', '轮次', '预约开始时间（北京时间）', '面试官', '状态', '操作']
   )
   assert.equal(await evaluate('document.querySelectorAll(".v3-interview-loading-row").length'), 5)
   assert.equal(await evaluate('document.querySelectorAll(".v3-interview-loading-cell").length'), 35)
@@ -772,7 +778,7 @@ try {
   await h1('职位管理')
   await sleep(3000)
   assert.equal(await evaluate('document.querySelector("h1").textContent'), '职位管理')
-  await go('/interviews')
+  await go('/interviews?view=list')
   await h1('面试管理')
   await check('document.querySelectorAll(".v3-interviews tbody tr").length===20', 'list again')
   await width(390)
@@ -802,8 +808,8 @@ try {
   )
   failMe = false
   await evaluate('import("/src/api/request-v3.ts").then(m=>m.v3Session.refresh())')
-  await click('.v3-account button')
-  await h1('登录招聘工作台')
+  await click('.v3-sidebar button[aria-label=退出]')
+  await h1('欢迎回来')
   db.prepare(
     'INSERT INTO users (username,password_hash,name,role,department,email,phone) VALUES (?,?,?,?,?,?,?)'
   ).run('second-hr', bcrypt.hashSync(password, 10), '第二位演示 HR', 'hr', '', '', '')
@@ -815,12 +821,12 @@ try {
   await advance(first)
   await detailPage(first)
   await check(
-    'document.querySelectorAll(".v3-interviews tbody tr").length===21',
+    'document.querySelectorAll(".v3-interviews [data-interview-id]").length===21',
     'historical round rows'
   )
   assert.ok(
     await evaluate(
-      '[...document.querySelectorAll(".v3-interviews tbody tr")].every(row=>row.innerText.includes("历史轮次"))'
+      '[...document.querySelectorAll(".v3-interviews [data-interview-id]")].every(row=>row.innerText.includes("历史轮次"))'
     )
   )
   await snapshot('historical-round')
@@ -828,7 +834,7 @@ try {
   await evaluate(
     'import("/src/api/request-v3.ts").then(m=>m.readV3("/interviews")).catch(()=>null)'
   )
-  await h1('登录招聘工作台')
+  await h1('欢迎回来')
   assert.equal(requests.filter((url) => /^\/api\/(?!v3\/)/.test(new URL(url).pathname)).length, 0)
 
   await width(1440)

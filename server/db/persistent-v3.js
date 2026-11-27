@@ -7,6 +7,12 @@ import bcrypt from 'bcryptjs'
 import { openDatabase } from './database.js'
 import { createV3Schema } from './schema-v3.js'
 import { schemaFingerprint, verifyV3Structure } from './v3-database-checks.js'
+import {
+  addV3AuthVersion,
+  authMigrationHash,
+  authMigrationVersion,
+  authSchemaFingerprint
+} from './v3-auth-migration.js'
 const connections = new WeakMap(),
   localDrives = new Set()
 const version = 'v3_file_001'
@@ -88,18 +94,31 @@ const identity = (file) => {
   return { dev: s.dev, ino: s.ino }
 }
 const same = (a, b) => a.dev === b.dev && a.ino === b.ino
-function versionCheck(db) {
-  const rows = db.prepare('SELECT * FROM schema_migrations').all()
-  if (rows.length !== 1 || rows[0].version !== version || rows[0].script_sha256 !== scriptHash)
-    fail()
-  const report = JSON.parse(rows[0].report_json)
+function versionCheck(db, fingerprint) {
+  const rows = db.prepare('SELECT * FROM schema_migrations ORDER BY version DESC').all()
+  const base = rows.find((row) => row.version === version)
+  const auth = rows.find((row) => row.version === authMigrationVersion)
+  if (!base || base.script_sha256 !== scriptHash || rows.length !== (auth ? 2 : 1)) fail()
+  const report = JSON.parse(base.report_json)
   if (
     report.kind !== 'fresh_v3_initialization' ||
     report.schemaFingerprint !== schemaFingerprint ||
     typeof report.databaseId !== 'string' ||
-    rows[0].source_fingerprint !== 'fresh:' + report.databaseId
+    base.source_fingerprint !== 'fresh:' + report.databaseId
   )
     fail()
+  if (auth) {
+    const migrated = JSON.parse(auth.report_json)
+    if (
+      fingerprint !== authSchemaFingerprint ||
+      auth.script_sha256 !== authMigrationHash ||
+      auth.source_fingerprint !== base.source_fingerprint ||
+      migrated.kind !== 'auth_version' ||
+      migrated.schemaFingerprint !== fingerprint
+    )
+      fail()
+  } else if (fingerprint !== schemaFingerprint) fail()
+  return base.source_fingerprint
 }
 function auditRelations(db) {
   if (
@@ -139,9 +158,10 @@ export function verifyPersistentV3Connection(db) {
     db.prepare('PRAGMA busy_timeout').get().timeout !== 5000
   )
     fail()
-  verifyV3Structure(db)
-  versionCheck(db)
+  const fingerprint = verifyV3Structure(db)
+  versionCheck(db, fingerprint)
   auditRelations(db)
+  return fingerprint
 }
 function connect(root, file, readOnly = false) {
   file = resolveV3File(root, file)
@@ -181,6 +201,46 @@ function connect(root, file, readOnly = false) {
   }
 }
 export const openPersistentV3 = (root, file) => connect(root, file)
+
+function upgradeAuthVersion(db, executor) {
+  db.exec('BEGIN IMMEDIATE')
+  try {
+    const current = verifyV3Structure(db)
+    const source = versionCheck(db, current)
+    if (current === authSchemaFingerprint) {
+      db.exec('COMMIT')
+      return { status: 'already-current' }
+    }
+    addV3AuthVersion(db)
+    db.prepare('INSERT INTO schema_migrations VALUES (?,?,?,?,?,?)').run(
+      authMigrationVersion,
+      authMigrationHash,
+      source,
+      Date.now(),
+      executor,
+      JSON.stringify({ kind: 'auth_version', schemaFingerprint: authSchemaFingerprint })
+    )
+    const fingerprint = verifyV3Structure(db)
+    versionCheck(db, fingerprint)
+    auditRelations(db)
+    db.exec('COMMIT')
+    return { status: 'upgraded' }
+  } catch (error) {
+    if (db.isTransaction) db.exec('ROLLBACK')
+    throw new Error('V3 auth migration refused; changes rolled back', { cause: error })
+  }
+}
+
+export function migratePersistentV3Auth(root, file, executor) {
+  if (typeof executor !== 'string' || !executor.trim())
+    throw new Error('Explicit migration identity required')
+  const db = openPersistentV3(root, file)
+  try {
+    return upgradeAuthVersion(db, executor.trim())
+  } finally {
+    db.close()
+  }
+}
 const digest = (db) => {
   const tables = db.prepare("SELECT name FROM sqlite_schema WHERE type='table' ORDER BY name").all()
   return createHash('sha256')
@@ -213,7 +273,7 @@ async function snapshot(db, root, destination) {
       return {
         file: path.basename(destination),
         fingerprint: digest(reopened),
-        schemaFingerprint,
+        schemaFingerprint: verifyPersistentV3Connection(reopened),
         integrity: 'ok',
         reopened: true
       }
@@ -243,6 +303,7 @@ export async function initializeV3File(root, destination, executor) {
       executor,
       JSON.stringify({ kind: 'fresh_v3_initialization', schemaFingerprint, databaseId })
     )
+    upgradeAuthVersion(db, executor)
     const result = await snapshot(db, root, destination)
     // Open the published file through the same production gate, not a special test exemption.
     const reopened = openPersistentV3(root, destination)

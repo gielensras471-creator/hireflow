@@ -7,10 +7,12 @@ import V3Login from '../views/login/V3Login.vue'
 import V3Placeholder from '../layouts/V3Placeholder.vue'
 import V3Recruiting from '../views/V3Recruiting.vue'
 import V3Legacy from '../views/V3Legacy.vue'
+import V4PositionDetail from '../views/V4PositionDetail.vue'
 import V3Dashboard from '../views/V3Dashboard.vue'
 import V3Interviews from '../views/V3Interviews.vue'
 import { confirmV3Leave, v3DraftDirty } from './v3-drafts'
 import { safeReturn, tabInfo, v3Sections } from './v3-navigation'
+import { workPreferences } from '../utils/v4-work-preferences'
 
 const router = createRouter({
   history: createWebHistory(),
@@ -35,6 +37,7 @@ const router = createRouter({
                     ? V3Dashboard
                     : V3Placeholder
         })),
+        { path: '/positions/:id', name: 'position-detail', component: V4PositionDetail },
         { path: '/candidates/:id', name: 'candidate-detail', component: V3Recruiting },
         { path: '/legacy-records/detail', component: V3Legacy },
         { path: '/profile', name: 'v3-profile', component: V3Placeholder }
@@ -46,12 +49,23 @@ const router = createRouter({
 
 router.beforeEach(async (to, from) => {
   if (to.name !== 'v3-login' && !tabInfo(to.path)) return '/dashboard'
-  if (v3Session.state.status === 'ready' && to.fullPath !== from.fullPath && !confirmV3Leave())
-    return false
   if (v3Session.token()) await v3Session.refresh()
   const status = v3Session.state.status
   if (to.name === 'v3-login') return status === 'ready' ? safeReturn(to.query.redirect) : true
   if (status === 'unavailable' && v3Session.state.user) return false
+  const identity = v3Session.state.user
+  if (status === 'ready' && identity && from.path !== to.path && !Object.keys(to.query).length) {
+    const preferences = workPreferences.read(identity.id)
+    if (
+      to.path === '/candidates' &&
+      from.name !== 'candidate-detail' &&
+      preferences.candidates === 'table'
+    )
+      return { path: to.path, query: { view: 'table' }, hash: to.hash }
+    if (to.path === '/interviews' && preferences.interviews !== 'week')
+      return { path: to.path, query: { view: preferences.interviews }, hash: to.hash }
+  }
+  if (status === 'ready' && to.fullPath !== from.fullPath && !confirmV3Leave()) return false
   if (status === 'ready' || status === 'unavailable') return true
   return { name: 'v3-login', query: { redirect: safeReturn(to.fullPath) } }
 })
@@ -63,6 +77,7 @@ watch(
   () => v3Session.state.status,
   (status) => {
     if (status !== 'anonymous' && status !== 'forbidden') return
+    workPreferences.clear()
     v3DraftDirty.value = false
     const current = router.currentRoute.value
     if (tabInfo(current.path)) {
@@ -72,8 +87,15 @@ watch(
 )
 
 window.addEventListener('storage', (event) => {
-  if (event.storageArea === localStorage && (event.key === v3SessionKey || event.key === null))
-    v3Session.clear()
+  try {
+    if (
+      event.storageArea === window.localStorage &&
+      (event.key === v3SessionKey || event.key === null)
+    )
+      v3Session.clear()
+  } catch {
+    /* Browsers can block access to local storage. */
+  }
 })
 
 export default router

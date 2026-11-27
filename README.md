@@ -1,47 +1,52 @@
-# HireFlow V3
+# HireFlow
 
-HireFlow 是一个面向小型招聘团队的招聘管理系统，也是一个可以直接操作的个人作品集项目。它把职位、申请、面试、面评、晋级、Offer 和录用确认串联在同一条流程里，保留每次操作的记录。
+HireFlow 是面向小型企业和招聘团队的招聘流程协作后台。团队可以从职位和申请出发，在同一个工作区安排面试、记录面评、推进招聘决策，并追溯实际发生的业务操作。
 
-**[打开 HireFlow 在线 Demo](https://demo.pixelweave.xyz/)**
+**当前工作树为产品 V4.0.0 冻结候选，视觉设计 V4.1，业务 API 继续使用 `/api/v3`。** [公开演示](https://demo.pixelweave.xyz/) 是此前发布入口，线上 V4 切换仍待发布核验。演示账号 `demo_admin`，密码 `a123456`。公开 Demo 使用共享虚构数据，请勿录入真实个人信息。正式模式使用独立账号、服务配置和持久化数据库。
 
-公开演示账号为 `demo_admin`，密码为 `a123456`。演示使用共享的虚构数据，请勿录入真实个人信息。线上数据每天北京时间 04:00 恢复至初始状态，届时需重新登录。
+## 功能
 
-![HireFlow V3 工作台与招聘待办](docs/images/v3-demo-dashboard.png)
+| 工作区 | 能力 |
+| --- | --- |
+| 招聘工作台 | 历史申请趋势、Offer 事件统计、阶段分布、开放职位、六类待办和今日面试 |
+| 职位与申请 | 职位卡片、表格及独立详情，申请四阶段看板、表格与单阶段专注视图 |
+| 申请详情 | 当前任务、面试与面评、HR 决策、Offer 与结案、真实历史 |
+| 面试管理 | 北京时间日、周、月历，同位置事件聚合、事件面板及全局列表 |
+| 账号与历史 | 个人中心、正式账号资料与密码、工作偏好、只读旧档 |
 
-## 可以体验什么
+每条 CandidateRecord 对应一次职位申请，以稳定 ID 关联职位。招聘阶段、申请生命周期、Offer 状态与最终结果分别记录。面试完成和面评提交后仍需 HR 独立决定是否晋级，Offer 接受后还需确认录用。符合条件的缺评晋级必须说明理由。业务命令用版本和幂等键校验，业务写入、审计事件和回执随数据库事务提交。正式账户更改密码时递增认证版本，使先前签发的令牌失效。
 
-- 在工作台查看招聘待办、今日面试和各阶段统计。
-- 新建职位及候选人申请，安排初面和复面，提交和更正面评。
-- 由 HR 决定晋级或淘汰。完成面试或提交面评后，仍需作出晋级决定。
-- 准备、发送和跟踪 Offer。候选人接受后，HR 仍需单独确认录用。
-- 在申请详情查看招聘历史、业务事件和操作记录。
+## 实际运行截图
 
-## 本地运行 Demo
+截图来自本地隔离 Demo，数据均为虚构。
 
-需要 Node.js **24.15.0 或更新版本**和 pnpm **9 或更新版本**。
+| 招聘工作台 | 职位管理 |
+| --- | --- |
+| ![招聘工作台](docs/images/v4/dashboard.jpg) | ![职位管理](docs/images/v4/positions.jpg) |
+| 候选人管理 | 申请详情 |
+| ![候选人管理](docs/images/v4/candidates.jpg) | ![申请详情](docs/images/v4/application.jpg) |
 
-```bash
-git clone https://github.com/gielensras471-creator/hireflow.git
-cd hireflow
+![面试周历](docs/images/v4/calendar.jpg)
+
+## 工程与运行
+
+前端使用 Vue 3、TypeScript、Vue Router、Pinia、Axios、Element Plus、ECharts、Vite 和 Sass。后端使用 Node.js、Express、`node:sqlite`、JWT 与 bcryptjs。工程检查采用 Node 原生测试运行器、ESLint、vue-tsc，主要流程另以真实浏览器验证。
+
+项目声明 Node.js ≥ 24.15.0。安装时使用与仓库锁文件兼容的 pnpm。
+
+```sh
 pnpm install --frozen-lockfile
-pnpm run build:demo
-pnpm run start:demo
-```
-
-打开 [http://127.0.0.1:3302/](http://127.0.0.1:3302/)，使用上面的公开演示账号。本地 Demo 默认绑定回环地址，启动端口可通过 `DEMO_PORT` 设置。每次重启都会重新生成虚构数据和会话签名密钥，旧会话随之失效。
-
-```bash
+pnpm dev:v3
 pnpm test
-node --test tests/demo-v3.test.js
+pnpm run lint
 ```
 
-## 技术架构
+本地隔离 Demo 先执行 `pnpm run build:demo`，再执行 `pnpm run start:demo`，默认端口 3302。正式前端执行 `pnpm run build:v3`，正式 API 使用 `pnpm run start:v3` 并依赖获准配置和预检后的数据库。普通兼容构建执行 `pnpm build`。浏览器构建变量应只包含公开配置，服务端密钥由运行环境注入。[运行与维护](docs/operations/V4运行维护.md)
 
-前端采用 Vue 3、TypeScript、Element Plus、Pinia 和 Vite，后端采用 Express、Node.js 原生 SQLite 和 JWT。Demo 使用同源 `/api/v3` 和独立的内存数据库，启动时通过现有业务服务生成 6 个职位、32 份申请、18 场面试和 12 条面评。数据、事件、命令回执和工作台统计共享同一数据源。本地运行只需仓库源码及锁文件。
+## 验证范围
 
-| 模式 | 构建 / 入口 | 数据和会话 |
-| --- | --- | --- |
-| Demo | `pnpm run build:demo` → `dist-demo`，`pnpm run start:demo` | 独立内存 SQLite 和随机签名密钥 |
-| 正式 V3 | `pnpm run build:v3` → `dist-v3`，`pnpm run start:v3` | 持久化 SQLite、独立配置和认证，参见[运行说明](docs/operations/v3-local-production.md) |
+冻结业务 AC-01～36 已在集成回归中通过。当前候选全量测试 259 通过、0 失败、2 条平台条件跳过，ESLint、类型检查及三种构建通过。综合验收有 165 组浏览器与视口组合，覆盖 Chrome、Edge、Firefox、Playwright WebKit，另有代表性原生 200% 缩放检查。实体手机、真实 Safari、读屏及生产部署后的验证仍待执行。
 
-[MIT 许可](LICENSE) · [第三方声明](THIRD_PARTY_NOTICES.md)
+[版本记录](CHANGELOG.md) · [架构](docs/architecture/V4技术架构.md) · [API](docs/architecture/V4接口合同.md) · [数据库](docs/architecture/V4数据库设计.md)
+
+沿用项目 MIT 许可与第三方声明。

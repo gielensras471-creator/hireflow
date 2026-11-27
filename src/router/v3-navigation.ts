@@ -11,6 +11,9 @@ export function tabInfo(path: string) {
   if (section) return { key: section.path, title: section.title }
   if (path === '/legacy-records/detail') return { key: path, title: '旧档详情' }
   if (path === '/profile') return { key: path, title: '个人中心' }
+  const position = /^\/positions\/([1-9]\d*)$/.exec(path)?.[1]
+  if (position && Number.isSafeInteger(Number(position)))
+    return { key: path, title: '职位 #' + position }
   const id = /^\/candidates\/([1-9]\d*)$/.exec(path)?.[1]
   if (id && Number.isSafeInteger(Number(id))) return { key: path, title: '申请 #' + id }
   return null
@@ -26,11 +29,21 @@ export function safeReturn(value: unknown) {
   return tabInfo(value.split(/[?#]/, 1)[0]) ? value : '/dashboard'
 }
 
+export function positionSource(value: unknown) {
+  if (typeof value !== 'string' || /[\\\s#]/.test(value)) return '/positions'
+  return /^\/(?:positions|dashboard)(?:\?.*)?$/.test(value) ? value : '/positions'
+}
+
 export type V3Tab = { key: string; title: string; target: string }
 
 export function visit(tabs: V3Tab[], path: string, target: string): V3Tab[] {
   const tab = tabInfo(path)
-  return tab ? [{ ...tab, target }, ...tabs.filter(({ key }) => key !== tab.key)] : tabs
+  const title = path.startsWith('/positions/')
+    ? tabs.find(({ key }) => key === path)?.title ?? tab?.title
+    : tab?.title
+  return tab
+    ? [{ ...tab, title: title ?? tab.title, target }, ...tabs.filter(({ key }) => key !== tab.key)]
+    : tabs
 }
 
 export function visibleTabs(tabs: V3Tab[], max: number) {

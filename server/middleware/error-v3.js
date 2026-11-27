@@ -57,6 +57,16 @@ const publicErrors = Object.freeze({
   INVALID_REQUEST: [400, '请求格式无效'],
   AUTH_REQUIRED: [401, '请先登录'],
   INVALID_CREDENTIALS: [401, '账号或密码错误'],
+  ACCOUNT_WRITE_DISABLED: [403, '当前运行环境禁止修改账号资料'],
+  INVALID_DISPLAY_NAME: [422, '请输入 1–64 字的显示名称，不能包含控制字符'],
+  CURRENT_PASSWORD_INVALID: [422, '当前密码不正确'],
+  INVALID_NEW_PASSWORD: [
+    422,
+    '新密码至少 12 个字符且最多 72 个 UTF-8 字节，不能全为空白或含控制字符'
+  ],
+  PASSWORD_UNCHANGED: [422, '新密码不能与当前密码相同'],
+  PASSWORD_RATE_LIMIT: [429, '尝试次数过多，请稍后重试'],
+  ACCOUNT_CHANGED: [409, '账号认证状态已变更，请重新确认登录状态'],
   INVALID_TOKEN: [401, '登录状态无效或已失效'],
   FORBIDDEN: [403, '当前账号没有操作权限'],
   NOT_FOUND: [404, '接口不存在'],

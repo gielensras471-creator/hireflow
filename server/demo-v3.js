@@ -1,5 +1,6 @@
 import { randomBytes, randomUUID } from 'node:crypto'
 import bcrypt from 'bcryptjs'
+import { seedRichDemo } from './demo-rich-seed.js'
 import { openDatabase } from './db/database.js'
 import { createV3Schema } from './db/schema-v3.js'
 import { createRecruitingService } from './services/recruiting-service.js'
@@ -9,7 +10,9 @@ import { createFeedbackService } from './services/feedback-service.js'
 import { createOfferService } from './services/offer-service.js'
 
 // This factory cannot accept a database path or an existing connection.
-export function createDemoDatabase(password) {
+export function createDemoDatabase(password, { seed = 'compact', now = Date.now() } = {}) {
+  if (!['compact', 'rich'].includes(seed) || !Number.isSafeInteger(now) || now < 0)
+    throw new Error('Invalid demo seed configuration')
   if (typeof password !== 'string' || password.length < 7 || Buffer.byteLength(password) > 72)
     throw new Error('A demo password of 7+ characters and at most 72 bytes is required')
   const db = openDatabase(':memory:')
@@ -28,6 +31,10 @@ export function createDemoDatabase(password) {
     )
     const context = Object.freeze({})
     const options = { db, resolveActor: (c) => (c === context ? 1 : undefined) }
+    if (seed === 'rich') {
+      seedRichDemo(db, options, context, now)
+      return { db, jwtSecret: randomBytes(48).toString('hex') }
+    }
     const recruiting = createRecruitingService(options)
     const advancement = createAdvancementService(options)
     const interviews = createInterviewService(options)

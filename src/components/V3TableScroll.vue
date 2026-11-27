@@ -7,7 +7,7 @@
       role="region"
       :aria-label="name"
       :aria-description="overflow ? hint : undefined"
-      :tabindex="overflow ? 0 : undefined"
+      :tabindex="overflow || vertical ? 0 : undefined"
       @scroll.passive="measure"
       @keydown="scrollKey"
     >
@@ -17,7 +17,7 @@
 </template>
 <script setup lang="ts">
 import { computed, nextTick, onMounted, onUnmounted, onUpdated, ref } from 'vue'
-defineProps<{ name: string }>()
+defineProps<{ name: string; vertical?: boolean }>()
 const viewport = ref<HTMLElement | null>(null)
 const overflow = ref(false),
   left = ref(false),

@@ -199,7 +199,7 @@ try {
 
   await send('Page.addScriptToEvaluateOnNewDocument', { source: observerProbe })
   await go('/positions')
-  await h1('登录招聘工作台')
+  await h1('欢迎回来')
   await fill(app.password, true)
   await h1('职位管理')
   await check('document.body.innerText.includes("暂时没有记录")', 'true empty')
@@ -487,7 +487,7 @@ try {
     'second uncertain write'
   )
   await click('.v3-account button')
-  await h1('登录招聘工作台')
+  await h1('欢迎回来')
   db.prepare(
     'INSERT INTO users (username,password_hash,name,role,department,email,phone) VALUES (?,?,?,?,?,?,?)'
   ).run('second-hr', bcrypt.hashSync(password, 10), '第二位演示 HR', 'hr', '', '', '')
@@ -505,7 +505,7 @@ try {
 
   db.prepare("UPDATE users SET role='viewer'").run()
   await evaluate('import("/src/api/request-v3.ts").then(m=>m.readV3("/positions")).catch(()=>null)')
-  await h1('登录招聘工作台')
+  await h1('欢迎回来')
   await check('document.body.innerText.includes("当前账号没有招聘权限")', 'revocation')
   assert.equal(requests.filter((url) => /^\/api\/(?!v3\/)/.test(new URL(url).pathname)).length, 0)
 

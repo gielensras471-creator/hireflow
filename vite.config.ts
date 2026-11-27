@@ -13,7 +13,7 @@ export default defineConfig(({ mode }) => {
       }
     },
     server: {
-      host: localV3 ? '127.0.0.1' : '0.0.0.0',
+      host: '127.0.0.1',
       port: Number(env.VITE_PORT || 5173),
       proxy:
         !localV3 && env.VITE_PROXY
@@ -27,6 +27,17 @@ export default defineConfig(({ mode }) => {
     },
     plugins: [
       vue(),
+      {
+        name: 'hireflow-disable-dev-editor-launch',
+        apply: 'serve',
+        configureServer(server) {
+          // Block the editor shortcut before Vite installs its own handler.
+          server.middlewares.use('/__open-in-editor', (_req, res) => {
+            res.statusCode = 404
+            res.end()
+          })
+        }
+      },
       ...(mode === 'v3-demo'
         ? [
             {

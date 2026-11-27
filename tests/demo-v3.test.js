@@ -127,6 +127,18 @@ test('demo and simulated formal instance reject each other tokens; no account ma
     401
   )
   assert.equal((await f.call('/positions', { token: formalToken })).status, 401)
+  const dashboardPath = '/dashboard/history-metrics'
+  const readFormalDashboard = (token) =>
+    fetch(url + dashboardPath, { headers: { Authorization: 'Bearer ' + token } })
+  assert.equal((await readFormalDashboard(f.token)).status, 401)
+  assert.equal((await f.call(dashboardPath, { token: formalToken })).status, 401)
+  const formalHistory = await readFormalDashboard(formalToken)
+  assert.equal(formalHistory.status, 200)
+  assert.ok((await formalHistory.json()).applications.months.every(({ count }) => count === 0))
+  const demoHistory = await f.call(dashboardPath, { token: f.token })
+  assert.equal(demoHistory.status, 200)
+  assert.equal(demoHistory.data.applications.months.length, 7)
+
   assert.equal(
     (await f.call('/auth/login', { body: { username: 'hr_admin', password: formalPassword } }))
       .status,

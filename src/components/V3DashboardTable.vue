@@ -13,7 +13,7 @@
           <th scope="col">候选人 / 应聘职位</th>
           <th scope="col">{{ today ? '轮次 / 状态' : '阶段 / 状态' }}</th>
           <th scope="col">业务提示</th>
-          <th scope="col">业务时间（上海）</th>
+          <th scope="col">业务时间（北京时间）</th>
           <th scope="col" class="v3-dashboard-action">操作</th>
         </tr>
       </thead>

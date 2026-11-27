@@ -1,9 +1,34 @@
 <template>
-  <section class="v3-legacy">
-    <h1>{{ detailMode ? '旧档详情' : '旧版档案' }}</h1>
-    <p>旧版只读档案，不是可操作的新申请。未知事实保持待核实，不依据当前阶段补造历史。</p>
-    <RouterLink v-if="detailMode" to="/legacy-records">返回旧版档案列表</RouterLink>
-    <form v-else class="v3-card v3-filter-toolbar" @submit.prevent="filter">
+  <section class="v3-legacy" aria-labelledby="legacy-title">
+    <header class="legacy-heading">
+      <RouterLink v-if="detailMode" to="/legacy-records">← 返回旧版档案列表</RouterLink>
+      <div>
+        <h1 id="legacy-title">
+          {{
+            record
+              ? entityLabel(record.entityType) + ' · #' + record.legacyId
+              : detailMode
+                ? '旧档详情'
+                : '旧版档案'
+          }}
+        </h1>
+        <div v-if="detailMode" class="legacy-detail-badges">
+          <span class="legacy-badge legacy-readonly">只读</span>
+          <span
+            v-if="record?.hint || record?.historyStatus"
+            class="legacy-badge legacy-historical"
+            >{{ record.hint || record.historyStatus }}</span
+          >
+        </div>
+      </div>
+      <p>{{ detailMode ? '旧版档案详情' : '查阅迁移归档的旧记录与职位映射状态。' }}</p>
+    </header>
+
+    <form
+      v-if="!detailMode"
+      class="v3-card v3-filter-toolbar legacy-filters"
+      @submit.prevent="filter"
+    >
       <V3FilterSelect
         id="legacy-entity"
         v-model="entity"
@@ -19,109 +44,178 @@
         :options="mappingLabels"
       />
       <div class="v3-filter-actions">
-        <el-button native-type="submit" type="primary" :aria-disabled="loading">
-          筛选档案
-        </el-button>
-        <el-button :aria-disabled="loading" @click="clearFilters">清除筛选</el-button>
+        <el-button class="legacy-apply" native-type="submit" type="primary">筛选档案</el-button>
+        <el-button class="legacy-clear" text @click="clearFilters">清除筛选</el-button>
       </div>
     </form>
+
+    <div class="legacy-notice" :class="{ 'legacy-notice-detail': detailMode }" role="note">
+      <strong>{{ detailMode ? '归档导入时间不等于历史事件发生时间。' : '归档记录只读' }}</strong>
+      <p>
+        {{
+          detailMode
+            ? '未知事实保持待核实。此档案独立于活跃申请。'
+            : '旧版档案不计入活跃申请。旧版阶段不能用于推定新招聘流程。'
+        }}
+      </p>
+    </div>
+
     <V3Feedback v-if="loading" state="loading" title="读取旧版档案中" />
     <V3Feedback
-      v-else-if="error"
+      v-else-if="issue"
       state="error"
-      :title="missing ? '未找到旧档记录' : '暂时无法读取旧档'"
-      :message="error"
-      action="重新读取旧档"
+      :title="issue.title"
+      :message="issue.message"
+      :action="issue.retry ? '重新读取旧档' : undefined"
       @action="load"
     />
-    <article v-else-if="record" class="v3-card" aria-label="只读旧档详情">
-      <h2>{{ entityLabels[record.entityType] }} #{{ record.legacyId }}</h2>
-      <dl>
-        <dt>来源指纹</dt>
-        <dd>{{ record.sourceKey }}</dd>
-        <dt>历史核实状态</dt>
-        <dd>{{ record.hint }}</dd>
-        <dt>职位映射状态</dt>
-        <dd>{{ mappingLabels[record.mappingStatus] ?? '未知，待核实' }}</dd>
-        <dt>映射职位 ID</dt>
-        <dd>{{ record.mappedPositionId ?? '未建立关联；不是有效新申请' }}</dd>
-        <dt>归档导入时间（不是历史发生时间）</dt>
-        <dd>{{ feedbackTime(record.importedAt) }}</dd>
-      </dl>
-      <h3>旧库保留的标记</h3>
-      <p>{{ legacyFact(record.raw.stage ?? record.raw.status) }}</p>
-      <h3>已确认事实与未知事实</h3>
-      <dl>
-        <template v-for="(value, key) in record.facts" :key="key"
-          ><dt>{{ factLabels[key] ?? '未核实字段' }}</dt>
-          <dd>{{ legacyFact(value) }}</dd></template
-        >
-      </dl>
-      <p>
-        未提供经核实的历史业务事件。导入时间不能证明面试、淘汰或 Offer
-        发生时间；本页不提供招聘写入操作。
-      </p>
+
+    <article v-else-if="record" class="legacy-detail" aria-label="只读旧档详情">
+      <section class="v3-card">
+        <h2>档案来源</h2>
+        <div class="legacy-columns">
+          <dl>
+            <div>
+              <dt>实体类型</dt>
+              <dd>{{ entityLabel(record.entityType) }} · {{ record.entityType }}</dd>
+            </div>
+            <div>
+              <dt>旧记录 ID</dt>
+              <dd>#{{ record.legacyId }}</dd>
+            </div>
+            <div>
+              <dt>来源指纹（sourceKey）</dt>
+              <dd class="legacy-fingerprint">{{ record.sourceKey }}</dd>
+            </div>
+            <div>
+              <dt>归档导入时间（北京时间）</dt>
+              <dd>{{ feedbackTime(record.importedAt).replace(/（北京时间）$/, '') }}</dd>
+            </div>
+          </dl>
+          <dl>
+            <div>
+              <dt>历史核实状态</dt>
+              <dd>{{ record.hint || record.historyStatus || '未知，待核实' }}</dd>
+            </div>
+            <div>
+              <dt>职位映射状态</dt>
+              <dd>{{ mappingLabel(record.mappingStatus) }}</dd>
+            </div>
+            <div>
+              <dt>映射职位 ID</dt>
+              <dd>{{ record.mappedPositionId ?? '未建立关联；不是有效新申请' }}</dd>
+            </div>
+            <div>
+              <dt>旧库保留标记</dt>
+              <dd>{{ legacyFact(record.raw.stage ?? record.raw.status) }}</dd>
+            </div>
+          </dl>
+        </div>
+      </section>
+      <div class="legacy-columns legacy-detail-facts">
+        <section class="v3-card">
+          <h2>已确认事实</h2>
+          <p>来自旧档读取接口公开的枚举字段。</p>
+          <dl v-if="confirmedFacts.length">
+            <div v-for="[label, value] in confirmedFacts" :key="label">
+              <dt>{{ label }}</dt>
+              <dd>{{ value }}</dd>
+            </div>
+          </dl>
+          <p v-else class="legacy-no-facts">暂无已核实字段。</p>
+          <div class="legacy-notice legacy-note-neutral">
+            按归档字段读取。未提供经核实的历史业务事件。
+          </div>
+        </section>
+        <section class="v3-card">
+          <h2>未知事实</h2>
+          <p>接口返回空值时保持待核实。</p>
+          <dl v-if="unknownFacts.length">
+            <div v-for="[label, value] in unknownFacts" :key="label">
+              <dt>{{ label }}</dt>
+              <dd>{{ value }}</dd>
+            </div>
+          </dl>
+          <p v-else class="legacy-no-facts">未返回其他可核实字段。</p>
+        </section>
+      </div>
     </article>
-    <template v-else-if="page">
+
+    <section v-else-if="page" class="v3-card legacy-list">
+      <header class="legacy-list-heading">
+        <h2>档案记录</h2>
+        <p>仅供查阅的归档资料</p>
+      </header>
       <V3Feedback
         v-if="!page.items.length"
         state="empty"
-        title="暂无符合条件的旧版档案"
-        :message="entity || mapping ? '可调整筛选条件后再查看。' : undefined"
+        :title="filtered ? '暂无符合条件的旧版档案' : '暂无旧版档案'"
+        :message="filtered ? '可调整筛选条件后再查看。' : '当前没有可供查阅的归档记录。'"
       />
-      <div v-else class="v3-card">
-        <V3TableScroll name="旧版档案表格">
-          <table aria-label="旧版档案列表">
-            <thead>
-              <tr>
-                <th>旧记录标识</th>
-                <th>来源</th>
-                <th>职位映射</th>
-                <th>操作</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr
-                v-for="row in page.items"
-                :key="JSON.stringify([row.sourceKey, row.entityType, row.legacyId])"
-              >
-                <td>{{ entityLabels[row.entityType] }} #{{ row.legacyId }}</td>
-                <td>{{ row.sourceKey }}</td>
-                <td>{{ mappingLabels[row.mappingStatus] }}</td>
-                <td>
-                  <RouterLink
-                    :to="{
-                      path: '/legacy-records/detail',
-                      query: {
-                        sourceKey: row.sourceKey,
-                        entityType: row.entityType,
-                        legacyId: String(row.legacyId)
-                      }
-                    }"
-                    >查看只读旧档</RouterLink
-                  >
-                </td>
-              </tr>
-            </tbody>
-          </table>
-        </V3TableScroll>
-      </div>
-      <div class="v3-list-footer">
-        <p>共 {{ page.total }} 条归档记录；不是活跃申请数。</p>
+      <V3TableScroll v-else name="旧版档案表格" vertical>
+        <table aria-label="旧版档案列表">
+          <thead>
+            <tr>
+              <th scope="col">旧记录标识</th>
+              <th scope="col">来源指纹（sourceKey）</th>
+              <th scope="col">职位映射状态</th>
+              <th scope="col">操作</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr
+              v-for="row in page.items"
+              :key="JSON.stringify([row.sourceKey, row.entityType, row.legacyId])"
+            >
+              <td>
+                {{ entityLabel(row.entityType) }} <span class="legacy-id">#{{ row.legacyId }}</span>
+              </td>
+              <td class="legacy-fingerprint">{{ row.sourceKey }}</td>
+              <td>
+                <span class="legacy-badge" :data-mapping="row.mappingStatus">{{
+                  mappingLabel(row.mappingStatus)
+                }}</span>
+              </td>
+              <td>
+                <RouterLink
+                  :to="{
+                    path: '/legacy-records/detail',
+                    query: {
+                      sourceKey: row.sourceKey,
+                      entityType: row.entityType,
+                      legacyId: String(row.legacyId)
+                    }
+                  }"
+                  >查看只读旧档</RouterLink
+                >
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </V3TableScroll>
+      <footer class="legacy-footer">
+        <p role="status">
+          共 {{ page.total }} 条<span v-if="page.total">
+            · 第 {{ Math.floor(offset / pageSize) + 1 }} /
+            {{ Math.ceil(page.total / pageSize) }} 页</span
+          >
+          · 每页 {{ pageSize }} 条
+        </p>
         <nav class="v3-filter-actions" aria-label="旧版档案分页">
-          <el-button :disabled="offset === 0" @click="changePage(-20)">上一页旧档</el-button>
-          <el-button :disabled="offset + 20 >= page.total" @click="changePage(20)"
+          <el-button :disabled="offset === 0" @click="changePage(-pageSize)">上一页旧档</el-button>
+          <el-button :disabled="offset + pageSize >= page.total" @click="changePage(pageSize)"
             >下一页旧档</el-button
           >
         </nav>
-      </div>
-    </template>
+      </footer>
+    </section>
   </section>
 </template>
+
 <script setup lang="ts">
 import { computed, onUnmounted, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
-import { readV3, v3Session } from '../api/request-v3'
+import { adaptV3Error, readV3, v3Session } from '../api/request-v3'
 import { latestRead } from '../api/v3-operation'
 import { feedbackTime } from '../api/feedback-v3'
 import {
@@ -135,72 +229,123 @@ import {
 import V3FilterSelect from '../components/V3FilterSelect.vue'
 import V3Feedback from '../components/V3Feedback.vue'
 import V3TableScroll from '../components/V3TableScroll.vue'
-const route = useRoute(),
-  detailMode = computed(() => route.path.endsWith('/detail'))
-const entity = ref(''),
-  mapping = ref(''),
-  offset = ref(0),
-  loading = ref(false),
-  error = ref(''),
-  missing = ref(false),
-  page = ref<LegacyPage | null>(null),
-  record = ref<LegacyDetail | null>(null),
-  reads = latestRead()
+
+const route = useRoute()
+const detailMode = computed(() => route.path === '/legacy-records/detail')
+const pageSize = 20
+const entity = ref('')
+const mapping = ref('')
+const applied = ref({ entity: '', mapping: '' })
+const filtered = computed(() => Boolean(applied.value.entity || applied.value.mapping))
+const offset = ref(0)
+const loading = ref(false)
+const issue = ref<{ title: string; message: string; retry?: boolean }>()
+const page = ref<LegacyPage | null>(null)
+const record = ref<LegacyDetail | null>(null)
+const reads = latestRead()
+const entityLabel = (value: string) => entityLabels[value] ?? '旧记录'
+const mappingLabel = (value: string) => mappingLabels[value] ?? '未知，待核实'
+const factRows = computed(() =>
+  Object.entries(record.value?.facts ?? {}).flatMap(([key, value]) => {
+    if (!Object.prototype.hasOwnProperty.call(factLabels, key)) return []
+    const text = legacyFact(value)
+    return [{ label: factLabels[key], text, known: text !== '未知，待核实' }]
+  })
+)
+const confirmedFacts = computed(() =>
+  factRows.value.filter(({ known }) => known).map(({ label, text }) => [label, text])
+)
+const unknownFacts = computed(() =>
+  factRows.value.filter(({ known }) => !known).map(({ label, text }) => [label, text])
+)
+
 function load() {
   reads.invalidate()
   page.value = null
   record.value = null
-  error.value = ''
+  issue.value = undefined
   loading.value = false
-  missing.value = false
   if (v3Session.state.status !== 'ready') return
-  const q = new URLSearchParams()
-  if (detailMode.value) {
-    for (const key of ['sourceKey', 'entityType', 'legacyId']) {
-      const v = route.query[key]
-      if (typeof v !== 'string') {
-        error.value = '旧档标识无效，请从档案列表重新选择。'
-        return
-      }
-      q.set(key, v)
-    }
-  } else {
-    q.set('limit', '20')
-    q.set('offset', String(offset.value))
-    if (entity.value) q.set('entityType', entity.value)
-    if (mapping.value) q.set('mappingStatus', mapping.value)
-  }
-  loading.value = true
+
   const detail = detailMode.value
+  const query = new URLSearchParams()
+  if (detail) {
+    const { sourceKey, entityType, legacyId } = route.query
+    if (
+      typeof sourceKey !== 'string' ||
+      !sourceKey.trim() ||
+      sourceKey.length > 128 ||
+      typeof entityType !== 'string' ||
+      !Object.prototype.hasOwnProperty.call(entityLabels, entityType) ||
+      typeof legacyId !== 'string' ||
+      !/^(0|-?[1-9]\d*)$/.test(legacyId) ||
+      !Number.isSafeInteger(Number(legacyId))
+    ) {
+      issue.value = { title: '旧档标识无效', message: '请返回档案列表重新选择记录。' }
+      return
+    }
+    query.set('sourceKey', sourceKey)
+    query.set('entityType', entityType)
+    query.set('legacyId', legacyId)
+  } else {
+    query.set('limit', String(pageSize))
+    query.set('offset', String(offset.value))
+    if (applied.value.entity) query.set('entityType', applied.value.entity)
+    if (applied.value.mapping) query.set('mappingStatus', applied.value.mapping)
+  }
+
+  loading.value = true
   return reads.execute(
     () =>
       readV3<LegacyDetail | LegacyPage>(
-        (detail ? '/legacy-records?' : '/legacy-records/list?') + q
+        (detail ? '/legacy-records?' : '/legacy-records/list?') + query
       ),
-    (v) => {
-      if (detail) record.value = v as LegacyDetail
-      else page.value = v as LegacyPage
+    (value) => {
+      if (detail) record.value = value as LegacyDetail
+      else {
+        const result = value as LegacyPage
+        const lastOffset = Math.floor(Math.max(0, result.total - 1) / pageSize) * pageSize
+        if (offset.value > lastOffset) {
+          offset.value = lastOffset
+          void load()
+          return
+        }
+        page.value = result
+      }
       loading.value = false
     },
-    (e) => {
-      missing.value = (e as { status?: number }).status === 404
-      error.value = e instanceof Error ? e.message : '读取失败，请重试。'
+    (error) => {
+      const problem = adaptV3Error(error)
+      if (problem.status === 404)
+        issue.value = { title: '未找到旧档记录', message: '请返回档案列表重新选择记录。' }
+      else if (problem.status === 403)
+        issue.value = { title: '没有权限读取旧档', message: problem.message }
+      else if (problem.status === 401)
+        issue.value = { title: '会话已失效', message: '请重新登录后查阅旧版档案。' }
+      else if (problem.status === 400)
+        issue.value = {
+          title: '旧档查询条件无效',
+          message: '请确认筛选条件或返回档案列表重新选择。'
+        }
+      else issue.value = { title: '暂时无法读取旧档', message: problem.message, retry: true }
       loading.value = false
     }
   )
 }
+
 function filter() {
-  if (loading.value) return
+  applied.value = { entity: entity.value, mapping: mapping.value }
   offset.value = 0
   void load()
 }
 function clearFilters() {
-  if (loading.value) return
   entity.value = mapping.value = ''
   filter()
 }
 function changePage(delta: number) {
-  offset.value += delta
+  const target = offset.value + delta
+  if (!page.value || target < 0 || target >= page.value.total) return
+  offset.value = target
   void load()
 }
 watch(
@@ -212,35 +357,5 @@ watch(
 )
 onUnmounted(() => reads.invalidate())
 </script>
-<style scoped>
-.v3-legacy {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr);
-  gap: 16px;
-  min-width: 0;
-}
-.v3-legacy > :is(h1, p) {
-  margin: 0;
-}
-dl {
-  display: grid;
-  gap: 8px;
-}
-dd {
-  margin: 0 0 12px;
-  overflow-wrap: anywhere;
-}
-table {
-  min-width: 640px;
-  width: 100%;
-  text-align: left;
-}
-td,
-th {
-  padding: 12px;
-}
-td {
-  max-width: 240px;
-  overflow-wrap: anywhere;
-}
-</style>
+
+<style scoped lang="scss" src="./v4-legacy.scss"></style>

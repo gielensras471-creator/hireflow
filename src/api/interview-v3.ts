@@ -42,7 +42,7 @@ export function canSchedule(
 export function shanghaiInput(value: string) {
   const local = value.length === 16 ? value + ':00' : value
   if (!/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}$/.test(local))
-    throw new Error('请输入完整的上海日期和时间。')
+    throw new Error('请输入完整的北京时间的日期和时间。')
   const ms = Date.parse(local + '+08:00')
   if (
     !Number.isFinite(ms) ||

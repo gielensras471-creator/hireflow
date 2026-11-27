@@ -13,6 +13,11 @@ const hook = registerHooks({
   resolve(specifier, context, nextResolve) {
     if (specifier === '../utils/auth-v3' && context.parentURL?.endsWith('/src/api/request-v3.ts'))
       return nextResolve('../utils/auth-v3.ts', context)
+    if (
+      specifier === '../utils/v4-work-preferences' &&
+      context.parentURL?.endsWith('/src/api/request-v3.ts')
+    )
+      return nextResolve('../utils/v4-work-preferences.ts', context)
     if (specifier === './v3-api-base' && context.parentURL?.endsWith('/src/api/request-v3.ts'))
       return nextResolve('./v3-api-base.ts', context)
     return nextResolve(specifier, context)
@@ -35,7 +40,7 @@ const cases = [
   [422, 'CORRECTION_REASON_REQUIRED', '更正面评必须填写原因。'],
   [409, 'INTERVIEW_ALREADY_SCHEDULED', '该申请已有预约，请先完成或取消。'],
   [409, 'INTERVIEW_VERSION_CONFLICT', '面试已有新进展，请核对当前状态。'],
-  [422, 'INVALID_TIME', '预约时间无效，请填写上海日期和时间。'],
+  [422, 'INVALID_TIME', '预约时间无效，请填写北京时间的日期和时间。'],
   [422, 'CANCEL_REASON_REQUIRED', '取消面试必须填写原因。'],
   [409, 'NO_CHANGE', '内容没有变化，请修改后再提交。'],
   [409, 'POSITION_NOT_OPEN', '职位已关闭或归档，请重新选择开放职位。'],

@@ -1,6 +1,8 @@
 import express from 'express'
 import { v3Cors } from './middleware/cors-v3.js'
 import { verifyV3Database } from './db/verify-v3-db.js'
+import { isInMemoryConnection } from './db/database.js'
+import { addV3AuthVersion, authSchemaFingerprint } from './db/v3-auth-migration.js'
 import { createV3Auth } from './middleware/auth-v3.js'
 import { createV3DashboardHistoryRoutes } from './routes/dashboard-history-v3.js'
 import { createV3DecisionRoutes } from './routes/decision-v3.js'
@@ -8,9 +10,12 @@ import { createV3InterviewFeedbackRoutes } from './routes/interview-feedback-v3.
 import { createV3RecruitingRoutes } from './routes/recruiting-v3.js'
 import { v3ErrorHandler, v3NotFound, v3RequestContext } from './middleware/error-v3.js'
 
-export const createV3App = ({ db, authConfig, clientOrigins = [] } = {}) => {
-  verifyV3Database(db)
-  const auth = createV3Auth({ db, jwtSecret: authConfig?.jwtSecret })
+export const createV3App = ({ db, authConfig, clientOrigins = [], accountWrites = false } = {}) => {
+  if (verifyV3Database(db) !== authSchemaFingerprint) {
+    if (!isInMemoryConnection(db)) throw new Error('Offline V3 auth migration required')
+    addV3AuthVersion(db)
+  }
+  const auth = createV3Auth({ db, jwtSecret: authConfig?.jwtSecret, accountWrites })
   const app = express()
   app.disable('x-powered-by')
   app.set('query parser', 'simple')

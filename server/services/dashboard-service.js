@@ -67,6 +67,81 @@ const dayBounds = (now) => {
   return { start, end: start + dayMs }
 }
 
+const monthDate = (year, month) => new Date(Date.UTC(year, month, 1))
+const isoDate = (date) => date.toISOString().slice(0, 10)
+const validBusinessDate =
+  "length(applied_date)=10 AND applied_date GLOB '[0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9]' AND date(applied_date,'+0 days') IS applied_date"
+
+const readHistoryMetrics = (db, now) => {
+  const local = new Date(now + shanghaiOffsetMs)
+  const year = local.getUTCFullYear()
+  const month = local.getUTCMonth()
+  const startDate = isoDate(monthDate(year, month - 6))
+  const endDate = isoDate(monthDate(year, month + 1))
+  const throughDate = isoDate(local)
+  const start = monthDate(year, month).getTime() - shanghaiOffsetMs
+  const end = monthDate(year, month + 1).getTime() - shanghaiOffsetMs
+  const byMonth = new Map(
+    db
+      .prepare(
+        'SELECT substr(applied_date,1,7) AS month, COUNT(*) AS count FROM candidates ' +
+          'WHERE applied_date>=? AND applied_date<? AND applied_date<=? AND ' +
+          validBusinessDate +
+          ' GROUP BY substr(applied_date,1,7)'
+      )
+      .all(startDate, endDate, throughDate)
+      .map((row) => [row.month, row.count])
+  )
+  const invalidDates = db
+    .prepare('SELECT COUNT(*) AS n FROM candidates WHERE NOT (' + validBusinessDate + ')')
+    .get().n
+  const hasLegacyApplications = !!db
+    .prepare("SELECT 1 FROM legacy_records WHERE entity_type='candidates' LIMIT 1")
+    .get()
+  const reasons = [
+    ...(invalidDates ? ['invalid_or_missing_applied_dates'] : []),
+    ...(hasLegacyApplications ? ['legacy_application_history_not_included'] : [])
+  ]
+  const offer = db
+    .prepare(
+      "SELECT COUNT(DISTINCT CASE WHEN event_type='offer_sent' THEN id END) AS sent, " +
+        "COUNT(DISTINCT CASE WHEN event_type IN ('offer_accepted','offer_declined') THEN id END) AS responded " +
+        "FROM business_events WHERE event_type IN ('offer_sent','offer_accepted','offer_declined') " +
+        'AND occurred_at>=? AND occurred_at<? AND occurred_at<=?'
+    )
+    .get(start, end, now)
+  return {
+    now,
+    timezone: 'Asia/Shanghai',
+    applications: {
+      dateField: 'appliedDate',
+      unit: 'application_record',
+      startDate,
+      endDate,
+      throughDate,
+      invalidDates,
+      coverage: reasons.length ? 'partial' : 'complete',
+      reasons,
+      months: Array.from({ length: 7 }, (_, index) => {
+        const monthKey = isoDate(monthDate(year, month - 6 + index)).slice(0, 7)
+        return { month: monthKey, count: byMonth.get(monthKey) ?? (reasons.length ? null : 0) }
+      })
+    },
+    offer: {
+      dateField: 'occurredAt',
+      unit: 'business_event',
+      start,
+      end,
+      through: now,
+      // No provenance watermark establishes full Offer capture for the entire month.
+      coverage: 'partial',
+      reasons: ['offer_history_completeness_unverified'],
+      sent: offer.sent || null,
+      responded: offer.responded || null
+    }
+  }
+}
+
 export const createDashboardService = ({ db, resolveActor, clock = Date.now }) => {
   const read = createRecruitingRead(db, resolveActor)
 
@@ -118,6 +193,7 @@ export const createDashboardService = ({ db, resolveActor, clock = Date.now }) =
   }
 
   return Object.freeze({
+    historyMetrics: (context) => read(context, () => readHistoryMetrics(db, readNow(clock))),
     summary: (context) =>
       read(context, () => {
         const now = readNow(clock)
