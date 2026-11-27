@@ -4,6 +4,8 @@ HireFlow 是面向小型企业和招聘团队的招聘流程协作后台。团�
 
 **产品 V4.0.0，视觉设计 V4.1，业务 API 继续使用 `/api/v3`。** [正式入口](https://hireflow.pixelweave.xyz/) 供已授权用户登录。 [公开演示](https://hireflowdemo.pixelweave.xyz/) 运行 V4.0.0。旧演示链接会重定向至新域名。演示账号 `demo_admin`，密码 `a123456`。公开 Demo 使用共享虚构数据，请勿录入真实个人信息。正式模式使用独立账号、服务配置和持久化数据库。
 
+V4 集中开发已结束，进入低频维护。发布源码以 [GitHub Release v4.0.0](https://github.com/gielensras471-creator/hireflow/releases/tag/v4.0.0) 为准。
+
 ## 功能
 
 | 工作区 | 能力 |
@@ -45,7 +47,7 @@ pnpm run lint
 
 ## 验证范围
 
-冻结业务 AC-01～36 已在集成回归中通过。当前候选全量测试 259 通过、0 失败、2 条平台条件跳过，ESLint、类型检查及三种构建通过。综合验收有 165 组浏览器与视口组合，覆盖 Chrome、Edge、Firefox、Playwright WebKit，另有代表性原生 200% 缩放检查。实体手机、真实 Safari、读屏及生产部署后的验证仍待执行。
+冻结业务 AC-01～36 已在集成回归中通过。发布冻结时的全量测试 259 通过、0 失败、2 条平台条件跳过，ESLint、类型检查及三种构建通过。综合验收有 165 组浏览器与视口组合，覆盖 Chrome、Edge、Firefox、Playwright WebKit，另有代表性原生 200% 缩放检查。Owner 已通过正式系统及公开 Demo 的线上验收。实体手机、真实 Safari 和实际读屏未纳入该验收。
 
 [版本记录](CHANGELOG.md) · [架构](docs/architecture/V4技术架构.md) · [API](docs/architecture/V4接口合同.md) · [数据库](docs/architecture/V4数据库设计.md)
 

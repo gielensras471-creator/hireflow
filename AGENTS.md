@@ -1,29 +1,25 @@
 # HireFlow 项目协作规范
 
-HireFlow 是面向小型招聘团队的招聘流程协作平台。前端使用 Vue 3、TypeScript、Pinia、Vue Router、Element Plus、Vite 和 Sass，后端使用 Node.js、Express、JWT、bcryptjs 和 SQLite。公开 Demo 的安装、构建和启动命令见 [README](README.md)。
+## 当前版本
 
-## 当前版本与工作区
+HireFlow 是面向小型招聘团队的流程协作平台。V4.0.0 已在腾讯云正式发布并通过 Owner 线上验收，集中开发结束，进入低频维护。V5 尚未启动，新增重大功能、产品范围变更或新版本研发须经 Owner 明确授权。
 
-- V3 已完成验收和冻结。GitHub main 的稳定基线是 52a0fb22f51ddcd335c2635d9d65dba664708f60，来自 PR #12。公开展示使用 [腾讯云 Demo](https://demo.pixelweave.xyz/)。正式 API 使用独立数据和认证。原 Render 站点按 Owner 决策保留原状、停止同步。
-- V4 尚未启动。仅在 Owner 授权后从冻结 main 建立同仓库的独立分支和 Git Worktree。主控资料由 E:/FIFile/Documents/Codex/HireFlow/docs 维护。工程验证与权限约束沿用下文。
+- [GitHub Release v4.0.0](https://github.com/gielensras471-creator/hireflow/releases/tag/v4.0.0) 对应部署源码 `4c63b87c4678d40c57e6227798a3e75f8777af4b`。后续文档提交可推进 main，线上版本以实际部署 SHA 核验。
+- [正式前端](https://hireflow.pixelweave.xyz/) · [正式 API](https://api.pixelweave.xyz/api/v3) · [公开 Demo](https://hireflowdemo.pixelweave.xyz/)。旧 Demo 域名保留 HTTPS 301，Render 属于历史环境。
+- 开工前核对工作树、分支与 HEAD。现行项目管理资料位于 `E:/FIFile/Documents/Codex/HireFlow/docs`，历史工作树和归档保留供追溯。
 
-## 开发依据
+## 设计与业务依据
 
-- 以 Owner 当前批准的任务范围和冻结业务规则为准。改动前核对实际分支、HEAD 和工作树状态。
-- 招聘逻辑参照 [业务流程与状态规则](docs/product/03-招聘业务流程与状态规则.md)、[冻结 PRD](docs/product/PRD-V3.0_v1.0_正式冻结版.md)和 [MVP 验收清单](docs/product/V3.0-MVP验收清单_v1.0_正式冻结版.md)。保留 [R04 数据模型论证](docs/research/R04-数据模型A_B对比研究.md)供追溯，业务规则以冻结 PRD 为准。
-- 视觉改动参照 [D1-02 批准版设计规范](docs/design/HireFlow_D1-02_UI_Design_Spec_v1.0_Approved.md)、[D1-01 设计依据](docs/design/D1-01-视觉参考与信息架构研究_v1.0_已验收.md)和 [Figma](https://www.figma.com/design/5SnNs9DASMJdq3rvJXc37U)。
-- 正式模式的配置边界见 [V3 运行说明](docs/operations/v3-local-production.md)。涉及业务规则时核对前后端一致性并验证受影响的流程。
+- 视觉以 [V4.1 最终签收 Figma](https://www.figma.com/design/eezdpmBtn9Nj4KSQjmUtLI) 及最终画板索引为准。V3 D1-02 保留作历史参考。
+- 运行与工程依据为 [V4 运行维护](docs/operations/V4运行维护.md)、[技术架构](docs/architecture/V4技术架构.md)、[接口合同](docs/architecture/V4接口合同.md) 与 [数据库设计](docs/architecture/V4数据库设计.md)。
+- 招聘规则以 [V3 冻结 PRD](docs/product/PRD-V3.0_v1.0_正式冻结版.md)、[AC-01～36](docs/product/V3.0-MVP验收清单_v1.0_正式冻结版.md) 和 [业务流程与状态规则](docs/product/03-招聘业务流程与状态规则.md) 为准。[R04 数据模型论证](docs/research/R04-数据模型A_B对比研究.md) 保留供追溯。
+- 一份职位申请对应一条 CandidateRecord。招聘四阶段、申请生命周期、招聘结果与 Offer 状态分别记录。面试完成或面评提交后由 HR 独立决定晋级，Offer 接受后由 HR 独立确认录用。
+- 工作台沿用冻结统计口径和 Asia/Shanghai。开放职位按 `status='open'` 统计，软删除开放职位单列。旧轮历史缺评与当前待面评分开，到时提醒保持只读。
+- 保留真实操作者、事件回执、事务、幂等、版本并发保护与草稿隔离。旧档未知事实保持未知，区分历史覆盖不足与真实零值。
 
-## 业务与测试边界
+## 维护和权限
 
-- 一份申请对应一条 CandidateRecord。申请状态、结案结果和 Offer 状态分别记录。面试完成或面评提交后由 HR 独立决定晋级，Offer 接受后由 HR 独立确认录用。
-- 工作台沿用冻结统计口径和上海时区。开放职位统计按 `status='open'` 计算，软删除的开放职位单列。旧轮历史缺评与当前待面评分别计算，到时提醒保持只读。
-- 保留真实操作者、事件和回执、事务、幂等、版本并发保护及草稿隔离。旧档的未知事实保持未知。
-- Demo 测试使用虚构数据和独立内存 SQLite。验证记录应说明实际运行的命令和结果。
-
-## 协作和操作权限
-
-- A 负责任务范围和验收，B 负责产品规则，C 负责设计。Codex 按批准范围改动并交付文件清单、验证结果和未解决事项。
-- Git 暂存、提交、推送、合并和部署分别遵守本轮明确授权。环境变更、生产数据操作、生产凭据访问和破坏性操作需要单独批准。
-- 保持正式环境与公开 Demo 隔离。使用获准的代理和现有合法凭据，保持 TLS 校验，避免记录密钥或改动全局 Git 配置。
-- 保留 [MIT 许可](LICENSE)、[第三方声明](THIRD_PARTY_NOTICES.md)和 `docs/images/` 中的项目截图。
+- Owner 授权并最终验收，ChatGPT 总控明确范围与验收标准，Codex 执行、验证和归档。根据变更范围选择必要验证。小型文档或样式修改只做适用的差异、链接或定向检查。业务、认证、依赖或发布变更补齐受影响的回归。记录实际结果与待验证事项。
+- Git 暂存、提交、推送、合并、打标签和发布按本轮明确授权执行。部署、线上配置、生产数据或凭据访问、备份、恢复、迁移和破坏性操作需单独批准。保留已发布标签与历史证据。
+- 正式与公开 Demo 分开存储、认证和运行。调试与测试使用隔离环境及虚构数据。保持 TLS 校验和合法的临时代理，不输出或提交生产凭据、私钥、令牌、真实数据或未脱敏日志。禁止擅改全局 Git 配置。
+- 保留 [MIT 许可](LICENSE)、[第三方声明](THIRD_PARTY_NOTICES.md)及历史截图。
