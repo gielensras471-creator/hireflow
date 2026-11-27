@@ -7,15 +7,6 @@
       <h2>招聘阶段与 HR 决策</h2>
       <p>阶段由 HR 明确决定，面试完成或面评推荐不会自动晋级。</p>
     </header>
-    <ol class="v3-stage-strip" aria-label="四阶段位置（不是事件历史）">
-      <li
-        v-for="stage in stages"
-        :key="stage"
-        :aria-current="state?.preflight.fromStage === stage ? 'step' : undefined"
-      >
-        {{ label(stage) }}
-      </li>
-    </ol>
     <section v-if="loading" class="v3-card v3-advance-loading" aria-busy="true">
       <h3>服务器晋级资格</h3>
       <span aria-hidden="true" /><span aria-hidden="true" />
@@ -29,23 +20,64 @@
       :action="props.disabled ? undefined : '重试晋级资格'"
       @action="load"
     />
-    <section v-else-if="state" class="v3-card">
-      <p>
-        申请生命周期：{{ label(state.application.applicationStatus) }} · Offer 状态：{{
-          label(state.application.offerStatus)
-        }}
-      </p>
-      <V3AdvancementFacts :facts="state.preflight" :feedback="state.feedback" />
-      <div class="v3-advance-actions">
-        <el-button
-          :disabled="props.disabled || !!gate.current.value || v3Session.state.status !== 'ready'"
-          @click="load"
-          >刷新晋级资格</el-button
-        ><el-button type="primary" :disabled="blocked || !canAdvance(state.preflight)" @click="open"
-          >核验并决定晋级</el-button
-        >
-      </div>
-    </section>
+    <template v-else-if="state">
+      <section class="v3-card v4-decision-overview">
+        <h3>决策概览</h3>
+        <div class="v4-decision-route">
+          <span class="v4-detail-symbol" aria-hidden="true">→</span>
+          <div>
+            <small>合法下一阶段</small
+            ><strong
+              >{{ label(state.preflight.fromStage) }} →
+              {{ state.preflight.toStage ? label(state.preflight.toStage) : '无' }}</strong
+            >
+          </div>
+          <span
+            v-if="state.preflight.reasonType && !state.preflight.blockedReason"
+            class="v4-decision-reason"
+            >推进理由必填</span
+          >
+        </div>
+        <p>
+          申请生命周期：{{ label(state.application.applicationStatus) }} · Offer 状态：{{
+            label(state.application.offerStatus)
+          }}
+        </p>
+      </section>
+      <section class="v3-card">
+        <h3>依据与限制</h3>
+        <dl class="v4-decision-counts">
+          <div>
+            <dt>当前轮已完成</dt>
+            <dd>{{ state.preflight.completedCount }} 场</dd>
+          </div>
+          <div>
+            <dt>待处理预约</dt>
+            <dd>{{ state.preflight.scheduled.length }} 场</dd>
+          </div>
+          <div>
+            <dt>缺少面评</dt>
+            <dd>{{ state.preflight.missingInterviewIds.length }} 场</dd>
+          </div>
+        </dl>
+        <V3AdvancementFacts :facts="state.preflight" :feedback="state.feedback" />
+      </section>
+      <section class="v3-card">
+        <h3>HR 业务操作</h3>
+        <div class="v3-advance-actions">
+          <el-button
+            :disabled="props.disabled || !!gate.current.value || v3Session.state.status !== 'ready'"
+            @click="load"
+            >刷新晋级资格</el-button
+          ><el-button
+            type="primary"
+            :disabled="blocked || !canAdvance(state.preflight)"
+            @click="open"
+            >核验并决定晋级</el-button
+          >
+        </div>
+      </section>
+    </template>
     <p v-if="operationError" class="v3-error" role="alert">{{ operationError }}</p>
     <V3AdvancementEditor
       v-if="editor"
@@ -140,13 +172,7 @@ import { useRoute } from 'vue-router'
 import { readV3, v3Session } from '../api/request-v3'
 import { latestRead } from '../api/v3-operation'
 import { label, type Application } from '../api/recruiting-v3'
-import {
-  stages,
-  kinds,
-  canAdvance,
-  type Preflight,
-  type AdvancementEvent
-} from '../api/advancement-v3'
+import { kinds, canAdvance, type Preflight, type AdvancementEvent } from '../api/advancement-v3'
 import { feedbackTime, type FeedbackRecord } from '../api/feedback-v3'
 import { editorGateKey, createEditorGate } from '../utils/v3-editor-gate'
 import V3Feedback from './V3Feedback.vue'
@@ -154,7 +180,7 @@ import V3AdvancementFacts from './V3AdvancementFacts.vue'
 import V3AdvancementEditor from './V3AdvancementEditor.vue'
 import '../styles/v3-advancement.scss'
 const props = defineProps<{ applicationId: number; disabled?: boolean; refreshToken?: number }>()
-const emit = defineEmits<{ updated: [] }>()
+const emit = defineEmits<{ updated: []; facts: [value: Preflight | null] }>()
 const route = useRoute(),
   gate = inject(editorGateKey, null) ?? createEditorGate()
 type State = { application: Application; preflight: Preflight; feedback: FeedbackRecord[] }
@@ -188,6 +214,8 @@ async function readState() {
     readV3<Preflight>(base + '/advance/preflight'),
     readV3<FeedbackRecord[]>(base + '/feedback')
   ])
+  if (application.version !== preflight.version || application.stage !== preflight.fromStage)
+    throw new Error('申请状态已变化，请重新读取晋级资格。')
   return { application, preflight, feedback }
 }
 function load() {
@@ -195,10 +223,12 @@ function load() {
   loading.value = true
   error.value = ''
   state.value = null
+  emit('facts', null)
   return reads.execute(
     readState,
     (value) => {
       state.value = value
+      emit('facts', value.preflight)
       loading.value = false
     },
     (e) => {

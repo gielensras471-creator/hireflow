@@ -1,3 +1,4 @@
+import { showDetailTabForScope } from './v4-detail-controls.mjs'
 import { runR03D } from './r03d-history-checks.mjs'
 import { runR03C } from './r03c-detail-checks.mjs'
 import { checkSummary } from './r03b-summary-checks.mjs'
@@ -405,6 +406,7 @@ try {
   // Deliberately corrupt fixture preparation only, not a product operation or a legal advancement.
   db.prepare("UPDATE candidates SET stage='second_interview' WHERE id=?").run(noWaiver)
   const button = async (text, scope = 'document') => {
+    await showDetailTabForScope(evaluate, scope)
     const expr =
       '([...(' +
       scope +
@@ -431,6 +433,7 @@ try {
   const detailPage = async (id) => {
     await go('/candidates/' + id)
     await h1('申请详情')
+    await showDetailTabForScope(evaluate, '.v3-feedback-panel')
     await check(
       '!!document.querySelector(".v3-feedback-panel")&&!document.querySelector(".v3-feedback-loading")',
       'feedback ready'
@@ -469,12 +472,12 @@ try {
   const activeEditors =
     'document.querySelectorAll(".v3-feedback-editor,.v3-interview-editor,.v3-editor").length'
   await go('/candidates/' + main)
-  await h1('登录招聘工作台')
+  await h1('欢迎回来')
   await fill(app.password, true)
   await h1('申请详情')
   await check('!!document.querySelector(".v3-feedback-card")', 'initial data')
   await detailPage(pendingApp)
-  assert.equal(await evaluate(card(pendingMeeting) + '.querySelectorAll("button").length'), 0)
+  assert.equal(await evaluate(card(pendingMeeting) + '.querySelectorAll(".v3-feedback-actions button").length'), 0)
   assert.equal((await submitApi(pendingApp, pendingMeeting)).status, 409)
   evidence.push('scheduled interview cannot submit')
   await detailPage(empty)
@@ -743,8 +746,8 @@ try {
       'void document.querySelector(".v3-recruiting").__vueParentComponent.setupState.load()'
     )
     await until(() => releaseHeld, 'old account parent held')
-    await click('.v3-account button')
-    await h1('登录招聘工作台')
+    await click('.v3-sidebar button[aria-label=退出]')
+    await h1('欢迎回来')
     app.username = 'r03-other'
     await fill(app.password)
     await h1('招聘工作台')
@@ -760,8 +763,8 @@ try {
     )
     assert.equal(await evaluate(activeEditors), 0)
     await snapshot('r03-cross-account-old-response')
-    await click('.v3-account button')
-    await h1('登录招聘工作台')
+    await click('.v3-sidebar button[aria-label=退出]')
+    await h1('欢迎回来')
     app.username = username
     await fill(app.password, true)
     await h1('招聘工作台')
@@ -1208,8 +1211,8 @@ try {
   await input('推荐依据', '不得串入其他账号的草稿')
   await input('更正原因', '账号边界验证')
   const accountBefore = count()
-  await click('.v3-account button')
-  await h1('登录招聘工作台')
+  await click('.v3-sidebar button[aria-label=退出]')
+  await h1('欢迎回来')
   db.prepare(
     'INSERT INTO users (username,password_hash,name,role,department,email,phone) VALUES (?,?,?,?,?,?,?)'
   ).run('second-hr', bcrypt.hashSync(password, 10), '第二位演示 HR', 'hr', '', '', '')
@@ -1225,7 +1228,7 @@ try {
   await input('更正原因', '撤权验证')
   db.prepare("UPDATE users SET role='viewer' WHERE username='second-hr'").run()
   await save()
-  await h1('登录招聘工作台')
+  await h1('欢迎回来')
   assert.deepEqual(count(), accountBefore)
   assert.equal(requests.filter((url) => /^\/api\/(?!v3\/)/.test(new URL(url).pathname)).length, 0)
   evidence.push('account switch and role revocation discard old ownership; zero V2 requests')

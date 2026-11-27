@@ -5,8 +5,8 @@ export function useEditorFocus(section: string) {
   let returnHeading: HTMLElement | null = null
 
   return {
-    remember(event: MouseEvent) {
-      trigger = event.currentTarget instanceof HTMLElement ? event.currentTarget : null
+    remember(event: MouseEvent, opener?: HTMLElement) {
+      trigger = opener ?? (event.currentTarget instanceof HTMLElement ? event.currentTarget : null)
       returnHeading =
         trigger?.closest(section)?.querySelector<HTMLElement>('header h1, header h2') ?? null
     },

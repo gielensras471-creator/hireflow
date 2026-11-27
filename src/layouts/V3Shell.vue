@@ -1,42 +1,9 @@
 <template>
-  <div ref="root" class="v3-ui v3-shell" :data-tier="tier.name">
+  <div ref="root" class="v3-ui v3-shell v4-shell" :data-tier="tier.name">
     <template v-if="user">
-      <aside
-        v-if="tier.name !== 'mobile'"
-        class="v3-sidebar"
-        :class="{ 'is-collapsed': collapsed }"
-      >
-        <p class="v3-brand">{{ collapsed ? 'HF' : 'HireFlow' }}</p>
-        <nav aria-label="业务导航">
-          <RouterLink
-            v-for="section in v3Sections"
-            :key="section.path"
-            :to="section.path"
-            :aria-label="section.title"
-            :title="section.title"
-            :class="{ 'is-current': isSection(section.path) }"
-          >
-            <svg
-              class="v3-nav-icon"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              stroke-width="1.75"
-              stroke-linecap="round"
-              stroke-linejoin="round"
-              aria-hidden="true"
-              focusable="false"
-            >
-              <path :d="icons[section.name]" />
-            </svg>
-            <span v-if="!collapsed">{{ section.title }}</span>
-          </RouterLink>
-        </nav>
-      </aside>
-
-      <div class="v3-workspace">
-        <header class="v3-header">
-          <div class="v3-header-start">
+      <header class="v3-header">
+        <div class="v3-header-start">
+          <template v-if="tier.name === 'mobile'">
             <button
               ref="navToggle"
               type="button"
@@ -45,18 +12,34 @@
               :aria-expanded="tier.name === 'mobile' ? drawerOpen : !collapsed"
               @click="toggleNav"
             >
-              <span aria-hidden="true">☰</span>
+              <svg
+                class="v3-nav-icon"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="1.75"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                aria-hidden="true"
+              >
+                <path
+                  :d="
+                    tier.name === 'mobile'
+                      ? 'M4 6h16M4 12h16M4 18h16'
+                      : 'M3 4h18v16H3z M9 4v16 M12 9l3 3-3 3'
+                  "
+                />
+              </svg>
             </button>
-            <span v-if="tier.name === 'mobile'" class="v3-brand">HireFlow</span>
-          </div>
-          <div class="v3-account">
-            <RouterLink to="/profile" :title="user.name + ' · ' + user.role" aria-label="个人中心">
-              {{ user.name }} <small>{{ user.role }}</small>
-            </RouterLink>
-            <el-button text @click="logout">退出</el-button>
-          </div>
-        </header>
-
+          </template>
+          <span class="v3-brand" aria-label="HireFlow">
+            <svg width="32" height="32" viewBox="0 0 32 32" aria-hidden="true" focusable="false">
+              <path fill="currentColor" d="M8 0h16l8 8v16l-8 8H8l-8-8V8z" />
+              <path fill="none" stroke="#fff" stroke-width="2" d="M9 7v18m14-18v18M9 16h14" />
+            </svg>
+            <span>HireFlow</span>
+          </span>
+        </div>
         <div ref="tabBar" class="v3-tabs" aria-label="已打开页面" @keydown.esc="closeOverflow()">
           <div
             v-for="tab in visible"
@@ -64,7 +47,12 @@
             class="v3-tab"
             :class="{ 'is-active': tab.key === route.path }"
           >
-            <RouterLink :to="tab.target" :title="tab.title">{{ tab.title }}</RouterLink>
+            <RouterLink
+              :to="tab.target"
+              :title="tab.title"
+              :aria-current="tab.key === route.path ? 'page' : undefined"
+              >{{ tab.title }}</RouterLink
+            >
             <button type="button" :aria-label="'关闭 ' + tab.title" @click="closeTab(tab, $event)">
               ×
             </button>
@@ -89,23 +77,177 @@
             </ul>
           </details>
         </div>
+        <div class="v3-account">
+          <span v-if="demoBuild" class="v4-demo-badge">公开演示</span>
+          <button
+            v-if="fullscreenSupported"
+            class="v3-icon-button v4-fullscreen"
+            type="button"
+            :title="fullscreen ? '退出全屏' : '进入全屏'"
+            :aria-label="fullscreen ? '退出全屏' : '进入全屏'"
+            :disabled="fullscreenPending"
+            @click="toggleFullscreen"
+          >
+            <svg
+              width="16"
+              height="16"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="1.7"
+              aria-hidden="true"
+            >
+              <path
+                :d="
+                  fullscreen
+                    ? 'M4 9h5V4m11 5h-5V4M4 15h5v5m11-5h-5v5'
+                    : 'M9 4H4v5m11-5h5v5M4 15v5h5m11-5v5h-5'
+                "
+              />
+            </svg>
+          </button>
+          <span v-if="fullscreenError" class="v4-fullscreen-status" role="status">{{
+            fullscreenError
+          }}</span>
+          <RouterLink
+            to="/profile"
+            :title="accountName + ' · ' + user.role"
+          >
+            <span class="v4-account-avatar" aria-hidden="true">{{ accountName.slice(0, 1) }}</span>
+            <span class="v4-account-label"
+              >{{ accountName }} <small>{{ user.role }}</small></span
+            >
+            <span class="v4-account-destination">个人中心</span>
+          </RouterLink>
+          <button
+            v-if="tier.name === 'mobile'"
+            class="v3-icon-button v4-exit"
+            type="button"
+            @click="logout"
+          >
+            退出
+          </button>
+        </div>
+      </header>
 
-        <main class="v3-content">
-          <p v-if="demoBuild" class="v3-notice" role="note">
-            公开演示 ·
-            共享虚构数据，请勿录入真实个人信息。重启将重置数据并退出登录；与正式招聘数据库隔离。
-          </p>
-          <V3Feedback
-            v-if="status === 'unavailable'"
-            state="error"
-            title="连接暂时中断，未保存内容已保留"
-            message="恢复连接后可继续编辑。"
-            action="重试连接"
-            @action="v3Session.refresh()"
-          />
-          <div :inert="status !== 'ready'"><RouterView /></div>
-        </main>
-      </div>
+      <aside
+        v-if="tier.name !== 'mobile'"
+        class="v3-sidebar"
+        :class="{ 'is-collapsed': collapsed }"
+      >
+        <nav aria-label="业务导航">
+          <RouterLink
+            v-for="section in v3Sections"
+            :key="section.path"
+            :to="section.path"
+            :aria-label="section.title"
+            :title="section.title"
+            :class="{ 'is-current': isSection(section.path) }"
+            :aria-current="isSection(section.path) ? 'page' : undefined"
+          >
+            <svg
+              class="v3-nav-icon"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="1.75"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              aria-hidden="true"
+              focusable="false"
+            >
+              <path :d="icons[section.name]" />
+            </svg>
+            <span v-if="!collapsed">{{ section.title }}</span>
+          </RouterLink>
+        </nav>
+        <div class="v4-rail-toggle">
+          <button
+            ref="navToggle"
+            type="button"
+            class="v3-icon-button"
+            :aria-label="navigationLabel"
+            :aria-expanded="tier.name === 'mobile' ? drawerOpen : !collapsed"
+            @click="toggleNav"
+          >
+            <svg
+              class="v3-nav-icon"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="1.75"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              aria-hidden="true"
+            >
+              <path
+                :d="
+                  tier.name === 'mobile'
+                    ? 'M4 6h16M4 12h16M4 18h16'
+                    : 'M3 4h18v16H3z M9 4v16 M12 9l3 3-3 3'
+                "
+              />
+            </svg>
+          </button>
+        </div>
+        <div class="v4-rail-account">
+          <RouterLink
+            class="v3-icon-button"
+            to="/profile"
+            :class="{ 'is-current': route.name === 'v3-profile' }"
+            aria-label="打开个人中心"
+            title="个人中心"
+          >
+            <svg
+              class="v3-nav-icon"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="1.75"
+              stroke-linecap="round"
+              aria-hidden="true"
+            >
+              <path :d="profileIcon" />
+            </svg>
+          </RouterLink>
+          <button
+            class="v3-icon-button v4-exit"
+            type="button"
+            aria-label="退出"
+            title="退出"
+            @click="logout"
+          >
+            <svg
+              class="v3-nav-icon"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="1.75"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              aria-hidden="true"
+            >
+              <path d="M10 4H5v16h5M10 12h10m-4-4 4 4-4 4" />
+            </svg>
+          </button>
+        </div>
+      </aside>
+
+      <main ref="content" class="v3-content" tabindex="-1">
+        <V3Feedback
+          v-if="status === 'unavailable'"
+          state="error"
+          title="连接暂时中断，未保存内容已保留"
+          :message="
+            route.name === 'v3-profile'
+              ? '恢复连接后可继续查看账号资料。'
+              : '恢复连接后可继续编辑。'
+          "
+          action="重试连接"
+          @action="v3Session.refresh()"
+        />
+        <div :inert="status !== 'ready'"><RouterView /></div>
+      </main>
 
       <dialog
         ref="drawer"
@@ -132,6 +274,7 @@
               :key="section.path"
               :to="section.path"
               :class="{ 'is-current': isSection(section.path) }"
+              :aria-current="isSection(section.path) ? 'page' : undefined"
               @click="dismissDrawer"
             >
               <svg
@@ -147,6 +290,24 @@
               >
                 <path :d="icons[section.name]" /></svg
               >{{ section.title }}
+            </RouterLink>
+            <RouterLink
+              to="/profile"
+              :class="{ 'is-current': route.name === 'v3-profile' }"
+              @click="dismissDrawer"
+            >
+              <svg
+                class="v3-nav-icon"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="1.75"
+                stroke-linecap="round"
+                aria-hidden="true"
+              >
+                <path :d="profileIcon" />
+              </svg>
+              个人中心
             </RouterLink>
           </nav>
         </div>
@@ -168,12 +329,14 @@
 </template>
 
 <script setup lang="ts">
-import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue'
+import '../styles/_v4-shell.scss'
+import { computed, nextTick, onMounted, onUnmounted, provide, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { v3Session } from '../api/request-v3'
 import V3Feedback from '../components/V3Feedback.vue'
 import { confirmV3Leave } from '../router/v3-drafts'
 import {
+  safeReturn,
   shellTier,
   tabInfo,
   visit,
@@ -181,15 +344,18 @@ import {
   v3Sections,
   type V3Tab
 } from '../router/v3-navigation'
+import { positionTabTitle } from '../router/v4-position-navigation'
 import { v3TabsKey } from '../utils/auth-v3'
 
 const demoBuild = import.meta.env.MODE === 'v3-demo'
 const route = useRoute()
 const router = useRouter()
 const user = computed(() => v3Session.state.user)
+const accountName = computed(() => user.value?.name?.trim() || user.value?.username || '未提供')
 const status = computed(() => v3Session.state.status)
 const owner = computed(() => user.value && user.value.id + ':' + user.value.username)
 const root = ref<HTMLElement>()
+const content = ref<HTMLElement>()
 const navToggle = ref<HTMLButtonElement>()
 const drawer = ref<HTMLDialogElement>()
 const more = ref<HTMLDetailsElement>()
@@ -197,11 +363,19 @@ const tabBar = ref<HTMLElement>()
 const drawerOpen = ref(false)
 const width = ref(window.innerWidth)
 const tier = computed(() => shellTier(width.value))
-const collapsed = ref(tier.value.name !== 'desktop')
+const profileIcon = 'M16 8a4 4 0 1 1-8 0 4 4 0 0 1 8 0ZM5 21v-2a7 7 0 0 1 14 0v2'
+const collapsed = ref(true)
 const navigationLabel = computed(() =>
   tier.value.name === 'mobile' ? '打开导航' : collapsed.value ? '展开导航' : '折叠导航'
 )
 const tabs = ref<V3Tab[]>([])
+provide(positionTabTitle, (path, title) => {
+  const tab = tabs.value.find(({ key }) => key === path)
+  if (tab) {
+    tab.title = title
+    saveTabs()
+  }
+})
 const { visible, overflow } = {
   visible: computed(() => visibleTabs(tabs.value, tier.value.limit).visible),
   overflow: computed(() => visibleTabs(tabs.value, tier.value.limit).overflow)
@@ -222,7 +396,14 @@ function restoreTabs() {
     if (saved?.owner === owner.value && Array.isArray(saved.paths)) {
       return saved.paths
         .filter((path: unknown): path is string => typeof path === 'string')
-        .reduceRight((result: V3Tab[], path: string) => visit(result, path, path), [])
+        .reduceRight((result: V3Tab[], path: string) => {
+          const record = path.startsWith('/positions/') ? saved.positions?.[path] : null
+          const target = safeReturn(record?.target ?? saved.views?.[path])
+          const next = visit(result, path, target.split(/[?#]/, 1)[0] === path ? target : path)
+          if (record && typeof record.title === 'string' && next[0]?.key === path)
+            next[0].title = record.title
+          return next
+        }, [])
     }
   } catch {
     // Malformed tab state has no bearing on authentication or navigation.
@@ -232,10 +413,27 @@ function restoreTabs() {
 
 function saveTabs() {
   if (owner.value) {
-    sessionStorage.setItem(
-      v3TabsKey,
-      JSON.stringify({ owner: owner.value, paths: tabs.value.map(({ key }) => key) })
-    )
+    try {
+      sessionStorage.setItem(
+        v3TabsKey,
+        JSON.stringify({
+          owner: owner.value,
+          paths: tabs.value.map(({ key }) => key),
+          views: Object.fromEntries(
+            tabs.value
+              .filter(({ key }) => key === '/candidates' || key === '/interviews')
+              .map(({ key, target }) => [key, target])
+          ),
+          positions: Object.fromEntries(
+            tabs.value
+              .filter(({ key }) => key.startsWith('/positions/'))
+              .map(({ key, title, target }) => [key, { title, target }])
+          )
+        })
+      )
+    } catch {
+      /* Tabs remain usable in memory. */
+    }
   }
 }
 
@@ -247,7 +445,13 @@ watch(
       tabs.value = currentOwner ? restoreTabs() : []
     }
     if (currentOwner && tabInfo(route.path)) {
-      tabs.value = visit(tabs.value, route.path, route.fullPath)
+      const target =
+        route.fullPath === route.path && route.path === '/candidates'
+          ? '/candidates?view=board'
+          : route.fullPath === route.path && route.path === '/interviews'
+            ? '/interviews?view=week'
+            : route.fullPath
+      tabs.value = visit(tabs.value, route.path, target)
       saveTabs()
     }
   },
@@ -307,8 +511,9 @@ function dismissDrawer() {
   drawer.value?.close()
 }
 
-function onDrawerClosed() {
+async function onDrawerClosed() {
   drawerOpen.value = false
+  await nextTick()
   navToggle.value?.focus()
 }
 
@@ -320,16 +525,28 @@ function closeOverflow(restoreFocus = true) {
 
 watch(
   () => tier.value.name,
-  (name) => {
-    collapsed.value = name !== 'desktop'
+  async () => {
+    const restoreNavFocus = document.activeElement === navToggle.value || drawer.value?.open
+    const restoreTabFocus = !!tabBar.value?.contains(document.activeElement)
+    collapsed.value = true
     dismissDrawer()
     closeOverflow(false)
+    await nextTick()
+    if (restoreNavFocus) navToggle.value?.focus()
+    else if (restoreTabFocus && !tabBar.value?.contains(document.activeElement)) focusActiveTab()
   }
+)
+
+watch(
+  () => route.path,
+  () => content.value?.scrollTo(0, 0)
 )
 
 function logout() {
   if (confirmV3Leave()) v3Session.clear()
 }
+
+provide('v3-shell-logout', logout)
 
 function revalidate() {
   if (document.visibilityState === 'visible') void v3Session.refresh()
@@ -339,13 +556,50 @@ const observer = new ResizeObserver(([entry]) => {
   if (entry) width.value = entry.contentRect.width
 })
 let timer: number
+const fullscreenSupported = ref(false)
+const fullscreen = ref(false)
+const fullscreenPending = ref(false)
+const fullscreenError = ref('')
+let mounted = false
+let ownsFullscreen = false
+function syncFullscreen() {
+  fullscreen.value = Boolean(document.fullscreenElement)
+  if (!fullscreen.value) ownsFullscreen = false
+}
+async function toggleFullscreen() {
+  if (!fullscreenSupported.value || fullscreenPending.value) return
+  fullscreenPending.value = true
+  fullscreenError.value = ''
+  try {
+    if (document.fullscreenElement) await document.exitFullscreen()
+    else {
+      await document.documentElement.requestFullscreen()
+      ownsFullscreen = true
+      if (!mounted && document.fullscreenElement) await document.exitFullscreen()
+    }
+  } catch {
+    if (mounted) fullscreenError.value = '浏览器未能切换全屏，请重试。'
+  } finally {
+    fullscreenPending.value = false
+  }
+}
 onMounted(() => {
+  mounted = true
+  fullscreenSupported.value =
+    document.fullscreenEnabled === true &&
+    typeof document.documentElement.requestFullscreen === 'function' &&
+    typeof document.exitFullscreen === 'function'
+  syncFullscreen()
+  document.addEventListener('fullscreenchange', syncFullscreen)
   if (root.value) observer.observe(root.value)
   window.addEventListener('focus', revalidate)
   document.addEventListener('visibilitychange', revalidate)
   timer = window.setInterval(revalidate, 15000)
 })
 onUnmounted(() => {
+  mounted = false
+  document.removeEventListener('fullscreenchange', syncFullscreen)
+  if (ownsFullscreen && document.fullscreenElement) void document.exitFullscreen().catch(() => {})
   observer.disconnect()
   window.removeEventListener('focus', revalidate)
   document.removeEventListener('visibilitychange', revalidate)

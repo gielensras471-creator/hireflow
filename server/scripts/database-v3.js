@@ -3,6 +3,7 @@ import { pathToFileURL } from 'node:url'
 import {
   initializeV3File,
   initializeFirstHr,
+  migratePersistentV3Auth,
   backupV3File,
   restoreV3File
 } from '../db/persistent-v3.js'
@@ -10,6 +11,7 @@ export async function runDatabaseTool(command, env, input) {
   const root = env.V3_DATA_ROOT,
     file = env.V3_DATABASE_PATH
   if (command === 'init') return initializeV3File(root, file, env.V3_INITIALIZER)
+  if (command === 'migrate-auth') return migratePersistentV3Auth(root, file, env.V3_INITIALIZER)
   if (command === 'first-hr') {
     initializeFirstHr(root, file, input)
     return { status: 'provisioned' }

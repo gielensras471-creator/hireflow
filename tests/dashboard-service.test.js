@@ -269,3 +269,84 @@ test('DEV-10 scheduled reminder starts at 14:00:00 exactly without changing inte
     }
   })
 })
+
+test('DEV-06 history uses Shanghai business dates, stable record IDs and retained Offer events', (t) => {
+  const f = readFixture(t)
+  const now = Date.parse('2024-03-01T00:00:00+08:00')
+  const service = dashboard(f, () => now)
+  const first = f.candidate({ applied_date: '2023-09-01', created_at: now })
+  const archived = f.position({ deleted_at: 20 })
+  const second = f.candidate({
+    applied_date: '2024-02-29',
+    position_id: archived,
+    ...closed('company_rejected')
+  })
+  f.candidate({ applied_date: '2024-02-29', created_at: 1 })
+  f.candidate({ applied_date: '2024-03-01' })
+  f.candidate({ applied_date: '2024-03-02' })
+  f.candidate({ applied_date: '2023-08-31' })
+  for (const [candidate_id, event_type, occurred_at] of [
+    [second, 'offer_sent', now - 1],
+    [first, 'offer_sent', now],
+    [second, 'offer_accepted', now],
+    [first, 'offer_declined', now],
+    [first, 'offer_declined', now + 1]
+  ])
+    f.event({ candidate_id, event_type, occurred_at })
+
+  assertReadOnly(f.db, () => {
+    const data = service.historyMetrics(f.context)
+    assert.equal(data.timezone, 'Asia/Shanghai')
+    assert.equal(data.now, now)
+    assert.equal(data.applications.startDate, '2023-09-01')
+    assert.equal(data.applications.endDate, '2024-04-01')
+    assert.equal(data.applications.throughDate, '2024-03-01')
+    assert.equal(data.applications.dateField, 'appliedDate')
+    assert.equal(data.applications.coverage, 'complete')
+    assert.deepEqual(
+      data.applications.months.map(({ month, count }) => [month, count]),
+      [
+        ['2023-09', 1],
+        ['2023-10', 0],
+        ['2023-11', 0],
+        ['2023-12', 0],
+        ['2024-01', 0],
+        ['2024-02', 2],
+        ['2024-03', 1]
+      ]
+    )
+    assert.equal(data.offer.start, now)
+    assert.equal(data.offer.end, Date.parse('2024-04-01T00:00:00+08:00'))
+    assert.equal(data.offer.dateField, 'occurredAt')
+    assert.equal(data.offer.sent, 1)
+    assert.equal(data.offer.responded, 2)
+    assert.equal(data.offer.coverage, 'partial')
+  })
+
+  f.db.prepare('UPDATE candidates SET applied_date=? WHERE id=?').run('2024-03-01', first)
+  let revised = service.historyMetrics(f.context)
+  assert.equal(revised.applications.months[0].count, 0)
+  assert.equal(revised.applications.months.at(-1).count, 2)
+  for (const applied_date of ['', '2024-02-30', '2024-2-29']) f.candidate({ applied_date })
+  f.legacy()
+  revised = service.historyMetrics(f.context)
+  assert.equal(revised.applications.coverage, 'partial')
+  assert.equal(revised.applications.invalidDates, 3)
+  assert.deepEqual(revised.applications.reasons, [
+    'invalid_or_missing_applied_dates',
+    'legacy_application_history_not_included'
+  ])
+  assert.equal(revised.applications.months[0].count, null)
+  assert.equal(revised.applications.months.at(-1).count, 2)
+})
+
+test('DEV-06 distinguishes a confirmed V3 zero from unverified Offer coverage', (t) => {
+  const f = readFixture(t)
+  const read = dashboard(f, () => Date.parse('2027-07-01T00:00:00+08:00'))
+  const data = read.historyMetrics(f.context)
+  assert.equal(data.applications.coverage, 'complete')
+  assert.ok(data.applications.months.every((item) => item.count === 0))
+  assert.equal(data.offer.sent, null)
+  assert.equal(data.offer.responded, null)
+  assert.equal(data.offer.coverage, 'partial')
+})

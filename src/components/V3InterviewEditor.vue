@@ -8,7 +8,7 @@
     <form @submit.prevent="submit">
       <fieldset :disabled="busy || uncertain || conflict || v3Session.state.status !== 'ready'">
         <label v-if="action === 'schedule' || action === 'reschedule'"
-          >预约开始时间（上海，UTC+08:00）
+          >预约开始时间（北京时间，UTC+08:00）
           <input v-model="time" type="datetime-local" step="1" required aria-label="预约开始时间" />
         </label>
         <label v-if="action === 'schedule'"

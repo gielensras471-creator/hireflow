@@ -16,6 +16,7 @@ export async function startV3Server(env = process.env) {
       throw new Error('Offline HR provisioning required')
     const api = createV3App({
         db,
+        accountWrites: true,
         clientOrigins: config.clientOrigins,
         authConfig: { jwtSecret: config.secret }
       }),

@@ -3,12 +3,14 @@ import { createHmac, randomBytes } from 'node:crypto'
 import { once } from 'node:events'
 import { DatabaseSync } from 'node:sqlite'
 import test from 'node:test'
+import { gzipSync } from 'node:zlib'
 import bcrypt from 'bcryptjs'
 import express from 'express'
 import jwt from 'jsonwebtoken'
 import { createApp } from '../server/app.js'
 import { createV3App } from '../server/app-v3.js'
 import { createV3Schema } from '../server/db/schema-v3.js'
+import { addV3AuthVersion } from '../server/db/v3-auth-migration.js'
 import { createV3Auth } from '../server/middleware/auth-v3.js'
 import { v3ErrorHandler, v3RequestContext } from '../server/middleware/error-v3.js'
 import { createTokenService } from '../server/utils/jwt.js'
@@ -105,7 +107,7 @@ test('E3-API-01 rejects missing, malformed, expired, wrong-domain and mismatched
   const key = createHmac('sha256', secret).update('hireflow:v3:access-token').digest()
   const options = { issuer: 'hireflow-v3', audience: 'hireflow-v3-api', subject: '1' }
   const sign = (overrides = {}, payload = { username: 'test-hr' }) =>
-    jwt.sign(payload, key, { ...options, expiresIn: 60, ...overrides })
+    jwt.sign({ authVersion: 1, ...payload }, key, { ...options, expiresIn: 60, ...overrides })
   for (const token of [
     'invalid',
     sign({ expiresIn: -60 }),
@@ -115,8 +117,11 @@ test('E3-API-01 rejects missing, malformed, expired, wrong-domain and mismatched
     sign({ subject: '01' }),
     sign({ subject: '99' }),
     sign({}, { username: 'test-viewer' }),
-    jwt.sign({ username: 'test-hr' }, key, options),
-    jwt.sign({ username: 'test-hr' }, randomBytes(32), { ...options, expiresIn: 60 })
+    jwt.sign({ username: 'test-hr', authVersion: 1 }, key, options),
+    jwt.sign({ username: 'test-hr', authVersion: 1 }, randomBytes(32), {
+      ...options,
+      expiresIn: 60
+    })
   ]) {
     await errorResponse(await fetch(me, bearer(token)), 401, 'INVALID_TOKEN')
   }
@@ -152,6 +157,7 @@ test('E3-API-01 isolates V2 and V3 HTTP tokens even with the same input secret a
 
 test('E3-API-01 recruitment guard resolves a server-owned actor and rechecks roles after revocation', async (t) => {
   const { db, authConfig } = prepare(t)
+  addV3AuthVersion(db)
   const auth = createV3Auth({ db, ...authConfig })
   const app = express()
   app.use(v3RequestContext)
@@ -250,6 +256,16 @@ test('E3-API-01 sanitizes malformed JSON, unsupported media, oversize and unexpe
     413,
     'PAYLOAD_TOO_LARGE'
   )
+
+  const compressedLogin = await fetch(base + '/api/v3/auth/login', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'Content-Encoding': 'gzip' },
+    body: gzipSync(JSON.stringify({ username: 'test-hr', password }))
+  })
+  assert.equal(compressedLogin.status, 200)
+  const session = await compressedLogin.json()
+  assert.equal(session.user.username, 'test-hr')
+  assert.equal((await fetch(base + '/api/v3/auth/me', bearer(session.token))).status, 200)
 
   const errorApp = express()
   errorApp.use(v3RequestContext)

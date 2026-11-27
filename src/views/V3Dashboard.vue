@@ -1,82 +1,226 @@
 <template>
   <section class="v3-dashboard">
     <header class="v3-dashboard-heading">
-      <div>
-        <h1>招聘工作台</h1>
-        <p>掌握招聘进展，及时跟进关键事项</p>
+      <h1>招聘工作台</h1>
+      <div v-if="summaryLoading" class="v3-dashboard-metrics" aria-busy="true">
+        <span role="status">读取指标中…</span>
       </div>
-      <div>
-        <RouterLink to="/candidates">管理申请 →</RouterLink
-        ><el-button :disabled="!ready" @click="refreshAll">刷新工作台</el-button>
+      <div v-else-if="summary" class="v3-dashboard-metrics" aria-label="工作台指标">
+        <article v-for="m in metrics" :key="m.key">
+          <h2>{{ m.title }}</h2>
+          <strong :data-metric="m.key" :title="m.unit">{{ m.count }}</strong>
+        </article>
+      </div>
+      <div class="v4-dash-actions">
+        <button class="v4-dash-button" type="button" :disabled="!ready" @click="refreshAll">
+          刷新工作台
+        </button>
+        <RouterLink class="v4-dash-button" to="/candidates">→ 查看申请</RouterLink>
+        <button
+          class="v4-dash-button is-primary"
+          type="button"
+          :disabled="!ready || !!editor"
+          @click="openEditor($event, null)"
+        >
+          ＋ 新建职位
+        </button>
       </div>
     </header>
-    <section v-if="summaryLoading" class="v3-dashboard-metrics" aria-busy="true">
-      <article v-for="n in 4" :key="n" class="v3-card">
-        <span class="v3-dashboard-skeleton" />
-        <p role="status">读取指标中…</p>
-      </article>
-    </section>
     <V3Feedback
-      v-else-if="summaryError"
+      v-if="summaryError"
       state="error"
       title="暂时无法查看工作台指标"
       :message="summaryError"
       action="重试指标"
       @action="loadSummary"
     />
-    <template v-else-if="summary">
-      <div class="v3-dashboard-metrics">
-        <article v-for="m in metrics" :key="m.title" class="v3-card">
-          <h2>{{ m.title }}</h2>
-          <strong :data-metric="m.key">{{ m.count }}</strong
-          ><small>{{ m.unit }}</small>
+    <V3RecruitingEditor
+      v-if="editor"
+      positions
+      :options="[]"
+      :row="editor.row"
+      :action="editor.action"
+      @vue:mounted="editorFocus.enter"
+      @close="closeEditor"
+      @saved="savedPosition"
+    />
+    <section class="v4-dash-core" aria-label="招聘核心数据">
+      <V4DashboardTrend
+        :trend="history?.applications"
+        :loading="historyLoading"
+        :error="historyError"
+        @retry="loadHistory"
+      />
+      <section class="v3-card v4-dash-reminders">
+        <header><h2>招聘待办提醒</h2></header>
+        <p class="v3-dashboard-note">查看当前需要跟进的事项</p>
+        <div class="v4-dash-stack">
+          <button
+            v-for="key in highlights"
+            :key="key"
+            type="button"
+            class="v4-dash-stack-item"
+            :data-highlight="key"
+            :aria-controls="'dashboard-work-details'"
+            @click="selectAndReveal(key)"
+          >
+            <span class="v4-dash-round" aria-hidden="true">{{ highlightIcons[key] }}</span>
+            <span
+              ><b>{{ workLabels[key] }}</b
+              ><small>{{
+                summary
+                  ? summary.work[key].count + ' ' + unitLabel(summary.work[key].unit)
+                  : '暂不可用'
+              }}</small></span
+            >
+            <span aria-hidden="true">›</span>
+          </button>
+        </div>
+        <button class="v4-dash-link" type="button" @click="reveal('dashboard-all-work')">
+          查看全部待办 ↗
+        </button>
+      </section>
+      <section class="v3-card v4-dash-progress">
+        <header><h2>招聘进展</h2></header>
+        <div class="v4-dash-inset">
+          <h3>本月 Offer 事件</h3>
+          <p v-if="historyLoading" role="status">正在读取…</p>
+          <template v-else-if="history">
+            <dl class="v4-dash-values">
+              <div>
+                <dt>发送</dt>
+                <dd>{{ history.offer.sent ?? '—' }}</dd>
+              </div>
+              <div>
+                <dt>回应</dt>
+                <dd>{{ history.offer.responded ?? '—' }}</dd>
+              </div>
+            </dl>
+            <p v-if="history.offer.coverage === 'partial'" class="v3-dashboard-note">
+              仅统计已记录事件，历史覆盖待核实。
+            </p>
+          </template>
+          <p v-else>
+            历史统计不可用。
+            <button v-if="historyError" class="v4-dash-link" type="button" @click="loadHistory">
+              重试
+            </button>
+          </p>
+        </div>
+        <div class="v4-dash-inset">
+          <h3>当前申请阶段</h3>
+          <dl class="v4-dash-values">
+            <div v-for="(value, name) in phaseTotals" :key="name">
+              <dt>{{ name }}</dt>
+              <dd>{{ value ?? '—' }}</dd>
+            </div>
+          </dl>
+          <p v-if="phaseLoading" role="status">正在读取阶段统计…</p>
+          <p v-else-if="phaseIssue" class="v3-dashboard-note" role="status">
+            {{ phaseIssue }}
+            <button class="v4-dash-link" type="button" @click="loadPhases">重试阶段</button>
+          </p>
+        </div>
+      </section>
+    </section>
+    <section class="v4-dash-open">
+      <header>
+        <h2>开放职位</h2>
+        <div class="v4-dash-actions">
+          <span class="v4-dash-range">最近发布</span
+          ><RouterLink class="v4-dash-button" to="/positions">→ 查看全部</RouterLink>
+        </div>
+      </header>
+      <p v-if="positionsLoading" role="status">正在读取开放职位…</p>
+      <p v-else-if="positionError" role="status">
+        {{ positionError }}
+        <button class="v4-dash-link" type="button" @click="loadPositions">重试职位</button>
+      </p>
+      <p v-else-if="!positions.length">暂无未归档的开放职位。</p>
+      <div v-else class="v4-dash-positions">
+        <article v-for="row in positions" :key="row.id" class="v3-card v4-dash-job">
+          <header>
+            <h3><span aria-hidden="true">●</span> {{ row.title }}</h3>
+            <V4PositionMenu
+              :row="row"
+              :disabled="!!editor || !ready"
+              @action="(event, action, opener) => openEditor(event, row, action, opener)"
+            />
+          </header>
+          <p>{{ row.department || '—' }} · {{ row.location || '—' }}</p>
+          <p class="v4-dash-job-id">
+            <span class="v4-dash-job-icon" aria-hidden="true">▣</span> 职位 #{{ row.id }}
+            <span class="v4-dash-job-open">招聘中</span>
+          </p>
+          <dl class="v4-dash-values v4-dash-inset v4-dash-job-stats">
+            <div>
+              <dt>累计申请记录 · 条</dt>
+              <dd>{{ row.applicationRecords }}</dd>
+            </div>
+            <div>
+              <dt>已完成面试 · 场</dt>
+              <dd>
+                {{ completed[row.id] === undefined ? '读取中' : completed[row.id] ?? '不可用' }}
+              </dd>
+              <button
+                v-if="completed[row.id] === null"
+                class="v4-dash-link"
+                type="button"
+                @click="loadCompleted(row.id)"
+              >
+                重试场次
+              </button>
+            </div>
+          </dl>
+          <footer>
+            <small>发布日期 {{ row.publishDate || '—' }}</small
+            ><RouterLink
+              class="v4-dash-link"
+              :to="positionLink(row.id, route.fullPath)"
+              :data-position-link="row.id"
+              @click="rememberPosition($event, route.fullPath, row.id)"
+              >查看详情 ›</RouterLink
+            >
+          </footer>
         </article>
       </div>
-      <p class="v3-dashboard-note v3-dashboard-metric-note">
+      <p v-if="summary" class="v3-dashboard-note v3-dashboard-metric-note">
         开放职位含
-        {{ summary.openPositions.softDeletedOpen }} 个已归档的开放记录，不等于可投递职位。
-        申请数按申请记录统计，不按人数去重。
-        <span>指标读取时间：{{ feedbackTime(summary.now) }}。</span>
+        {{ summary.openPositions.softDeletedOpen }}
+        个已归档的开放记录。下方卡片只展示未归档开放职位。申请数按申请记录统计。指标读取时间：{{
+          feedbackTime(summary.now)
+        }}。
       </p>
-      <section class="v3-card">
-        <h2>需要处理的工作</h2>
-        <div class="v3-dashboard-work">
-          <button
-            v-for="key in primary"
-            :key="key"
-            :data-work="key"
-            :aria-pressed="type === key"
-            :class="{ 'is-selected': type === key }"
-            @click="select(key)"
-          >
-            <span class="v3-work-selection" aria-hidden="true">✓ 已选中</span
-            ><span>{{ workLabels[key] }}</span
-            ><strong>{{ summary.work[key].count }}</strong
-            ><small>{{ unitLabel(summary.work[key].unit) }}</small>
-          </button>
-        </div>
-        <div class="v3-dashboard-secondary">
-          <button
-            v-for="key in secondary"
-            :key="key"
-            :data-work="key"
-            :aria-pressed="type === key"
-            :class="{ 'is-selected': type === key }"
-            @click="select(key)"
-          >
-            <span class="v3-work-selection" aria-hidden="true">✓ 已选中</span
-            ><span
-              >{{ workLabels[key] }} · {{ summary.work[key].count }}
-              {{ unitLabel(summary.work[key].unit) }}</span
-            >
-          </button>
-        </div>
-        <p class="v3-dashboard-note">
-          各类别独立计量，申请级和面试级待办不合计为人数。到时仅提醒，不自动确认完成。
-        </p>
-      </section>
-    </template>
-    <section class="v3-card v3-dashboard-details" :aria-busy="workLoading">
+    </section>
+
+    <section v-if="summary" id="dashboard-all-work" class="v3-card" tabindex="-1">
+      <h2>需要处理的工作</h2>
+      <div class="v3-dashboard-work">
+        <button
+          v-for="key in allWork"
+          :key="key"
+          type="button"
+          :data-work="key"
+          :aria-pressed="type === key"
+          :class="{ 'is-selected': type === key }"
+          @click="select(key)"
+        >
+          <span class="v3-work-selection" aria-hidden="true">✓ 已选中</span>
+          <span>{{ workLabels[key] }}</span>
+          <strong>{{ summary.work[key].count }}</strong>
+          <small>{{ unitLabel(summary.work[key].unit) }}</small>
+        </button>
+      </div>
+      <p class="v3-dashboard-note">
+        类别独立计量，申请级与面试级待办不合计为人数。到时只提醒人工确认。
+      </p>
+    </section>
+    <section
+      id="dashboard-work-details"
+      tabindex="-1"
+      class="v3-card v3-dashboard-details"
+      :aria-busy="workLoading"
+    >
       <header>
         <h2>待处理事项 · {{ workLabels[type] }}</h2>
         <el-button :disabled="!ready" @click="refreshWork">刷新待办</el-button>
@@ -202,11 +346,13 @@
               >
                 <dt>{{ text }}</dt>
                 <dd>{{ summary.applicationTotals[key] }} <span>条</span></dd>
-                <meter
-                  :value="summary.applicationTotals[key]"
-                  :max="Math.max(summary.applicationTotals.total, 1)"
-                  :aria-label="text"
-                />
+                <dd class="v3-dashboard-application-meter">
+                  <meter
+                    :value="summary.applicationTotals[key]"
+                    :max="Math.max(summary.applicationTotals.total, 1)"
+                    :aria-label="text"
+                  />
+                </dd>
               </div>
             </dl>
           </section>
@@ -262,15 +408,25 @@ import {
   workPath,
   type WorkType,
   type Summary,
+  type HistoryMetrics,
   type WorkPage,
   type Today
 } from '../api/dashboard-v3'
-import type { Application, Page } from '../api/recruiting-v3'
+import type { Application, Page, Position } from '../api/recruiting-v3'
 import { feedbackTime } from '../api/feedback-v3'
 import V3FilterSelect from '../components/V3FilterSelect.vue'
 import V3Feedback from '../components/V3Feedback.vue'
 import V3DashboardTable from '../components/V3DashboardTable.vue'
+import V4DashboardTrend from '../components/V4DashboardTrend.vue'
+import V4PositionMenu from '../components/V4PositionMenu.vue'
+import V3RecruitingEditor from '../components/V3RecruitingEditor.vue'
+import { useEditorFocus } from '../utils/v3-editor-focus'
+import { byPublishDate, collectPositions, recruitingStages } from '../api/v4-recruiting-lists'
 import '../styles/v3-dashboard.scss'
+import '../styles/v4-dashboard.scss'
+import { useRoute } from 'vue-router'
+import { positionLink, rememberPosition, restorePosition } from '../router/v4-position-navigation'
+const route = useRoute()
 const ready = computed(() => v3Session.state.status === 'ready')
 const summary = ref<Summary | null>(null),
   work = ref<WorkPage | null>(null),
@@ -291,33 +447,189 @@ const type = ref<WorkType>('screening'),
 const sr = latestRead(),
   wr = latestRead(),
   tr = latestRead()
-const primary: WorkType[] = ['screening', 'scheduling', 'feedback', 'offer'],
-  secondary: WorkType[] = ['due', 'decision']
+
+const highlights = ['screening', 'feedback', 'offer'] as const
+const highlightIcons = { screening: '⌕', feedback: '✎', offer: '▣' }
+const allWork = Object.keys(workLabels) as WorkType[]
+const history = ref<HistoryMetrics | null>(null)
+const historyLoading = ref(false)
+const historyError = ref('')
+const phases = ref<(number | null)[]>([])
+const phaseLoading = ref(false)
+const phaseTotals = computed(() => ({
+  待筛选: phases.value[0] ?? null,
+  面试中:
+    phases.value[1] == null || phases.value[2] == null ? null : phases.value[1] + phases.value[2],
+  'Offer 中': phases.value[3] ?? null
+}))
+const phaseIssue = computed(() => {
+  if (!phases.value.length) return '阶段统计暂不可用。'
+  if (phases.value.some((v) => v === null)) return '部分阶段读取失败。'
+  if (
+    summary.value &&
+    phases.value.reduce<number>((sum, v) => sum + (v ?? 0), 0) !==
+      summary.value.activeApplications.count
+  )
+    return '独立读取的阶段计数与汇总有差异，请刷新核对。'
+  return ''
+})
+const positions = ref<Position[]>([])
+const positionsLoading = ref(false)
+const positionError = ref('')
+const completed = ref<Record<number, number | null>>({})
+const editor = ref<{ row: Position | null; action: 'edit' | 'status' | 'archive' } | null>(null)
+const editorFocus = useEditorFocus('.v3-dashboard')
+const historyRead = latestRead()
+const phaseRead = latestRead()
+const positionRead = latestRead()
+let positionRun = 0
+const runningCounts = new Map<number, object>()
+
+function loadHistory() {
+  if (!ready.value) return
+  history.value = null
+  historyLoading.value = true
+  historyError.value = ''
+  return historyRead.execute(
+    () => readV3<HistoryMetrics>('/dashboard/history-metrics'),
+    (value) => {
+      history.value = value
+      historyLoading.value = false
+    },
+    (error) => {
+      historyError.value = message(error)
+      historyLoading.value = false
+    }
+  )
+}
+function loadPhases() {
+  if (!ready.value) return
+  phases.value = []
+  phaseLoading.value = true
+  return phaseRead.execute(
+    async () =>
+      (
+        await Promise.allSettled(
+          recruitingStages.map((stage) =>
+            readV3<Page<Application>>(
+              '/applications?applicationStatus=active&limit=1&stage=' + stage
+            )
+          )
+        )
+      ).map((value) => (value.status === 'fulfilled' ? value.value.total : null)),
+    (value) => {
+      phases.value = value
+      phaseLoading.value = false
+    },
+    () => {
+      phaseLoading.value = false
+    }
+  )
+}
+function loadPositions() {
+  if (!ready.value) return
+  const run = ++positionRun
+  const session = v3Session.version()
+  positionsLoading.value = true
+  positionError.value = ''
+  positions.value = []
+  completed.value = {}
+  runningCounts.clear()
+  return positionRead.execute(
+    async () => {
+      const rows = await collectPositions(
+        (start, limit) =>
+          readV3<Page<Position>>('/positions?status=open&limit=' + limit + '&offset=' + start),
+        () => run === positionRun && ready.value && session === v3Session.version()
+      )
+      return byPublishDate(
+        rows.filter((row) => row.status === 'open' && row.deletedAt == null)
+      ).slice(0, 3)
+    },
+    (rows) => {
+      positions.value = rows
+      positionsLoading.value = false
+      void restorePosition(route.fullPath)
+      for (const row of rows) void loadCompleted(row.id)
+    },
+    (error) => {
+      positionError.value = message(error)
+      positionsLoading.value = false
+    }
+  )
+}
+async function loadCompleted(id: number) {
+  if (!ready.value || runningCounts.has(id) || !positions.value.some((row) => row.id === id)) return
+  const request = {}
+  const session = v3Session.version()
+  runningCounts.set(id, request)
+  delete completed.value[id]
+  const current = () =>
+    runningCounts.get(id) === request && session === v3Session.version() && ready.value
+  try {
+    const page = await readV3<Page<unknown>>(
+      '/interviews?positionId=' + id + '&status=completed&limit=1&offset=0'
+    )
+    if (current()) completed.value[id] = page.total
+  } catch {
+    if (current()) completed.value[id] = null
+  } finally {
+    if (runningCounts.get(id) === request) runningCounts.delete(id)
+  }
+}
+function openEditor(
+  event: MouseEvent,
+  row: Position | null,
+  action: 'edit' | 'status' | 'archive' = 'edit',
+  opener?: HTMLElement
+) {
+  if (!ready.value || editor.value) return
+  editorFocus.remember(event, opener)
+  editor.value = { row, action }
+}
+function closeEditor() {
+  editor.value = null
+  void editorFocus.restore()
+}
+function savedPosition() {
+  closeEditor()
+  void loadPositions()
+  void loadSummary()
+}
+function reveal(id: string) {
+  const target = document.getElementById(id)
+  target?.focus({ preventScroll: true })
+  target?.scrollIntoView({ block: 'start' })
+}
+function selectAndReveal(key: WorkType) {
+  select(key)
+  reveal('dashboard-work-details')
+}
 const metrics = computed(() =>
   summary.value
     ? [
         {
           key: 'positions',
-          title: '开放职位记录',
+          title: '开放职位',
           count: summary.value.openPositions.count,
           unit: '个职位记录'
         },
         {
           key: 'applications',
-          title: '活跃申请记录',
+          title: '活跃申请',
           count: summary.value.activeApplications.count,
           unit: '条申请记录'
         },
         {
-          key: 'interviews',
-          title: '今日面试场次',
-          count: summary.value.todayInterviews.count,
-          unit: '场面试'
+          key: 'scheduling',
+          title: '待安排',
+          count: summary.value.work.scheduling.count,
+          unit: '条申请记录'
         },
         {
-          key: 'hired',
-          title: '已确认录用记录',
-          count: summary.value.applicationTotals.hired,
+          key: 'offer',
+          title: 'Offer 待处理',
+          count: summary.value.work.offer.count,
           unit: '条申请记录'
         }
       ]
@@ -448,12 +760,31 @@ function refreshToday() {
 }
 
 function refreshAll() {
+  void loadHistory()
+  void loadPhases()
+  void loadPositions()
   void loadIdentities()
   void loadSummary()
   void loadWork()
   void loadToday()
 }
 function clear() {
+  historyRead.invalidate()
+  phaseRead.invalidate()
+  positionRead.invalidate()
+  positionRun++
+  runningCounts.clear()
+  history.value = null
+  historyError.value = ''
+  historyLoading.value = false
+  phases.value = []
+  phaseLoading.value = false
+  positions.value = []
+  positionsLoading.value = false
+  positionError.value = ''
+  completed.value = {}
+  if (v3Session.state.status === 'anonymous' || v3Session.state.status === 'forbidden')
+    editor.value = null
   identityRun = undefined
   identities.value = new Map()
   identityState.value = 'loading'

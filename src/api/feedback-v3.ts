@@ -90,6 +90,6 @@ export function feedbackTime(ms: number) {
       minute: '2-digit',
       second: '2-digit',
       hourCycle: 'h23'
-    }).format(ms) + '（上海）'
+    }).format(ms) + '（北京时间）'
   )
 }

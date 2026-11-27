@@ -105,6 +105,13 @@ export const createV3DashboardHistoryRoutes = ({
     })
   )
   router.get(
+    '/dashboard/history-metrics',
+    read((req, actor) => {
+      queryFields(req.query, [])
+      return dashboard.historyMetrics(actor)
+    })
+  )
+  router.get(
     '/dashboard/work-items/:type',
     read((req, actor) => {
       const { type } = req.params

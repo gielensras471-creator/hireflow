@@ -3,6 +3,8 @@ import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
 import { stripTypeScriptTypes } from 'node:module'
 import { createRequire } from 'node:module'
+import { createServer } from 'vite'
+import vuePlugin from '@vitejs/plugin-vue'
 const require = createRequire(import.meta.url)
 const { parse, compileTemplate } = require('vue/compiler-sfc')
 const Vue = require('vue')
@@ -33,9 +35,20 @@ function component(name) {
 }
 const { orderHistory, historyCaption, sortableHistory, safeHistoryTime, validHistoryTime } =
   await mappings('../src/api/history-display.ts')
-const stateRender = component('V3OfferState')
+// Exercise the SFC's real setup and template together; template-only fixtures
+// cannot resolve the computed Offer and outcome labels.
+let OfferState
+const vite = await createServer({
+  configFile: false,
+  plugins: [vuePlugin()],
+  server: { middlewareMode: true, hmr: false, watch: null }
+})
+try {
+  ;({ default: OfferState } = await vite.ssrLoadModule('/src/components/V3OfferState.vue'))
+} finally {
+  await vite.close()
+}
 const renderers = {
-  V3OfferState: stateRender,
   V3FeedbackSnapshot: component('V3FeedbackSnapshot'),
   V3FeedbackHistory: component('V3FeedbackHistory'),
   V3FeedbackPanel: component('V3FeedbackPanel'),
@@ -52,6 +65,9 @@ const base = {
   version: 3
 }
 async function render(name, ctx) {
+  if (name === 'V3OfferState') {
+    return renderToString(Vue.createSSRApp({ render: () => Vue.h(OfferState, ctx) }))
+  }
   const app = Vue.createSSRApp({
     data: () => ({
       load() {},
@@ -80,7 +96,6 @@ async function render(name, ctx) {
       outcomes,
       offerStatuses,
       label: (v) => v ?? '—',
-      safeHistoryTime,
       feedbackTime: () => '2030-01-01',
       ...ctx
     }),
@@ -94,16 +109,7 @@ async function render(name, ctx) {
     'V3AdvancementEditor'
   ])
     app.component(name, { render: () => null })
-  app.component('V3OfferState', {
-    props: ['state'],
-    data: () => ({
-      label: (v) => v ?? '—',
-      offerStatuses,
-      outcomes,
-      feedbackTime: () => '2030-01-01'
-    }),
-    render: stateRender
-  })
+  app.component('V3OfferState', OfferState)
   return renderToString(app)
 }
 test('real OfferState template distinguishes all known outcomes, unknown and absent values', async () => {
@@ -417,7 +423,8 @@ test('actual feedback panel renders real supplement and waiver times safely', as
       assert.match(html, /14:00:01/)
       assert.match(html, /2026/)
     } else {
-      assert.equal((html.match(/发生时间未记录，待核实/g) || []).length, 2)
+      // The card now also shows the unrecorded appointment time.
+      assert.equal((html.match(/发生时间未记录，待核实/g) || []).length, 3)
       assert.doesNotMatch(html, /1970|2026/)
     }
   }

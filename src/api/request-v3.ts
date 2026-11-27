@@ -1,4 +1,6 @@
 import axios from 'axios'
+import { ref } from 'vue'
+import { optionalSessionStorage } from '../utils/v4-work-preferences'
 import { resolveV3ApiBase } from './v3-api-base'
 import { createV3Session, V3Error, type Credentials, type V3User } from '../utils/auth-v3'
 
@@ -35,13 +37,20 @@ export function adaptV3Error(error: unknown): V3Error {
       INVALID_INTERVIEW_STAGE: '当前申请阶段不能安排面试。',
       INTERVIEW_NOT_SCHEDULED: '面试已不处于预约状态，请刷新查看。',
       INTERVIEW_VERSION_CONFLICT: '面试已有新进展，请核对当前状态。',
-      INVALID_TIME: '预约时间无效，请填写上海日期和时间。',
+      INVALID_TIME: '预约时间无效，请填写北京时间的日期和时间。',
       CANCEL_REASON_REQUIRED: '取消面试必须填写原因。',
       NO_CHANGE: '内容没有变化，请修改后再提交。',
       POSITION_NOT_OPEN: '职位已关闭或归档，请重新选择开放职位。',
       POSITION_DELETED: '职位已归档，无法继续修改。',
       APPLICATION_CLOSED: '申请已结束，无法编辑普通资料。',
-      IDEMPOTENCY_CONFLICT: '提交标识与内容不一致，请先核对原操作结果。'
+      IDEMPOTENCY_CONFLICT: '提交标识与内容不一致，请先核对原操作结果。',
+      INVALID_DISPLAY_NAME: '请输入 1–64 字的显示名称，不能包含控制字符。',
+      CURRENT_PASSWORD_INVALID: '当前密码不正确。',
+      INVALID_NEW_PASSWORD:
+        '新密码至少 12 个字符且最多 72 个 UTF-8 字节，不能全为空白或含控制字符。',
+      PASSWORD_UNCHANGED: '新密码不能与当前密码相同。',
+      PASSWORD_RATE_LIMIT: '尝试次数过多，请稍后重试。',
+      ACCOUNT_CHANGED: '账号认证状态已变更，请重新确认登录状态。'
     }
     const message =
       businessMessages[code] ??
@@ -81,7 +90,12 @@ const transport = {
   }
 }
 
-export const v3Session = createV3Session(transport, window.localStorage, window.sessionStorage)
+export const v3Session = createV3Session(
+  transport,
+  optionalSessionStorage(() => window.localStorage),
+  optionalSessionStorage(() => window.sessionStorage)
+)
+export const v3AccountLoginNotice = ref('')
 
 type WriteOptions = { idempotencyKey: string } & (
   | { operation: 'create'; expectedVersion?: never }
@@ -139,6 +153,10 @@ async function authorized<T>(
 }
 
 export const readV3 = <T>(path: string) => authorized<T>('GET', path)
+export const updateOwnDisplayName = (name: string) =>
+  authorized<V3User>('PATCH', '/auth/me', { name })
+export const updateOwnPassword = (currentPassword: string, newPassword: string) =>
+  authorized<void>('PATCH', '/auth/me/password', { currentPassword, newPassword })
 
 export function writeV3<T>(
   method: 'POST' | 'PATCH',

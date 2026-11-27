@@ -1,86 +1,88 @@
 <template>
   <section class="v3-offer" aria-label="Offer 与招聘结案">
-    <p v-if="props.disabled" role="status">
-      申请详情正在读取、读取失败或等待编辑结束，请先完成当前编辑或重新加载申请详情。
-    </p>
-    <header>
-      <h2>Offer 与招聘结案</h2>
-      <p>仅手工登记实际事实；接受 Offer 不等于已录用。</p>
-    </header>
-    <section v-if="loading" class="v3-card v3-offer-loading" aria-busy="true">
-      <h3>Offer 状态与结束资格</h3>
-      <span aria-hidden="true" /><span aria-hidden="true" />
-      <p role="status">读取服务器状态中…</p>
-    </section>
-    <V3Feedback
-      v-else-if="error"
-      state="error"
-      title="暂时无法查看 Offer 与结案资格"
-      :message="error"
-      :action="props.disabled ? undefined : '重试 Offer 状态'"
-      @action="load"
-    />
-    <template v-else-if="state">
-      <section class="v3-card">
-        <h3>Offer 处理</h3>
-        <V3OfferState :state="state.state" />
-        <div v-for="action in offerKeys" :key="action" class="v3-offer-command">
-          <el-button
-            :type="action === 'send' || action === 'confirmHire' ? 'primary' : undefined"
-            :disabled="blocked || !offerAllowed(state, action)"
-            @click="open($event, action)"
-            >{{ offerActions[action] }}</el-button
-          ><small v-if="!offerAllowed(state, action)">{{
-            offerBlocks[state.offer.actions[action].blockedReason ?? ''] ?? '当前状态不允许此动作。'
-          }}</small>
-        </div>
+    <section class="v3-card v4-offer-business">
+      <p v-if="props.disabled" role="status">
+        申请详情正在读取、读取失败或等待编辑结束，请先完成当前编辑或重新加载申请详情。
+      </p>
+      <header>
+        <h2><span class="v4-detail-symbol" aria-hidden="true">▤</span> Offer 与招聘结案</h2>
+        <p>仅手工登记实际事实；接受 Offer 不等于已录用。</p>
+      </header>
+      <section v-if="loading" class="v3-card v3-offer-loading" aria-busy="true">
+        <h3>Offer 状态与结束资格</h3>
+        <span aria-hidden="true" /><span aria-hidden="true" />
+        <p role="status">读取服务器状态中…</p>
       </section>
-      <section class="v3-card">
-        <h3>结束招聘</h3>
-        <p>普通结案仅限企业淘汰或候选人退出；不能用于录用或拒绝 Offer。</p>
-        <el-button :disabled="blocked || !state.closure.allowed" @click="open($event, 'close')"
-          >结束招聘</el-button
+      <V3Feedback
+        v-else-if="error"
+        state="error"
+        title="暂时无法查看 Offer 与结案资格"
+        :message="error"
+        :action="props.disabled ? undefined : '重试 Offer 状态'"
+        @action="load"
+      />
+      <template v-else-if="state">
+        <section class="v4-offer-commands">
+          <V3OfferState :state="state.state" overview />
+          <div v-for="action in offerKeys" :key="action" class="v3-offer-command">
+            <el-button
+              :type="action === 'send' || action === 'confirmHire' ? 'primary' : undefined"
+              :disabled="blocked || !offerAllowed(state, action)"
+              @click="open($event, action)"
+              >{{ offerActions[action] }}</el-button
+            ><small v-if="!offerAllowed(state, action)">{{
+              offerBlocks[state.offer.actions[action].blockedReason ?? ''] ??
+              '当前状态不允许此动作。'
+            }}</small>
+          </div>
+        </section>
+        <section class="v4-offer-closure">
+          <h3>结束招聘</h3>
+          <p>普通结案仅限企业淘汰或候选人退出；不能用于录用或拒绝 Offer。</p>
+          <el-button :disabled="blocked || !state.closure.allowed" @click="open($event, 'close')"
+            >结束招聘</el-button
+          >
+          <p v-if="!state.closure.allowed">
+            {{ offerBlocks[state.closure.blockedReason ?? ''] ?? '当前不能结束。' }}
+          </p>
+        </section>
+        <section
+          v-if="state.closure.pendingInterviews.length || state.offer.pendingInterviews.length"
+          class="v3-card v3-offer-warning"
         >
-        <p v-if="!state.closure.allowed">
-          {{ offerBlocks[state.closure.blockedReason ?? ''] ?? '当前不能结束。' }}
-        </p>
-      </section>
-      <section
-        v-if="state.closure.pendingInterviews.length || state.offer.pendingInterviews.length"
-        class="v3-card v3-offer-warning"
+          <h3>结束操作的待处理预约</h3>
+          <p>请先完成或取消；登记发送和接受仍以各自动作资格为准。</p>
+          <ul>
+            <li v-for="row in state.closure.pendingInterviews" :key="row.interviewId">
+              面试 #{{ row.interviewId }} · {{ label(row.stageScope) }} ·
+              {{ feedbackTime(row.scheduledAt) }}
+            </li>
+          </ul>
+          <template v-if="!state.closure.pendingInterviews.length">
+            <p v-for="row in state.offer.pendingInterviews" :key="row.interviewId">
+              面试 #{{ row.interviewId }} · {{ label(row.stageScope) }} ·
+              {{ feedbackTime(row.scheduledAt) }}
+            </p></template
+          >
+        </section>
+      </template>
+      <el-button
+        :disabled="
+          props.disabled || loading || !!gate.current.value || v3Session.state.status !== 'ready'
+        "
+        @click="load"
+        >刷新 Offer 状态</el-button
       >
-        <h3>结束操作的待处理预约</h3>
-        <p>请先完成或取消；登记发送和接受仍以各自动作资格为准。</p>
-        <ul>
-          <li v-for="row in state.closure.pendingInterviews" :key="row.interviewId">
-            面试 #{{ row.interviewId }} · {{ label(row.stageScope) }} ·
-            {{ feedbackTime(row.scheduledAt) }}
-          </li>
-        </ul>
-        <template v-if="!state.closure.pendingInterviews.length">
-          <p v-for="row in state.offer.pendingInterviews" :key="row.interviewId">
-            面试 #{{ row.interviewId }} · {{ label(row.stageScope) }} ·
-            {{ feedbackTime(row.scheduledAt) }}
-          </p></template
-        >
-      </section>
-    </template>
-    <el-button
-      :disabled="
-        props.disabled || loading || !!gate.current.value || v3Session.state.status !== 'ready'
-      "
-      @click="load"
-      >刷新 Offer 状态</el-button
-    >
-    <p v-if="operationError" role="alert" class="v3-error">{{ operationError }}</p>
-    <V3OfferEditor
-      v-if="editor"
-      :original="editor.context"
-      :action="editor.action"
-      @vue:mounted="editorFocus.enter"
-      @close="cancelWithFocus"
-      @saved="saved"
-    />
+      <p v-if="operationError" role="alert" class="v3-error">{{ operationError }}</p>
+      <V3OfferEditor
+        v-if="editor"
+        :original="editor.context"
+        :action="editor.action"
+        @vue:mounted="editorFocus.enter"
+        @close="cancelWithFocus"
+        @saved="saved"
+      />
+    </section>
     <section class="v3-card" data-detail-history="offer">
       <h3>Offer 与结案真实历史</h3>
       <p v-if="!historyLoading && !historyError">
@@ -187,7 +189,7 @@ import V3OfferState from './V3OfferState.vue'
 import V3OfferEditor from './V3OfferEditor.vue'
 import '../styles/v3-offer.scss'
 const props = defineProps<{ applicationId: number; disabled?: boolean; refreshToken?: number }>(),
-  emit = defineEmits<{ updated: [] }>()
+  emit = defineEmits<{ updated: []; facts: [value: OfferContext | null] }>()
 const route = useRoute(),
   gate = inject(editorGateKey, null) ?? createEditorGate()
 const state = ref<OfferContext | null>(null),
@@ -219,10 +221,12 @@ function load() {
   loading.value = true
   error.value = ''
   state.value = null
+  emit('facts', null)
   return reads.execute(
     () => readOfferContext(props.applicationId),
     (c) => {
       state.value = c
+      emit('facts', c)
       loading.value = false
     },
     (e) => {

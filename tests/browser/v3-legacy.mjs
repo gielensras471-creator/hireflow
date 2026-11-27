@@ -31,7 +31,8 @@ let deny = false,
 const { default: express } = await import(root('node_modules/express/index.js'))
 const wrapped = express()
 let legacyFailure = false,
-  legacyDelay = false
+  legacyDelay = false,
+  omitProfileName = false
 const httpEvidence = []
 wrapped.use(express.json())
 wrapped.use((req, res, next) => {
@@ -67,6 +68,15 @@ wrapped.use((req, res, next) => {
     return setTimeout(next, 2500)
   if (failMe && req.path === '/api/v3/auth/me')
     return res.status(503).json({ error: { code: 'TEST_BUSY', message: 'fixture' } })
+  if (omitProfileName && req.path === '/api/v3/auth/me') {
+    const json = res.json.bind(res)
+    res.json = (body) => {
+      if (res.statusCode !== 200) return json(body)
+      const { name: omitted, ...identity } = body
+      assert.equal(typeof omitted, 'string')
+      return json(identity)
+    }
+  }
   if (failList && req.method === 'GET' && req.path === '/api/v3/applications')
     return res.status(503).json({ error: { code: 'TEST_BUSY', message: 'fixture' } })
   if (deny && req.method === 'PATCH') {
@@ -171,7 +181,7 @@ const go = (path) => send('Page.navigate', { url: app.url + path })
 const width = (w) =>
   send('Emulation.setDeviceMetricsOverride', {
     width: w,
-    height: w < 800 ? 844 : 900,
+    height: w === 1920 ? 1080 : w < 800 ? 844 : 900,
     deviceScaleFactor: 1,
     mobile: false
   })
@@ -234,7 +244,13 @@ try {
 
   await send('Page.addScriptToEvaluateOnNewDocument', { source: observerProbe })
   await go('/positions')
-  await h1('登录招聘工作台')
+  await h1('欢迎回来')
+  await check('!document.querySelector(".login-demo") && !document.body.innerText.includes("demo_admin")', 'formal login isolation')
+  await width(1920)
+  await snapshot('formal-login')
+  await fill('invalid-fictional-password')
+  await check('document.querySelector("#login-error")?.textContent.includes("账号或密码不正确") && document.activeElement.id === "v3-password" && !document.activeElement.value', 'formal rejection clears password')
+  await snapshot('formal-login-auth-error')
   await fill(app.password, true)
   await h1('职位管理')
   await check('document.body.innerText.includes("暂时没有记录")', 'true empty')
@@ -554,6 +570,24 @@ try {
     await h1('旧版档案')
     await check('document.querySelectorAll("table tbody tr").length===20', 'list first page')
     await snapshot('AC-16/list')
+    await send('Emulation.setDeviceMetricsOverride', {
+      width: 1920,
+      height: 1080,
+      deviceScaleFactor: 1,
+      mobile: false
+    })
+    await check(
+      'document.querySelector(".legacy-footer").getBoundingClientRect().bottom <= innerHeight && document.querySelector(".v3-table-scroll").scrollHeight > document.querySelector(".v3-table-scroll").clientHeight',
+      'desktop table region scrolls independently while pagination is visible'
+    )
+    await snapshot('AC-16/list-1920')
+    await width(390)
+    await check(
+      'document.documentElement.scrollWidth <= innerWidth + 1 && document.querySelector(".v3-table-scroll").scrollWidth > document.querySelector(".v3-table-scroll").clientWidth',
+      'narrow archive scrolls inside the table only'
+    )
+    await snapshot('AC-16/list-mobile')
+    await width(1440)
     await button('下一页旧档')
     await check('document.querySelectorAll("table tbody tr").length===11', 'next page')
     await button('上一页旧档')
@@ -571,6 +605,18 @@ try {
     legacyFailure = false
     await button('重新读取旧档')
     await check('document.querySelectorAll("table tbody tr").length===20', 'retry recovered')
+    legacyDelay = true
+    await button('筛选档案')
+    await check(
+      '!!document.querySelector("[data-state=loading]")',
+      'first archive query in progress'
+    )
+    await chooseFilterOption({ evaluate, check }, '实体类型', '旧职位')
+    await chooseFilterOption({ evaluate, check }, '职位映射状态', '同名歧义，待核实')
+    await button('筛选档案')
+    await check('document.body.innerText.includes("暂无符合条件")', 'new archive query wins')
+    await sleep(1600)
+    assert.ok(await evaluate('document.body.innerText.includes("暂无符合条件")'))
     const open = async (type, id) => {
       await go('/legacy-records')
       await h1('旧版档案')
@@ -592,7 +638,10 @@ try {
       await evaluate(
         'document.querySelectorAll("table tbody tr a")[' + links.indexOf(link) + '].click()'
       )
-      await h1('旧档详情')
+      await check(
+        'document.querySelector(".legacy-heading p")?.textContent === "旧版档案详情"',
+        'legacy detail title'
+      )
       await check('!!document.querySelector("[aria-label=只读旧档详情]")', 'detail loaded')
       assert.ok(
         await evaluate(
@@ -610,6 +659,14 @@ try {
     const rejectedText = await open('candidates', 101)
     assert.ok(rejectedText.includes('企业淘汰') && rejectedText.includes('未知，待核实'))
     await snapshot('AC-16/rejected')
+    await send('Emulation.setDeviceMetricsOverride', {
+      width: 1920,
+      height: 1080,
+      deviceScaleFactor: 1,
+      mobile: false
+    })
+    await snapshot('AC-16/detail-1920')
+    await width(1440)
     const offerText = await open('candidates', 102)
     assert.ok(offerText.includes('子状态未知') && !offerText.includes('已录用'))
     await snapshot('AC-16/offer')
@@ -617,7 +674,10 @@ try {
     assert.ok(interviewText.includes('原面试轮次') && interviewText.includes('未知，待核实'))
     await snapshot('AC-16/interview')
     await send('Page.reload')
-    await h1('旧档详情')
+    await check(
+      'document.querySelector(".legacy-heading p")?.textContent === "旧版档案详情"',
+      'legacy detail title'
+    )
     await check('!!document.querySelector("[aria-label=只读旧档详情]")', 'direct refresh works')
     const mappings = []
     for (const id of [103, 104]) {
@@ -639,16 +699,59 @@ try {
         legacyReport.source_fingerprint +
         '&entityType=candidates&legacyId=999'
     )
-    await h1('旧档详情')
+    await check(
+      'document.querySelector(".legacy-heading p")?.textContent === "旧版档案详情"',
+      'legacy detail title'
+    )
     await check('document.body.innerText.includes("未找到旧档记录")', 'not found')
     await snapshot('AC-16/not-found')
+    await go('/legacy-records/detail?sourceKey=invalid')
+    await check(
+      'document.body.innerText.includes("旧档标识无效") && !document.querySelector(".legacy-detail")',
+      'invalid archive key'
+    )
+    await snapshot('AC-16/invalid-key')
     assert.deepEqual(state(legacyMemory), prior)
     assert.ok(!allHttp.slice(uiStart).some((x) => !['GET', 'HEAD', 'OPTIONS'].includes(x.method)))
+    omitProfileName = true
+    await go('/profile')
+    await h1('个人中心')
+    await check(
+      'document.querySelector(".profile-summary h2")?.textContent === "未提供"',
+      'missing identity field'
+    )
+    await snapshot('AC-16/profile-missing-field')
+    omitProfileName = false
+    failMe = true
+    await evaluate('window.dispatchEvent(new Event("focus"))')
+    await check(
+      'document.body.innerText.includes("连接暂时中断") && !!document.querySelector("[inert] .v4-profile")',
+      'identity unavailable retains current route safely'
+    )
+    await snapshot('AC-16/profile-unavailable')
+    failMe = false
+    await button('重试连接')
+    await check(
+      '!!document.querySelector(".v4-profile") && !document.querySelector("[inert] .v4-profile")',
+      'profile identity recovered'
+    )
+    await width(1920)
+    await snapshot('AC-16/profile-formal')
+    await button('编辑个人资料')
+    await check('!!document.querySelector("#profile-preview-name:enabled") && !!document.querySelector(".profile-preview .profile-save:enabled")', 'authorized formal name editor is enabled')
+    await check('getComputedStyle(document.querySelector(".el-overlay:has(.profile-preview)")).opacity === "1"', 'name overlay settled')
+    await snapshot('AC-16/profile-name-preview')
+    await button('取消', 'document.querySelector(".profile-preview")')
+    await button('修改密码')
+    await check('document.querySelectorAll(".profile-preview input[type=password]:enabled").length === 3 && !!document.querySelector(".profile-preview .profile-save:enabled")', 'authorized formal password editor is enabled')
+    await check('getComputedStyle(document.querySelector(".el-overlay:has(.profile-preview)")).opacity === "1"', 'password overlay settled')
+    await snapshot('AC-16/profile-password-preview')
+    await button('取消', 'document.querySelector(".profile-preview")')
     legacyMemory.prepare("UPDATE users SET role='viewer' WHERE id=1").run()
     const forbidden = await request(app.url, '/legacy-records/list', token)
     assert.equal(forbidden.status, 403)
     await go('/legacy-records')
-    await h1('登录招聘工作台')
+    await h1('欢迎回来')
     await snapshot('AC-16/forbidden')
     await file('migration-facts-proof', {
       report: legacyReport,

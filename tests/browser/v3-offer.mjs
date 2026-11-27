@@ -1,3 +1,4 @@
+import { showDetailTabForScope } from './v4-detail-controls.mjs'
 import { checkSummary } from './r03b-summary-checks.mjs'
 import assert from 'node:assert/strict'
 import { spawn } from 'node:child_process'
@@ -333,6 +334,7 @@ try {
     appointmentId
   )
   const button = async (text, scope = 'document') => {
+    await showDetailTabForScope(evaluate, scope)
     const e =
       '([...(' +
       scope +
@@ -382,7 +384,7 @@ try {
   const editorCount =
     'document.querySelectorAll(".v3-offer-editor,.v3-advance-editor,.v3-feedback-editor,.v3-interview-editor,.v3-editor").length'
   await go('/candidates/' + main)
-  await h1('登录招聘工作台')
+  await h1('欢迎回来')
   await fill(app.password, true)
   await h1('申请详情')
   await check(panel + '.textContent.includes("准备中")', 'preparing')
@@ -756,8 +758,8 @@ try {
   await open('结束招聘')
   await input('结束原因', '身份切换草稿')
   const authBefore = count()
-  await click('.v3-account button')
-  await h1('登录招聘工作台')
+  await click('.v3-sidebar button[aria-label=退出]')
+  await h1('欢迎回来')
   db.prepare(
     'INSERT INTO users(username,password_hash,name,role,department,email,phone) VALUES(?,?,?,?,?,?,?)'
   ).run('second-hr', bcrypt.hashSync(password, 10), '第二虚构 HR', 'hr', '', '', '')
@@ -771,7 +773,7 @@ try {
   await input('结束类型', 'candidate_withdrew')
   await input('结束原因', '撤权不应保存')
   await save()
-  await h1('登录招聘工作台')
+  await h1('欢迎回来')
   assert.deepEqual(count(), authBefore)
   app.username = username
   await fill(app.password)
@@ -780,7 +782,7 @@ try {
   await open('结束招聘')
   unauthorized = true
   await save()
-  await h1('登录招聘工作台')
+  await h1('欢迎回来')
   assert.deepEqual(count(), authBefore)
   assert.equal(requests.filter((url) => /^\/api\/(?!v3\/)/.test(new URL(url).pathname)).length, 0)
   evidence.push('account isolation, actual role withdrawal, HTTP401 and zero V2 requests')
